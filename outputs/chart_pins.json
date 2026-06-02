@@ -1,0 +1,18 @@
+{
+  "Price-Profit": [
+    "Price (Close)",
+    "[F] P&L::Net Profit"
+  ],
+  "Price-Borrowings": [
+    "Price (Close)",
+    "[F] Balance Sheet::Borrowings"
+  ],
+  "ATR-Price": [
+    "Price (Close)",
+    "[M] atr"
+  ],
+  "Promoter-Holdings": [
+    "Price (Close)",
+    "[F] Shareholding::Promoters"
+  ]
+}

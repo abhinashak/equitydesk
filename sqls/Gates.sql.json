@@ -1,0 +1,415 @@
+{
+  "_comment": "Gate SQL Registry. Each entry defines one CTE block that the pipeline LEFT JOINs into `combined`. Adding a new gate = add entry here + add gate block in one_ticker_gates.py. CTEs are injected before `combined` and LEFT JOINed on c.ticker = <cte_alias>.ticker. Fields listed under `fields` are added to the SELECT list of `combined`. Fields listed under `score_fields` are inputs to compute_scores(). Gates are evaluated in Python; the `pos_expr` / `neg_expr` are Python expressions referencing row fields.",
+  "gates": [
+
+    {
+      "id": "G1a",
+      "label": "ROCE",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "Return on Capital Employed ≥ 18% (strong), < 8% (poor)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["roce"],
+      "pos_expr": "r['roce'] >= 18",
+      "neg_expr": "r['roce'] < 8",
+      "note_expr": "f\"ROCE = {r['ROCE %']}% (target ≥18%)\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G1b",
+      "label": "Free Cash Flow",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "Latest annual FCF > 0 (cash generative)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["fcf"],
+      "pos_expr": "pd.notna(r['fcf']) and r['fcf'] > 0",
+      "neg_expr": "pd.notna(r['fcf']) and r['fcf'] < 0",
+      "note_expr": "\"FCF = \" + ('positive' if r['G1b(+) FCF'] else 'negative/unknown')",
+      "weight": 20
+    },
+
+    {
+      "id": "G1c",
+      "label": "Profit CAGR 3Y",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "3-year net profit CAGR ≥ 15% (strong compounder), < 0% (shrinking)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["profit_now", "profit_3y"],
+      "pos_expr": "profit_cagr is not None and profit_cagr >= 15",
+      "neg_expr": "profit_cagr is not None and profit_cagr < 0",
+      "note_expr": "f\"3Y CAGR = {r['3Y Profit CAGR%']}% (target ≥15%)\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G1d",
+      "label": "CFO vs Net Profit",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "CFO > Net Profit → earnings backed by real cash; CFO < 50% NP → aggressive accounting",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["cfo", "profit_now"],
+      "pos_expr": "pd.notna(r['cfo']) and pd.notna(r['profit_now']) and r['profit_now'] > 0 and r['cfo'] > r['profit_now']",
+      "neg_expr": "pd.notna(r['cfo']) and pd.notna(r['profit_now']) and r['profit_now'] > 0 and r['cfo'] < r['profit_now'] * 0.5",
+      "note_expr": "\"CFO > Net Profit = earnings are real cash\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G1e",
+      "label": "Debt/Equity",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "D/E < 0.5 (low leverage), > 1.5 (over-leveraged); skipped for financials",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["debt", "reserves", "equity_capital"],
+      "pos_expr": "not is_financial and de is not None and de < 0.5",
+      "neg_expr": "not is_financial and de is not None and de > 1.5",
+      "note_expr": "('N/A for financial sector' if is_financial else f\"D/E = {r['D/E']} (target <0.5)\")",
+      "weight": 20
+    },
+
+    {
+      "id": "G1f",
+      "label": "Interest Coverage",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "EBIT / Interest ≥ 5× (comfortable), < 1.5× (distressed); skipped for financials",
+      "cte_alias": "icr_cte",
+      "cte_sql": "icr_cte AS (\n    SELECT a.ticker,\n        MAX(CASE WHEN metric='Operating Profit' THEN val END) AS ebit_annual,\n        MAX(CASE WHEN metric='Interest'         THEN val END) AS interest_annual\n    FROM profit_loss a\n    WHERE a.dt = (SELECT MAX(dt) FROM profit_loss WHERE ticker = a.ticker)\n    GROUP BY a.ticker\n)",
+      "fields": ["icr.ebit_annual", "icr.interest_annual"],
+      "score_fields": ["ebit_annual", "interest_annual"],
+      "pos_expr": "not is_financial and pd.notna(r['ebit_annual']) and pd.notna(r['interest_annual']) and r['interest_annual'] > 0 and (r['ebit_annual'] / r['interest_annual']) >= 5",
+      "neg_expr": "not is_financial and pd.notna(r['ebit_annual']) and pd.notna(r['interest_annual']) and r['interest_annual'] > 0 and (r['ebit_annual'] / r['interest_annual']) < 1.5",
+      "note_expr": "('N/A for financial sector' if is_financial else (f\"ICR = {round(r['ebit_annual']/r['interest_annual'],1)}x\" if pd.notna(r.get('ebit_annual')) and pd.notna(r.get('interest_annual')) and r.get('interest_annual',0) > 0 else 'ICR: data unavailable'))",
+      "weight": 20
+    },
+
+    {
+      "id": "G1g",
+      "label": "Sales CAGR 3Y",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "3-year revenue CAGR ≥ 10% (growing top line), < 0% (shrinking)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["sales_now", "sales_3y"],
+      "pos_expr": "pd.notna(r.get('sales_now')) and pd.notna(r.get('sales_3y')) and r.get('sales_3y',0) > 0 and ((r['sales_now']/r['sales_3y'])**(1/3)-1)*100 >= 10",
+      "neg_expr": "pd.notna(r.get('sales_now')) and pd.notna(r.get('sales_3y')) and r.get('sales_3y',0) > 0 and ((r['sales_now']/r['sales_3y'])**(1/3)-1)*100 < 0",
+      "note_expr": "f\"Sales CAGR = {round(((r['sales_now']/r['sales_3y'])**(1/3)-1)*100,1) if pd.notna(r.get('sales_now')) and pd.notna(r.get('sales_3y')) and r.get('sales_3y',0)>0 else '—'}%\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G1h",
+      "label": "ROE Trend",
+      "group": 1,
+      "group_label": "Business Quality",
+      "description": "ROE ≥ 15% (value-creating), < 8% (poor shareholder returns)",
+      "cte_alias": "roe_trend_cte",
+      "cte_sql": "roe_trend_cte AS (\n    SELECT ticker,\n        MAX(CASE WHEN years=0  THEN val END) AS roe_ttm,\n        MAX(CASE WHEN years=3  THEN val END) AS roe_3y,\n        MAX(CASE WHEN years=5  THEN val END) AS roe_5y\n    FROM return_on_equity\n    GROUP BY ticker\n)",
+      "fields": ["rt.roe_ttm", "rt.roe_3y", "rt.roe_5y"],
+      "score_fields": ["roe_ttm", "roe_3y", "roe_5y"],
+      "pos_expr": "pd.notna(r.get('roe_ttm')) and r.get('roe_ttm',0) >= 15",
+      "neg_expr": "pd.notna(r.get('roe_ttm')) and r.get('roe_ttm',0) < 8",
+      "note_expr": "f\"ROE TTM = {round(r['roe_ttm'],1) if pd.notna(r.get('roe_ttm')) else '—'}% | 3Y = {round(r['roe_3y'],1) if pd.notna(r.get('roe_3y')) else '—'}%\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G2a",
+      "label": "P/E vs Sector",
+      "group": 2,
+      "group_label": "Valuation",
+      "description": "Stock P/E at ≥15% discount to sector median (cheap), or >30% premium (expensive)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["stock_p_e", "sector_median_pe"],
+      "pos_expr": "pe_discount_pct is not None and pe_discount_pct >= 15",
+      "neg_expr": "pe_discount_pct is not None and pe_discount_pct < -30",
+      "note_expr": "f\"Stock P/E {r['Stock P/E']} vs Sector {r['Sector P/E']} → {r['PE Discount %']:+.1f}%\"",
+      "weight": 33
+    },
+
+    {
+      "id": "G2b",
+      "label": "PEG Ratio",
+      "group": 2,
+      "group_label": "Valuation",
+      "description": "PEG < 1.0 (cheap for growth rate), > 2.5 (priced to perfection)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["stock_p_e"],
+      "pos_expr": "peg is not None and peg < 1.0",
+      "neg_expr": "peg is not None and peg > 2.5",
+      "note_expr": "f\"PEG = {r['PEG']} (target <1.0 = cheap for growth)\"",
+      "weight": 33
+    },
+
+    {
+      "id": "G2c",
+      "label": "Price/Book",
+      "group": 2,
+      "group_label": "Valuation",
+      "description": "P/B < 3 (reasonable asset pricing), > 8 (sky-high premium)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["current_price", "book_value"],
+      "pos_expr": "pb is not None and pb < 3.0",
+      "neg_expr": "pb is not None and pb > 8.0",
+      "note_expr": "f\"P/B = {round(pb,2) if pb is not None else '—'} (target <3)\"",
+      "weight": 33
+    },
+
+    {
+      "id": "G2d",
+      "label": "Dividend Yield",
+      "group": 2,
+      "group_label": "Valuation",
+      "description": "Dividend yield ≥ 1% (shareholder-friendly), 0% with high PE (speculative)",
+      "cte_alias": "div_cte",
+      "cte_sql": "div_cte AS (\n    SELECT nse_symbol AS ticker, dividend_yield\n    FROM general_info\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY nse_symbol ORDER BY nse_symbol) = 1\n)",
+      "fields": ["dv.dividend_yield"],
+      "score_fields": ["dividend_yield"],
+      "pos_expr": "pd.notna(r.get('dividend_yield')) and r.get('dividend_yield',0) >= 1.0",
+      "neg_expr": "pd.notna(r.get('dividend_yield')) and r.get('dividend_yield',0) == 0 and pd.notna(r.get('stock_p_e')) and r.get('stock_p_e',0) > 30",
+      "note_expr": "f\"Dividend Yield = {round(r['dividend_yield'],2) if pd.notna(r.get('dividend_yield')) else '—'}%\"",
+      "weight": 33
+    },
+
+    {
+      "id": "G2e",
+      "label": "Price/Sales",
+      "group": 2,
+      "group_label": "Valuation",
+      "description": "P/S ratio < 2 (reasonable revenue multiple), > 10 (narrative stock)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["current_price", "market_cap", "sales_now"],
+      "pos_expr": "pd.notna(r.get('market_cap')) and pd.notna(r.get('sales_now')) and r.get('sales_now',0) > 0 and (r['market_cap'] / r['sales_now']) < 2",
+      "neg_expr": "pd.notna(r.get('market_cap')) and pd.notna(r.get('sales_now')) and r.get('sales_now',0) > 0 and (r['market_cap'] / r['sales_now']) > 10",
+      "note_expr": "f\"P/S = {round(r['market_cap']/r['sales_now'],2) if pd.notna(r.get('market_cap')) and pd.notna(r.get('sales_now')) and r.get('sales_now',0)>0 else '—'}\"",
+      "weight": 33
+    },
+
+    {
+      "id": "G3a",
+      "label": "Sales Momentum",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "Sequential quarterly sales acceleration (Q0 > Q1 > Q2)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["sales_q0", "sales_q1", "sales_q2"],
+      "pos_expr": "pd.notna(r['sales_q0']) and pd.notna(r['sales_q1']) and pd.notna(r['sales_q2']) and r['sales_q0'] > r['sales_q1'] > r['sales_q2']",
+      "neg_expr": "pd.notna(r['sales_q0']) and pd.notna(r['sales_q1']) and r['sales_q0'] < r['sales_q1']",
+      "note_expr": "f\"Q0={r['_sales_q0']}Cr → Q1={r['_sales_q1']}Cr\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G3b",
+      "label": "Profit Acceleration",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "Latest quarter net profit > prior quarter",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["profit_q0", "profit_q1"],
+      "pos_expr": "pd.notna(r['profit_q0']) and pd.notna(r['profit_q1']) and r['profit_q0'] > r['profit_q1']",
+      "neg_expr": "pd.notna(r['profit_q0']) and pd.notna(r['profit_q1']) and r['profit_q0'] < r['profit_q1'] and r['profit_q0'] > 0",
+      "note_expr": "\"Quarterly net profit trend\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G3c",
+      "label": "OPM Expansion",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "Operating margin expanding vs prior quarter; contraction > 3pp is a red flag",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["opm_q0", "opm_q1"],
+      "pos_expr": "pd.notna(r['opm_q0']) and pd.notna(r['opm_q1']) and r['opm_q0'] > r['opm_q1']",
+      "neg_expr": "pd.notna(r['opm_q0']) and pd.notna(r['opm_q1']) and r['opm_q0'] < r['opm_q1'] - 3",
+      "note_expr": "f\"OPM: {r['_opm_q0']}% vs {r['_opm_q1']}%\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G3d",
+      "label": "Promoter Buying",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "Promoter stake stable or rising; > 2pp drop is a sell signal",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["promoter", "promoter_prev"],
+      "pos_expr": "pd.notna(r['promoter']) and pd.notna(r['promoter_prev']) and r['promoter'] >= r['promoter_prev']",
+      "neg_expr": "pd.notna(r['promoter']) and pd.notna(r['promoter_prev']) and r['promoter'] < r['promoter_prev'] - 2",
+      "note_expr": "f\"{r['_promoter']}% now vs {r['_promoter_prev']}% prev\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G3e",
+      "label": "Institutional Accumulation",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "FII or DII stake rising = smart-money accumulation",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["fii", "fii_prev", "dii", "dii_prev"],
+      "pos_expr": "pd.notna(r['fii']) and pd.notna(r['fii_prev']) and pd.notna(r['dii']) and pd.notna(r['dii_prev']) and (r['fii'] >= r['fii_prev'] or r['dii'] >= r['dii_prev'])",
+      "neg_expr": "pd.notna(r['fii']) and pd.notna(r['fii_prev']) and pd.notna(r['dii']) and pd.notna(r['dii_prev']) and r['fii'] < r['fii_prev'] and r['dii'] < r['dii_prev']",
+      "note_expr": "f\"FII {r['_fii']}%→{r['_fii_prev']}% | DII {r['_dii']}%→{r['_dii_prev']}%\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G3f",
+      "label": "EPS Growth",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "Latest quarter EPS > prior quarter (per-share earnings momentum)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["eps_q0", "eps_q1"],
+      "pos_expr": "pd.notna(r.get('eps_q0')) and pd.notna(r.get('eps_q1')) and r.get('eps_q1',0) > 0 and r.get('eps_q0',0) > r.get('eps_q1',0)",
+      "neg_expr": "pd.notna(r.get('eps_q0')) and pd.notna(r.get('eps_q1')) and r.get('eps_q0',0) < r.get('eps_q1',0)",
+      "note_expr": "f\"EPS Q0={round(r['eps_q0'],2) if pd.notna(r.get('eps_q0')) else '—'} vs Q1={round(r['eps_q1'],2) if pd.notna(r.get('eps_q1')) else '—'}\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G3g",
+      "label": "YoY Sales Growth",
+      "group": 3,
+      "group_label": "Timing",
+      "description": "Latest quarter sales > same quarter last year (YoY growth ≥ 10%)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["sales_q0", "sales_q3"],
+      "pos_expr": "pd.notna(r.get('sales_q0')) and pd.notna(r.get('sales_q3')) and r.get('sales_q3',0) > 0 and ((r['sales_q0']-r['sales_q3'])/r['sales_q3'])*100 >= 10",
+      "neg_expr": "pd.notna(r.get('sales_q0')) and pd.notna(r.get('sales_q3')) and r.get('sales_q3',0) > 0 and r.get('sales_q0',0) < r.get('sales_q3',0)",
+      "note_expr": "f\"YoY Sales = {round(((r['sales_q0']-r['sales_q3'])/r['sales_q3'])*100,1) if pd.notna(r.get('sales_q0')) and pd.notna(r.get('sales_q3')) and r.get('sales_q3',0)>0 else '—'}%\"",
+      "weight": 20
+    },
+
+    {
+      "id": "G4a",
+      "label": "BB Squeeze",
+      "group": 4,
+      "group_label": "Technical",
+      "description": "Bollinger Band width at/near 63-day low = coiled spring; > 0.35 = chaotic",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["bb_width", "min_bb_63d"],
+      "pos_expr": "pd.notna(r['bb_width']) and pd.notna(r['min_bb_63d']) and r['bb_width'] <= r['min_bb_63d'] * 1.15",
+      "neg_expr": "pd.notna(r['bb_width']) and r['bb_width'] > 0.35",
+      "note_expr": "f\"BB width={round(r['_bb_width'],3) if pd.notna(r['_bb_width']) else '—'} (min63d={round(r['_min_bb_63d'],3) if pd.notna(r['_min_bb_63d']) else '—'})\"",
+      "weight": 25
+    },
+
+    {
+      "id": "G4b",
+      "label": "MA50 Zone",
+      "group": 4,
+      "group_label": "Technical",
+      "description": "Price within 0–12% above 50DMA (riding trend); > 25% or below -8% = extended/broken",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["dist_from_ma50"],
+      "pos_expr": "pd.notna(r['dist_from_ma50']) and 0 < r['dist_from_ma50'] < 12",
+      "neg_expr": "pd.notna(r['dist_from_ma50']) and (r['dist_from_ma50'] > 25 or r['dist_from_ma50'] < -8)",
+      "note_expr": "f\"Dist from 50DMA = {round(r['_dist_ma50'],1) if pd.notna(r['_dist_ma50']) else '—'}%\"",
+      "weight": 25
+    },
+
+    {
+      "id": "G4c",
+      "label": "52W High Proximity",
+      "group": 4,
+      "group_label": "Technical",
+      "description": "Price within 5% of 52-week high (momentum); > 40% off high (distress/broken trend)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["pct_from_52w"],
+      "pos_expr": "pd.notna(r['pct_from_52w']) and r['pct_from_52w'] >= -5",
+      "neg_expr": "pd.notna(r['pct_from_52w']) and r['pct_from_52w'] < -40",
+      "note_expr": "f\"From 52W high = {round(r['_pct_52w'],1) if pd.notna(r['_pct_52w']) else '—'}%\"",
+      "weight": 25
+    },
+
+    {
+      "id": "G4d",
+      "label": "Volume Confirmation",
+      "group": 4,
+      "group_label": "Technical",
+      "description": "5-day avg volume ≥ 1.1× 50-day avg (smart money active); < 0.6× (interest fading)",
+      "cte_alias": null,
+      "fields": [],
+      "score_fields": ["volume_ratio"],
+      "pos_expr": "pd.notna(r['volume_ratio']) and r['volume_ratio'] >= 1.1",
+      "neg_expr": "pd.notna(r['volume_ratio']) and r['volume_ratio'] < 0.6",
+      "note_expr": "f\"Vol ratio = {round(r['_vol_ratio'],2) if pd.notna(r['_vol_ratio']) else '—'}x\"",
+      "weight": 25
+    },
+
+    {
+      "id": "G4e",
+      "label": "RSI Zone",
+      "group": 4,
+      "group_label": "Technical",
+      "description": "RSI 40–65 = healthy trend zone; < 30 = oversold panic; > 75 = overbought froth",
+      "cte_alias": "rsi_cte",
+      "cte_sql": "rsi_cte AS (\n    SELECT ticker AS rsi_ticker, date, rsi\n    FROM ticker_momentum\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) = 1\n)",
+      "fields": ["rc.rsi"],
+      "score_fields": ["rsi"],
+      "pos_expr": "pd.notna(r.get('rsi')) and 40 <= r['rsi'] <= 65",
+      "neg_expr": "pd.notna(r.get('rsi')) and (r['rsi'] < 30 or r['rsi'] > 75)",
+      "note_expr": "f\"RSI = {round(r['rsi'],1) if pd.notna(r.get('rsi')) else '—'} (healthy: 40–65)\"",
+      "weight": 25
+    },
+
+    {
+      "id": "G4f",
+      "label": "ADX Trend Strength",
+      "group": 4,
+      "group_label": "Technical",
+      "description": "ADX ≥ 25 = strong directional trend; < 15 = trendless chop",
+      "cte_alias": "adx_cte",
+      "cte_sql": "adx_cte AS (\n    SELECT ticker AS adx_ticker, date, adx\n    FROM ticker_momentum\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) = 1\n)",
+      "fields": ["ac.adx"],
+      "score_fields": ["adx"],
+      "pos_expr": "pd.notna(r.get('adx')) and r['adx'] >= 25",
+      "neg_expr": "pd.notna(r.get('adx')) and r['adx'] < 15",
+      "note_expr": "f\"ADX = {round(r['adx'],1) if pd.notna(r.get('adx')) else '—'} (trend strength ≥25)\"",
+      "weight": 25
+    }
+  ],
+
+  "group_score_weights": {
+    "1": {"label": "Business Quality", "pos_weight": 20, "neg_weight": 15},
+    "2": {"label": "Valuation",        "pos_weight": 20, "neg_weight": 15},
+    "3": {"label": "Timing",           "pos_weight": 20, "neg_weight": 15},
+    "4": {"label": "Technical",        "pos_weight": 25, "neg_weight": 15}
+  },
+
+  "_cte_join_map": {
+    "icr_cte":       {"alias": "icr", "join": "LEFT JOIN icr_cte      icr ON c.ticker = icr.ticker"},
+    "div_cte":       {"alias": "dv",  "join": "LEFT JOIN div_cte       dv ON c.ticker = dv.ticker"},
+    "roe_trend_cte": {"alias": "rt",  "join": "LEFT JOIN roe_trend_cte rt ON c.ticker = rt.ticker"},
+    "rsi_cte":       {"alias": "rc",  "join": "LEFT JOIN rsi_cte       rc ON c.ticker = rc.rsi_ticker"},
+    "adx_cte":       {"alias": "ac",  "join": "LEFT JOIN adx_cte       ac ON c.ticker = ac.adx_ticker"}
+  }
+}

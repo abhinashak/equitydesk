@@ -1,0 +1,118 @@
+{
+  "_comment": "Each entry defines one isolated train/test split. The GA is run independently per config. Train and test windows are NEVER shared across configs. Set enabled=0 to skip a config without deleting it.",
+  "periods": [
+    {
+      "name": "Live",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2026-03-31", "type": "fy" },
+      "test": { "start": "2026-04-01", "end": "TODAY-YYYY-MM-DD", "type": "live" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2018",
+      "enabled": 0,
+      "train": { "start": "2017-04-01", "end": "2018-03-31", "type": "fy" },
+      "test": { "start": "2018-04-01", "end": "2019-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2019",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2019-03-31", "type": "fy" },
+      "test": { "start": "2019-04-01", "end": "2020-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2020",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2020-03-31", "type": "fy" },
+      "test": { "start": "2020-04-01", "end": "2021-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2021",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2021-03-31", "type": "fy" },
+      "test": { "start": "2021-04-01", "end": "2022-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2022",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2022-03-31", "type": "fy" },
+      "test": { "start": "2022-04-01", "end": "2023-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2023",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2023-03-31", "type": "fy" },
+      "test": { "start": "2023-04-01", "end": "2024-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2024",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2024-03-31", "type": "fy" },
+      "test": { "start": "2024-04-01", "end": "2025-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+
+    {
+      "name": "FY2025",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2025-03-31", "type": "fy" },
+      "test": { "start": "2025-04-01", "end": "2026-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "FY2026",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2026-03-31", "type": "fy" },
+      "test": { "start": "2026-04-01", "end": "2027-03-31", "type": "fy" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "EVT-Covid-Crash",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2019-12-31", "type": "fy" },
+      "test": { "start": "2020-01-17", "end": "2020-03-23", "type": "crash" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "EVT-Covid-V-Recovery",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2020-03-22", "type": "fy" },
+      "test": { "start": "2020-03-23", "end": "2020-08-31", "type": "recovery" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "EVT-Russia-Ukraine-War",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2022-02-23", "type": "fy" },
+      "test": { "start": "2022-02-24", "end": "2022-09-30", "type": "crash" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "EVT-Fed-Rate-Hike-Cycle",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2022-06-16", "type": "fy" },
+      "test": { "start": "2022-06-17", "end": "2023-07-31", "type": "macro" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "EVT-Trump-Tariff",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2025-01-19", "type": "fy" },
+      "test": { "start": "2025-01-20", "end": "2025-04-09", "type": "crash" },
+      "tickers": "TICKS"
+    },
+    {
+      "name": "EVT-Iran-War",
+      "enabled": 1,
+      "train": { "start": "2017-04-01", "end": "2025-12-31", "type": "fy" },
+      "test": { "start": "2026-01-01", "end": "2026-05-07", "type": "crash" },
+      "tickers": "TICKS"
+    }
+  ]
+}

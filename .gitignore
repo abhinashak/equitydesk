@@ -1,0 +1,15 @@
+*.class
+*.jar
+target/
+build/
+dist/
+node_modules/
+.idea/
+.vscode/
+.DS_Store
+*.log
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/

@@ -1,0 +1,332 @@
+Name,Yahoo Symbol,Sector,market_cap,domestic_market_pct,num_clients,num_sectors_served
+ASTRAMICRO,ASTRAMICRO.NS,Defence_ETF,Small-cap,95.0,1,2
+BDL,BDL.NS,Defence_ETF,Small-cap,95.0,1,1
+Bharat Electronics Ltd (BEL),BEL.NS,Defence_ETF,Large-cap,95.0,2,3
+DATAPATTNS,DATAPATTNS.NS,Defence_ETF,Mid-cap,100.0,1,2
+Garden Reach Shipbuilders,GRSE.NS,Defence_ETF,Mid-cap,100.0,1,1
+Hindustan Aeronautics Ltd (HAL),HAL.NS,Defence_ETF,Large-cap,95.0,2,2
+KRISHNADEF,KRISHNADEF.NS,Defence_ETF,Mid-cap,100.0,1,1
+MAZDOCK,MAZDOCK.NS,Defence_ETF,Mid-cap,95.0,1,1
+Zen Technologies Ltd,ZENTEC.NS,Defence_ETF,Small-cap,95.0,2,3
+Amara Raja Energy & Mobility Ltd,ARE&M.NS,NIFTY_Auto_Index,Mid-cap,75.0,4,3
+Apollo Tyres Ltd,APOLLOTYRE.NS,NIFTY_Auto_Index,Large-cap,75.0,5,3
+Ashok Leyland Ltd,ASHOKLEY.NS,NIFTY_Auto_Index,Mid-cap,75.0,3,3
+Bajaj Auto Ltd,BAJAJ-AUTO.NS,NIFTY_Auto_Index,Large-cap,75.0,4,3
+Balkrishna Industries Ltd,BALKRISIND.NS,NIFTY_Auto_Index,Mid-cap,75.0,6,4
+Bharat Forge Ltd,BHARATFORG.NS,NIFTY_Auto_Index,Mid-cap,75.0,7,5
+Bosch Ltd,BOSCHLTD.NS,NIFTY_Auto_Index,Large-cap,75.0,6,4
+CEAT Ltd,CEATLTD.NS,NIFTY_Auto_Index,Mid-cap,75.0,4,3
+CIE Automotive India Ltd,CIEINDIA.NS,NIFTY_Auto_Index,Mid-cap,75.0,5,3
+Escorts Kubota Ltd,ESCORTS.NS,NIFTY_Auto_Index,Mid-cap,75.0,3,3
+Hero MotoCorp Ltd,HEROMOTOCO.NS,NIFTY_Auto_Index,Mid-cap,75.0,3,2
+Hyundai Motor India Ltd,HYUNDAI.NS,NIFTY_Auto_Index,Large-cap,75.0,3,2
+JK Tyre & Industries Ltd,JKTYRE.NS,NIFTY_Auto_Index,Mid-cap,75.0,4,3
+MOTHERSON,MOTHERSON.NS,NIFTY_Auto_Index,Large-cap,75.0,8,4
+MRF Ltd,MRF.NS,NIFTY_Auto_Index,Mid-cap,75.0,4,3
+Mahindra & Mahindra Ltd (M&M),M&M.NS,NIFTY_Auto_Index,Large-cap,75.0,5,4
+Maruti Suzuki India Ltd,MARUTI.NS,NIFTY_Auto_Index,Large-cap,75.0,3,2
+Motherson Sumi Wiring India Ltd,MSUMI.NS,NIFTY_Auto_Index,Mid-cap,75.0,4,2
+OLAELEC,OLAELEC.NS,NIFTY_Auto_Index,Mid-cap,75.0,2,1
+Schaeffler India Ltd,SCHAEFFLER.NS,NIFTY_Auto_Index,Mid-cap,75.0,5,4
+Sona BLW Precision Forgings Ltd,SONACOMS.NS,NIFTY_Auto_Index,Mid-cap,75.0,5,3
+TVSMOTOR,TVSMOTOR.NS,NIFTY_Auto_Index,Large-cap,75.0,3,2
+TMCV,TMCV.NS,NIFTY_Auto_Index,Mid-cap,75.0,3,3
+Tube Investments of India Ltd,TIINDIA.NS,NIFTY_Auto_Index,Mid-cap,75.0,5,4
+Axis Bank Ltd,AXISBANK.NS,NIFTY_Bank_Index,Large-cap,100.0,6,6
+HDFC Bank Ltd,HDFCBANK.NS,NIFTY_Bank_Index,Large-cap,100.0,6,6
+ICICI Bank Ltd,ICICIBANK.NS,NIFTY_Bank_Index,Large-cap,100.0,6,6
+Kotak Mahindra Bank Ltd,KOTAKBANK.NS,NIFTY_Bank_Index,Large-cap,100.0,5,5
+ACC Ltd,ACC.NS,NIFTY_Commodities,Mid-cap,100.0,4,3
+Ambuja Ltd,AMBUJACEM.NS,NIFTY_Commodities,Large-cap,100.0,4,3
+Deepak Fertilizers and Petrochemicals,DEEPAKFERT.NS,NIFTY_Commodities,Mid-cap,100.0,3,3
+Fertilizers & Chemicals Travancore Ltd,FACT.NS,NIFTY_Commodities,Mid-cap,100.0,2,2
+Gujarat Narmada Valley Fertilizers,GNFC.NS,NIFTY_Commodities,Mid-cap,100.0,3,3
+Gujarat State Fertilizers & Chemicals,GSFC.NS,NIFTY_Commodities,Mid-cap,100.0,3,3
+Indigo Paints Ltd,INDIGOPNTS.NS,NIFTY_Commodities,Mid-cap,100.0,3,2
+Kansai Nerolac Paints Ltd,KANSAINER.NS,NIFTY_Commodities,Mid-cap,100.0,4,3
+Shree Ltd,SHREECEM.NS,NIFTY_Commodities,Large-cap,100.0,4,3
+UltraTech Ltd,ULTRACEMCO.NS,NIFTY_Commodities,Large-cap,98.0,4,3
+3M India Ltd,3MINDIA.NS,NIFTY_Consumption,Mid-cap,90.0,6,5
+APARIND,APARINDS.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Aditya Birla Fashion and Retail Ltd,ABFRL.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Amber Enterprises India Ltd,AMBER.NS,NIFTY_Consumption,Mid-cap,90.0,5,3
+Arvind Fashions Ltd,ARVINDFASN.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Astral Ltd,ASTRAL.NS,NIFTY_Consumption,Large-cap,90.0,3,3
+BASF India Ltd,BASF.NS,NIFTY_Consumption,Mid-cap,90.0,6,5
+BEML Ltd,BEML.NS,Defence_ETF,Mid-cap,90.0,2,3
+Balrampur Chini Mills Ltd,BALRAMCHIN.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Bata India Ltd,BATAINDIA.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Bayer Cropscience Ltd,BAYERCROP.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Bharti Airtel Ltd,BHARTIARTL.NS,NIFTY_Consumption,Large-cap,90.0,4,3
+Birla Corporation Ltd,BIRLACORPN.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Blue Dart Express Ltd,BLUEDART.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Blue Star Ltd,BLUESTARCO.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Brainbees Solutions Ltd (FirstCry),FIRSTCRY.NS,NIFTY_Consumption,Mid-cap,90.0,2,1
+CUMMINSIND,CUMMINSIND.NS,NIFTY_Infrastructure,Mid-cap,90.0,5,4
+Century Plyboards (India) Ltd,CENTURYPLY.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Chemplast Sanmar Ltd,CHEMPLASTS.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Container Corporation of India Ltd,CONCOR.NS,NIFTY_Infrastructure,Mid-cap,90.0,5,3
+Coromandel International Ltd,COROMANDEL.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Crompton Greaves Cons. Elec.,CROMPTON.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+DMART,DMART.NS,NIFTY_Consumption,Large-cap,90.0,1,8
+Dalmia Bharat Ltd,DALBHARAT.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Delhivery Ltd,DELHIVERY.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Devyani International Ltd,DEVYANI.NS,NIFTY_Consumption,Mid-cap,90.0,1,1
+EID Parry (India) Ltd,EIDPARRY.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+EIH Ltd,EIHOTEL.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Elgi Equipments Ltd,ELGIEQUIP.NS,NIFTY_Consumption,Mid-cap,90.0,5,4
+Engineers India Ltd,ENGINERSIN.NS,NIFTY_Infrastructure,Mid-cap,90.0,3,3
+Finolex Cables Ltd,FINCABLES.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Finolex Industries Ltd,FINPIPE.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Galaxy Surfactants Ltd,GALAXYSURF.NS,NIFTY_Consumption,Mid-cap,90.0,5,4
+Graphite India Ltd,GRAPHITE.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Gujarat Pipavav Port Ltd,GPPL.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+HEG Ltd,HEG.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+HFCL Ltd,HFCL.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+INDHOTEL,INDHOTEL.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Indus Towers Ltd,INDUSTOWER.NS,NIFTY_Consumption,Mid-cap,90.0,3,1
+Info Edge (India) Ltd,NAUKRI.NS,NIFTY_IT,Mid-cap,90.0,3,2
+InterGlobe Aviation Ltd (Indigo),INDIGO.NS,NIFTY_Consumption,Large-cap,90.0,3,2
+JK Lakshmi Ltd,JKLAKSHMI.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+JK Paper Ltd,JKPAPER.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+KEC International Ltd,KEC.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Kajaria Ceramics Ltd,KAJARIACER.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Kalyan Jewellers India Ltd,KALYANKJIL.NS,NIFTY_Consumption,Mid-cap,90.0,2,1
+Kirloskar Engines Ltd,KIRLOSENG.NS,NIFTY_Consumption,Mid-cap,90.0,5,4
+Lemon Tree Hotels Ltd,LEMONTREE.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Mahindra Holidays & Resorts,MHRIL.NS,NIFTY_Consumption,Mid-cap,90.0,2,1
+MedPlus Health Services Ltd,MEDPLUS.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+NCC Ltd,NCC.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Nesco Ltd,NESCO.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+PG Electroplast Ltd,PGEL.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+PI Industries Ltd,PIIND.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Page Industries Ltd,PAGEIND.NS,NIFTY_Consumption,Large-cap,90.0,2,1
+Polycab India Ltd,POLYCAB.NS,NIFTY_Consumption,Large-cap,90.0,4,4
+Praj Industries Ltd,PRAJIND.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+RITES Ltd,RITES.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Raymond Ltd,RAYMOND.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Redington Ltd,REDINGTON.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+Relaxo Footwears Ltd,RELAXO.NS,NIFTY_Consumption,Mid-cap,90.0,2,1
+SKF India Ltd,SKFINDIA.NS,NIFTY_Consumption,Mid-cap,90.0,5,4
+SRF Ltd,SRF.NS,NIFTY_Consumption,Large-cap,90.0,5,4
+Shipping Corporation of India Ltd,SCI.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Solar Industries India Ltd,SOLARINDS.NS,Defence_ETF,Mid-cap,90.0,2,2
+Swaraj Engines Ltd,SWARAJENG.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Swiggy Ltd,SWIGGY.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Tata Ltd,TATACHEM.NS,NIFTY_Consumption,Mid-cap,90.0,4,4
+Teamlease Services Ltd,TEAMLEASE.NS,NIFTY_Consumption,Mid-cap,90.0,4,3
+The Ramco Ltd,RAMCOCEM.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+Thermax Ltd,THERMAX.NS,NIFTY_Consumption,Mid-cap,90.0,5,4
+Timken India Ltd,TIMKEN.NS,NIFTY_Consumption,Mid-cap,90.0,5,4
+Trent Ltd,TRENT.NS,NIFTY_Consumption,Large-cap,90.0,2,2
+UPL Ltd,UPL.NS,NIFTY_Consumption,Mid-cap,90.0,3,3
+V2RETAIL,V2RETAIL.NS,NIFTY_Consumption,Mid-cap,90.0,1,1
+VIP Industries Ltd,VIPIND.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+Vedant Fashions Ltd (Manyavar),MANYAVAR.NS,NIFTY_Consumption,Mid-cap,90.0,2,1
+Voltas Ltd,VOLTAS.NS,NIFTY_Consumption,Large-cap,90.0,4,3
+Whirlpool of India Ltd,WHIRLPOOL.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+Zydus Wellness Ltd,ZYDUSWELL.NS,NIFTY_Consumption,Mid-cap,90.0,2,2
+ADANIENSOL,ADANIENSOL.NS,NIFTY_Energy,Large-cap,100.0,2,2
+ADANIGREEN,ADANIGREEN.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+ADANIPOWER,ADANIPOWER.NS,NIFTY_Energy,Large-cap,100.0,2,2
+BHEL,BHEL.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+Bharat Petroleum Corporation Ltd (BPCL),BPCL.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+CESC Ltd,CESC.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+CGPOWER,CGPOWER.NS,NIFTY_Energy,Large-cap,100.0,5,4
+Castrol India Ltd,CASTROLIND.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+Coal India Ltd,COALINDIA.NS,NIFTY_Energy,Large-cap,100.0,3,3
+GAIL (India) Ltd,GAIL.NS,NIFTY_Energy,Large-cap,100.0,3,3
+Grid Corp of India Ltd,POWERGRID.NS,NIFTY_Energy,Mid-cap,100.0,1,1
+Gujarat State Petronet Ltd,GSPL.BO,NIFTY_Energy,Mid-cap,100.0,2,2
+Gulf Lubricants India Ltd,GULFOILLUB.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+Hindustan Petroleum Corp Ltd,HINDPETRO.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+Indian Corporation Ltd (IOC),IOC.NS,NIFTY_Energy,Large-cap,100.0,3,3
+Indraprastha Ltd (IGL),IGL.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+Inox Wind Ltd,INOXWIND.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+MRPL,MRPL.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+Mahanagar Ltd (MGL),MGL.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+NTPC Ltd,NTPC.NS,NIFTY_Energy,Large-cap,100.0,2,2
+OIL,OIL.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+ONGC Ltd,ONGC.NS,NIFTY_Energy,Mid-cap,95.0,2,2
+PREMIERENE,PREMIERENE.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+PTCIL,PTCIL.NS,NIFTY_Energy,Mid-cap,100.0,3,2
+Petronet LNG Ltd,PETRONET.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+Reliance Industries Ltd,RELIANCE.NS,NIFTY_Energy,Large-cap,100.0,7,6
+SJVN Ltd,SJVN.NS,NIFTY_Energy,Mid-cap,100.0,1,1
+Suzlon Energy Ltd,SUZLON.NS,NIFTY_Energy,Mid-cap,100.0,2,2
+Tata Co Ltd,TATAPOWER.NS,NIFTY_Energy,Mid-cap,100.0,3,3
+WAAREEENER,WAAREEENER.NS,NIFTY_Energy,Mid-cap,100.0,3,2
+Britannia Industries Ltd,BRITANNIA.NS,NIFTY_FMCG,Large-cap,90.0,3,2
+CCL,CCL.NS,NIFTY_FMCG,Mid-cap,90.0,4,3
+Emami Ltd,EMAMILTD.NS,NIFTY_FMCG,Mid-cap,90.0,2,2
+Gillette India Ltd,GILLETTE.NS,NIFTY_FMCG,Mid-cap,90.0,2,1
+Godrej Consumer Products Ltd,GODREJCP.NS,NIFTY_FMCG,Large-cap,90.0,3,2
+Grasim Industries Ltd,GRASIM.NS,NIFTY_Commodities,Large-cap,90.0,4,4
+Gujarat Ambuja Exports Ltd,GAEL.NS,NIFTY_FMCG,Mid-cap,90.0,4,3
+Hindustan Unilever Ltd (HUL),HINDUNILVR.NS,NIFTY_FMCG,Mid-cap,99.0,3,2
+ITC Ltd,ITC.NS,NIFTY_FMCG,Large-cap,90.0,5,5
+Jubilant Foodworks Ltd,JUBLFOOD.NS,NIFTY_FMCG,Mid-cap,90.0,2,1
+Jyothy Labs Ltd,JYOTHYLAB.NS,NIFTY_FMCG,Mid-cap,90.0,2,2
+LTFOODS,LTFOODS.NS,NIFTY_FMCG,Mid-cap,90.0,3,3
+Marico Ltd,MARICO.NS,NIFTY_FMCG,Mid-cap,90.0,3,2
+Nykaa,NYKAA.NS,NIFTY_Consumption,Mid-cap,90.0,3,2
+P&G Hygiene,PGHH.NS,NIFTY_FMCG,Mid-cap,90.0,2,1
+P&G Hygiene and Health Care,PGHL.NS,NIFTY_FMCG,Mid-cap,90.0,2,1
+Shree Renuka Sugars Ltd,RENUKA.NS,NIFTY_FMCG,Mid-cap,90.0,3,3
+TATACONSUM,TATACONSUM.NS,NIFTY_FMCG,Mid-cap,90.0,3,2
+UNITDSPR,UNITDSPR.NS,NIFTY_FMCG,Mid-cap,90.0,3,2
+United Breweries Ltd,UBL.NS,NIFTY_FMCG,Mid-cap,90.0,3,2
+Varun Ltd,VBL.NS,NIFTY_FMCG,Large-cap,90.0,3,2
+Westlife Foodworld Ltd,WESTLIFE.NS,NIFTY_FMCG,Mid-cap,90.0,2,1
+360 ONE WAM Ltd,360ONE.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+AU Small Bank Ltd,AUBANK.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+Aditya Birla Capital Ltd,ABCAPITAL.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+Aditya Birla Sun Life AMC Ltd,ABSLAMC.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Angel One Ltd,ANGELONE.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+BSE Ltd,BSE.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,2
+Bajaj Holdings & Investment Ltd,BAJAJHLDNG.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Bajaj Ltd,BAJFINANCE.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+CAMS Ltd,CAMS.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,2
+CDSL,CDSL.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,2
+Can Fin Homes Ltd,CANFINHOME.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+Central Bank of India,CENTRALBK.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+Cholamandalam Inv & Fin Co,CHOLAFIN.NS,NIFTY_Bank_Index,Large-cap,100.0,3,3
+City Union Bank Ltd,CUB.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+HDFC Asset Management Co Ltd,HDFCAMC.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+HDFC Life Co Ltd,HDFCLIFE.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+ICICI Lombard Gen.,ICICIGI.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+ICICI Prudential Life,ICICIPRULI.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+ICRA Ltd,ICRA.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,2
+IDBI Bank Ltd,IDBI.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+IFCI Ltd,IFCI.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+IIFL Finance Ltd,IIFL.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+IRFC,IRFC.NS,NIFTY_Bank_Index,Mid-cap,100.0,1,1
+Indian Energy Exchange Ltd (IEX),IEX.NS,NIFTY_Energy,Mid-cap,100.0,3,2
+Indian Overseas Bank,IOB.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+IndusInd Bank Ltd,INDUSINDBK.NS,NIFTY_Bank_Index,Mid-cap,100.0,5,5
+JM Financial Ltd,JMFINANCIL.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Jammu & Kashmir Bank Ltd,J&KBANK.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Karur Vysya Bank Ltd,KARURVYSYA.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+LICI,LICI.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Life Corp (LIC),LICHSGFIN.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+MCX India Ltd,MCX.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,2
+Motilal Oswal Financial Services,MOTILALOFS.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Muthoot Ltd,MUTHOOTFIN.NS,NIFTY_Bank_Index,Large-cap,100.0,2,2
+Nippon Life India Asset Management,NAM-INDIA.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+One 97 Communications,PAYTM.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,3
+PB Ltd (PolicyBazaar),POLICYBZR.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,2
+PFC,PFC.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+Poonawalla Fincorp Ltd,POONAWALLA.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+RECLTD,RECLTD.NS,NIFTY_Bank_Index,Mid-cap,100.0,2,2
+SBI Cards and Payment Services,SBICARD.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+SBI Life Co Ltd,SBILIFE.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+Shriram Ltd,SHRIRAMFIN.NS,NIFTY_Bank_Index,Large-cap,100.0,3,3
+UCO Bank,UCOBANK.NS,NIFTY_Bank_Index,Mid-cap,100.0,4,4
+UTI Asset Management Co Ltd,UTIAMC.NS,NIFTY_Bank_Index,Mid-cap,100.0,3,3
+ACUTAAS,ACUTAAS.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Accelya Solutions India Ltd,ACCELYA.NS,NIFTY_IT,Mid-cap,5.0,3,2
+CMS Info Systems Ltd,CMSINFO.NS,NIFTY_Bank_Index,Small-cap,5.0,3,3
+COFORGE,COFORGE.NS,NIFTY_IT,Mid-cap,5.0,5,4
+Clean Science and Technology Ltd,CLEAN.NS,NIFTY_Commodities,Mid-cap,5.0,4,3
+Cyient Ltd,CYIENT.NS,NIFTY_IT,Mid-cap,5.0,5,4
+HCL Technologies Ltd,HCLTECH.NS,NIFTY_IT,Large-cap,5.0,7,6
+IndiaMART InterMESH Ltd,INDIAMART.NS,NIFTY_IT,Mid-cap,5.0,4,3
+Infosys Ltd,INFY.NS,NIFTY_IT,Large-cap,5.0,8,7
+Intellect Design Arena Ltd,INTELLECT.NS,NIFTY_IT,Mid-cap,5.0,4,3
+Mastek Ltd,MASTEK.NS,NIFTY_IT,Mid-cap,5.0,4,3
+Mphasis Ltd,MPHASIS.NS,NIFTY_IT,Mid-cap,5.0,5,4
+Oracle Financial Services Soft.,OFSS.NS,NIFTY_IT,Mid-cap,5.0,3,2
+Persistent Systems Ltd,PERSISTENT.NS,NIFTY_IT,Large-cap,5.0,5,4
+Sonata Software Ltd,SONATSOFTW.NS,NIFTY_IT,Mid-cap,5.0,4,3
+Tata Consultancy Services (TCS),TCS.NS,NIFTY_IT,Large-cap,5.0,9,8
+Tech Mahindra Ltd,TECHM.NS,NIFTY_IT,Mid-cap,5.0,6,5
+Zensar Technologies Ltd,ZENSARTECH.NS,NIFTY_IT,Mid-cap,5.0,4,3
+ABB,ABB.NS,NIFTY_Infrastructure,Mid-cap,100.0,5,4
+AIA Engineering Ltd,AIAENG.NS,NIFTY_Infrastructure,Mid-cap,100.0,4,3
+Adani Ports and SEZ Ltd,ADANIPORTS.NS,NIFTY_Infrastructure,Mid-cap,100.0,4,3
+Elecon Engineering Company Ltd,ELECON.NS,NIFTY_Infrastructure,Mid-cap,100.0,4,3
+India Cements Ltd,INDIACEM.NS,NIFTY_Infrastructure,Mid-cap,100.0,3,3
+KSB,KSB.NS,NIFTY_Infrastructure,Mid-cap,100.0,4,3
+Larsen & Toubro Ltd (L&T),LT.NS,NIFTY_Infrastructure,Large-cap,80.0,6,5
+RailTel Corporation of India Ltd,RAILTEL.NS,NIFTY_Infrastructure,Mid-cap,100.0,2,2
+SIEMENS,SIEMENS.NS,NIFTY_Infrastructure,Large-cap,80.0,5,4
+SYRMA,SYRMA.NS,NIFTY_Infrastructure,Mid-cap,100.0,4,3
+The Great Eastern Shipping,GESHIP.NS,NIFTY_Infrastructure,Mid-cap,100.0,3,3
+TVS Supply Chain Solutions,TVSSCS.NS,NIFTY_Infrastructure,Mid-cap,90.0,4,3
+Zee Entertainment Enterprises Ltd,ZEEL.NS,NIFTY_Media,Mid-cap,90.0,3,2
+Godawari Power and Ispat Ltd,GPIL.NS,NIFTY_Metal,Mid-cap,60.0,3,3
+Gravita India Ltd,GRAVITA.NS,NIFTY_Metal,Mid-cap,60.0,4,3
+HINDCOPPER,HINDCOPPER.NS,NIFTY_Metal,Mid-cap,60.0,3,3
+HINDZINC,HINDZINC.NS,NIFTY_Metal,Mid-cap,60.0,3,3
+Hindalco Industries Ltd,HINDALCO.NS,NIFTY_Metal,Large-cap,48.0,6,5
+Jindal Saw Ltd,JINDALSAW.NS,NIFTY_Metal,Mid-cap,60.0,4,3
+Jindal Steel & Ltd,JINDALSTEL.NS,NIFTY_Metal,Mid-cap,60.0,4,3
+MMTC Ltd,MMTC.NS,NIFTY_Metal,Mid-cap,60.0,3,3
+NATIONALUM,NATIONALUM.NS,NIFTY_Metal,Mid-cap,60.0,3,3
+NAVINFLUOR,NAVINFLUOR.NS,NIFTY_Commodities,Mid-cap,60.0,5,4
+NMDC Ltd,NMDC.NS,NIFTY_Metal,Mid-cap,60.0,2,2
+PIDILITIND,PIDILITIND.NS,NIFTY_Commodities,Small-cap,60.0,5,4
+Tata Steel Ltd,TATASTEEL.NS,NIFTY_Metal,Mid-cap,60.0,5,4
+Usha Martin Ltd,USHAMART.NS,NIFTY_Metal,Mid-cap,60.0,3,2
+VEDL,VEDL.NS,NIFTY_Metal,Small-cap,60.0,4,4
+Welspun Corp Ltd,WELCORP.NS,NIFTY_Metal,Mid-cap,60.0,4,3
+BANKBARODA,BANKBARODA.NS,NIFTY_PSU_Bank,Mid-cap,100.0,5,5
+CANBK,CANBK.NS,NIFTY_PSU_Bank,Large-cap,100.0,5,5
+PNB,PNB.NS,NIFTY_PSU_Bank,Large-cap,100.0,5,5
+State Bank of India (SBI),SBIN.NS,NIFTY_PSU_Bank,Mid-cap,100.0,6,6
+UNIONBANK,UNIONBANK.NS,NIFTY_PSU_Bank,Mid-cap,100.0,4,4
+3B BlackBio Dx Ltd,3BBLACKBIO.BO,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+ABBOTINDIA,ABBOTINDIA.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+AUROPHARMA,AUROPHARMA.NS,NIFTY_Pharma_Index,Mid-cap,40.0,5,4
+Alkem Laboratories Ltd,ALKEM.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+Apollo Hospitals Enterprise Ltd,APOLLOHOSP.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Aster DM Healthcare Ltd,ASTERDM.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Cipla Ltd,CIPLA.NS,NIFTY_Pharma_Index,Large-cap,40.0,5,4
+Divi's Laboratories Ltd,DIVISLAB.NS,NIFTY_Pharma_Index,Large-cap,40.0,4,3
+Dr. Lal PathLabs Ltd,LALPATHLAB.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Dr. Reddy's Laboratories Ltd,DRREDDY.NS,NIFTY_Pharma_Index,Mid-cap,40.0,5,4
+Eris Lifesciences Ltd,ERIS.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+GLENMARK,GLENMARK.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+Gland Pharma Ltd,GLAND.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+GlaxoSmithKline Pharmaceuticals,GLAXO.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+IPCA Laboratories Ltd,IPCALAB.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+J.B. Chemicals & Pharmaceuticals,JBCHEPHARM.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Lupin Ltd,LUPIN.NS,NIFTY_Pharma_Index,Large-cap,40.0,5,4
+Max Healthcare Institute Ltd,MAXHEALTH.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Metropolis Healthcare Ltd,METROPOLIS.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Narayana Hrudayalaya Ltd,NH.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Pfizer Ltd,PFIZER.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Poly Medicure Ltd,POLYMED.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+Sanofi India Ltd,SANOFI.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3,3
+Sun Pharmaceutical Industries,SUNPHARMA.NS,NIFTY_Pharma_Index,Mid-cap,40.0,5,4
+Syngene International Ltd,SYNGENE.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+TORNTPHARM,TORNTPHARM.NS,NIFTY_Pharma_Index,Large-cap,40.0,4,3
+Zydus Lifesciences Ltd,ZYDUSLIFE.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4,3
+BIRET,BIRET.NS,NIFTY_Realty,Mid-cap,100.0,2,2
+Brigade Enterprises Ltd,BRIGADE.NS,NIFTY_Realty,Mid-cap,100.0,3,3
+DLF,DLF.NS,NIFTY_Realty,Large-cap,80.0,3,3
+EMBASSY,EMBASSY.NS,NIFTY_Realty,Mid-cap,100.0,2,2
+Godrej Properties Ltd,GODREJPROP.NS,NIFTY_Realty,Mid-cap,100.0,2,2
+OBEROIRLTY,OBEROIRLTY.NS,NIFTY_Realty,Mid-cap,100.0,2,2
+Prestige Estates Projects Ltd,PRESTIGE.NS,NIFTY_Realty,Mid-cap,100.0,3,3
+Sobha Ltd,SOBHA.NS,NIFTY_Realty,Mid-cap,100.0,2,2
+Titan Company Ltd,TITAN.NS,NIFTY_Consumption,Large-cap,90.0,3,2
+JSW Steel Ltd,JSWSTEEL.NS,NIFTY_Metal,Large-cap,60.0,5,4
+Asian Paints Ltd,ASIANPAINT.NS,NIFTY_Consumption,Large-cap,90.0,3,3
+Eicher Motors Ltd,EICHERMOT.NS,NIFTY_Auto_Index,Large-cap,75.0,3,2
+Adani Enterprises Ltd,ADANIENT.NS,NIFTY_Infrastructure,Large-cap,100.0,5,5
+Rail Vikas Nigam Ltd,RVNL.NS,NIFTY_Infrastructure,Mid-cap,100.0,1,2
+Indian Railway Catering and Tourism Corp,IRCTC.NS,NIFTY_Consumption,Mid-cap,100.0,2,2
+Mankind Pharma Ltd,MANKIND.NS,NIFTY_Pharma_Index,Large-cap,85.0,4,3
+Tata Technologies Ltd,TATATECH.NS,NIFTY_IT,Mid-cap,57.0,4,3
+Zomato Ltd,ETERNAL.NS,NIFTY_Consumption,Large-cap,90.0,3,2
+Emcure Pharmaceuticals Ltd,EMCURE.NS,NIFTY_Pharma_Index,Small-cap,50,3,2
+Mishra Dhatu Nigam Ltd,MIDHANI.NS,NIFTY_Metal,Mid-cap,100,1,1
+Vishal Megamart,VMM.NS,NIFTY_Consumption,Small-cap,100,1,1
+JSW Energy,JSWENERGY.NS,NIFTY_Energy,Large-cap,80,1,10
+Meesho,MEESHO.NS,NIFTY_Consumption,Mid-cap,100,7,1
+Titagarh,TITAGARH.NS,NIFTY_Realty,Large-cap,80.0,3,3
+Tinna Rubber,TINNARUBR.NS,NIFTY_Auto_Index,Small-cap,100.0,5,5
+GOLDBEES,GOLDBEES.NS,GOLD,Large-cap,100.0,10,10
+SILVERBEES,SILVERBEES.NS,SILVER,Large-cap,100.0,10,10
+NSEI,^NSEI,NIFTY_500,Large-cap,100.0,10,10

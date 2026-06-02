@@ -1,0 +1,2 @@
+name,train_start,train_end,fitness,weights_file,skipped
+EVT-Iran-War,2017-04-01,2025-12-31,0.8702159953386851,outputs/Beat/weights_train_EVT-Iran-War.csv,False

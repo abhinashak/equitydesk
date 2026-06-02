@@ -1,0 +1,67 @@
+section,key,value,dtype,description
+data,data_glob,data/signal_momentum/year=20??/ticker_momentum_normalized.parquet,str,Parquet Ticker input data
+data,benchmark_momentum_glob,data/signal_momentum/year=20??/benchmark_momentum.parquet,str,Parquet benchmark input data
+data,index_ticker,^NSEI,str,Benchmark index ticker symbol
+
+run_mode,run_mode,train,str,train or eval mode.
+
+portfolio,transaction_cost_bps,50,float,One-way transaction cost in basis points
+portfolio,max_weight,0.025,float,Maximum weight per ticker (2.5%)
+portfolio,min_weight,0.0005,float,Minimum weight floor to avoid zero-weight noise
+portfolio,min_weight_active,0.0015,float,Minimum weight floor for selected (active) tickers only
+portfolio,top_k_holdings,92,int,GA picks best N tickers and zeroes the rest
+portfolio,risk_free_rate,0.065,float,Annual risk-free rate (~6.5% Indian 10Y Gsec)
+portfolio,max_sector_weight,0.15,float,Maximum total weight allowed in any single sector
+
+ga,pop_size,120,int,Population size for the genetic algorithm
+ga,n_generations,50,int,Number of GA generations per run
+ga,elite_frac,0.10,float,Fraction of top individuals that survive unchanged (elites)
+ga,tournament_k,5,int,Tournament selection pool size
+ga,crossover_prob,0.85,float,Probability of crossover between two parents
+ga,mutation_prob_init,0.25,float,Initial mutation probability (decays toward final)
+ga,mutation_prob_final,0.05,float,Final mutation probability after annealing
+ga,mutation_sigma_init,0.015,float,Initial Gaussian mutation standard deviation
+ga,mutation_sigma_final,0.004,float,Final Gaussian mutation standard deviation after annealing
+ga,random_seed,42,int,Global random seed for reproducibility
+
+objective_weights,w_alpha,0.30,float,Weight for alpha component in Pareto fitness score
+objective_weights,w_sharpe,0.28,float,Weight for Sharpe ratio component
+objective_weights,w_sortino,0.25,float,Weight for Sortino ratio component
+objective_weights,w_calmar,0.17,float,Weight for Calmar ratio component
+
+outputs,out_dir,outputs,str,Directory where all output files are written
+outputs,train_weights_prefix,weights_train_,str,Filename prefix for per-config trained weight CSVs
+outputs,eval_results_file,eval_results.csv,str,Filename for evaluation scorecard CSV
+outputs,walk_forward_file,walk_forward.csv,str,Filename for walk-forward rebalance CSV
+
+portfolio,enable_sector_cap,True,bool,Enable or disable the sector weight capping logic
+skip_sector_XXXX,0.0,float,"All prefixed with this will be skipped."
+
+objective_weights,enable_domestic_penalty,True,bool,Apply a fitness penalty for deviating from domestic target
+portfolio,target_domestic_pct,85,float,Target percentage of revenue from domestic market
+portfolio,domestic_penalty_band,5,float,Allowed variance (+/- %) from domestic target before penalty
+
+objective_weights,enable_mdd_penalty,True,bool,Apply a fitness penalty if Max Drawdown exceeds threshold
+objective_weights,mdd_penalty_threshold,-0.10,float,The MDD level (in %) beyond which penalty is applied
+
+objective_weights,enable_cap_tilt_penalty,True,bool,Small Medium and Large cap - Penalize the tilt if outside the limits.
+portfolio,cap_tilt_bear_large,0.85,float,Bear regime Large-cap target weight
+portfolio,cap_tilt_bear_mid,0.10,float,Bear regime Mid-cap target weight
+portfolio,cap_tilt_bear_small,0.05,float,Bear regime Small-cap target weight
+portfolio,cap_tilt_crash_large,0.85,float,Crash regime Large-cap target weight
+portfolio,cap_tilt_crash_mid,0.10,float,Crash regime Mid-cap target weight
+portfolio,cap_tilt_crash_small,0.05,float,Crash regime Small-cap target weight
+portfolio,cap_tilt_bull_large,0.85,float,Bull regime Large-cap target weight
+portfolio,cap_tilt_bull_mid,0.10,float,Bull regime Mid-cap target weight
+portfolio,cap_tilt_bull_small,0.05,float,Bull regime Small-cap target weight
+portfolio,cap_tilt_recovery_large,0.85,float,Recovery regime Large-cap target weight
+portfolio,cap_tilt_recovery_mid,0.10,float,Recovery regime Mid-cap target weight
+portfolio,cap_tilt_recovery_small,0.05,float,Recovery regime Small-cap target weight
+
+exposure,enable_portfolio_exit,True,bool,Eval time portfolio exit
+exposure,enable_sector_exit,False,bool,Eval time sector exit
+exposure,enable_ticker_exit,False,bool,Eval time ticker exit
+exposure,exit_sma50_threshold,-0.05,float,nsei_sma50_pos below this → 50% exit to cash (0.0 = price below SMA50)
+exposure,entry_sma50_threshold,0.0,float,nsei_sma50_pos must be >= this to re-enter the 50% leg
+exposure,ticker_exit_rs_threshold,0.8,float,RS of ticker
+exposure,ticker_entry_rs_threshold,0.995,float,ticker must recover above this to re-enter
