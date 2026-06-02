@@ -12,11 +12,13 @@ NAV: dict[str, dict[str, str]] = {
         "⚙️ App Settings":   "config_app",
     },
     "DATA": {
-        "📈 Ticker":          "data_ticker",
+        "📈 Market Data":          "data_ticker",
         "📊 Fundamental":     "data_fundamental",
         "📡 Signals":         "signals",
     },
     "SCREENS": {
+	    "🎯 Quality Gates":    "quality_gates",
+        "🎯 Fundamental Analysis":    "fundamental_analysis",
         "💼 Portfolio Evaluator":       "portfolio_evaluator",
         "🧪 SQL Lab":         "sql_lab",       # ← NEW
     },

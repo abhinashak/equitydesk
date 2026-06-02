@@ -237,8 +237,8 @@ def render() -> None:
         unsafe_allow_html=True,
     )
 
-    tab_editor, tab_schema, tab_dashboard = st.tabs(
-        ["✏️ Editor", "🗄️ Schema Browser", "📊 Dashboard"]
+    tab_dashboard, tab_editor, tab_schema  = st.tabs(
+        ["📊 Dashboard","✏️ Editor", "🗄️ Schema Browser" ]
     )
 
     # ══════════════════════════════════════════════════════════════════════════

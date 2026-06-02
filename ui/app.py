@@ -15,6 +15,8 @@ from ui.layout import inject_css, render_sidebar
 from ui.pages import page_sql_lab
 from ui.pages import page_portfolio
 from ui.pages import page_algo_ga 
+from ui.pages import one_ticker_gates
+from ui.pages import one_ticker_charts
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -61,3 +63,8 @@ elif page == "portfolio_evaluator":
     page_portfolio.render()
 elif page == "algo_ga":
     page_algo_ga.render()
+elif page == "quality_gates":
+    one_ticker_gates.render()
+elif page == "fundamental_analysis":
+    one_ticker_charts.render()
+
