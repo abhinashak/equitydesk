@@ -164,11 +164,66 @@ def _remove_panel(name: str) -> None:
     _save_panels(panels)
 
 
+# ── Portfolio helpers ──────────────────────────────────────────────────────────
+
+def _load_portfolio_syms() -> list[str]:
+    """Return deduplicated list of portfolio ticker symbols from session state."""
+    _portfolio_syms: list[str] = []
+    try:
+        _all_holdings = st.session_state.get("all_holdings") or {}
+        _excl = {s.upper() for s in (st.session_state.get("excluded_symbols") or [])}
+        for _holdings in _all_holdings.values():
+            for _h in _holdings:
+                _sym = _h.get("tradingsymbol", "")
+                if _sym and _sym.upper() not in _excl and _sym not in _portfolio_syms:
+                    _portfolio_syms.append(_sym)
+    except Exception:
+        pass
+    return _portfolio_syms
+
+
+def _highlight_portfolio(df: pd.DataFrame, portfolio_syms: list[str]) -> pd.io.formats.style.Styler:
+    """
+    Return a Styler that highlights rows whose 'ticker' column value
+    is in *portfolio_syms* with a gold background.
+    """
+    portfolio_set = {s.upper() for s in portfolio_syms}
+
+    def _row_style(row: pd.Series) -> list[str]:
+        ticker_val = str(row.get("ticker", "")).upper()
+        if ticker_val in portfolio_set:
+            return ["background-color: #fff8c5; color: #1a1a1a;"] * len(row)
+        return [""] * len(row)
+
+    return df.style.apply(_row_style, axis=1)
+
+
 # ── Panel rendering ────────────────────────────────────────────────────────────
 
-def _render_viz(df: pd.DataFrame, viz: str, height: int = 280) -> None:
+def _render_viz(
+        df: pd.DataFrame,
+        viz: str,
+        height: int = 280,
+        portfolio_syms: list[str] | None = None,
+) -> None:
     if viz == "Table":
-        st.dataframe(df, use_container_width=True, height=height)
+        has_ticker = "ticker" in df.columns
+        port_syms  = portfolio_syms or []
+        if has_ticker and port_syms:
+            # Find which portfolio tickers actually appear in this dataframe
+            port_set   = {s.upper() for s in port_syms}
+            hits       = df["ticker"].str.upper().isin(port_set)
+            hit_count  = int(hits.sum())
+            if hit_count:
+                st.markdown(
+                    f'<span style="font-size:0.78rem;color:#856404;">'
+                    f'🌟 <strong>{hit_count}</strong> of your portfolio stock(s) highlighted below</span>',
+                    unsafe_allow_html=True,
+                )
+            styled = _highlight_portfolio(df, port_syms)
+            st.dataframe(styled, use_container_width=True, height=height)
+        else:
+            st.dataframe(df, use_container_width=True, height=height)
     elif viz in ("Line Chart", "Area Chart"):
         numeric_cols = df.select_dtypes("number").columns.tolist()
         if numeric_cols:
@@ -186,7 +241,7 @@ def _render_viz(df: pd.DataFrame, viz: str, height: int = 280) -> None:
             st.info("No numeric columns for chart.")
 
 
-def _render_single_panel(panel: dict, idx: int) -> None:
+def _render_single_panel(panel: dict, idx: int, portfolio_syms: list[str] | None = None) -> None:
     viz_icon = VIZ_ICONS.get(panel["viz"], "📋")
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:0.25rem;">'
@@ -202,7 +257,7 @@ def _render_single_panel(panel: dict, idx: int) -> None:
     if err:
         st.error(f"SQL error: {err}")
     elif df is not None:
-        _render_viz(df, panel["viz"])
+        _render_viz(df, panel["viz"], portfolio_syms=portfolio_syms)
 
     act1, act2, act3 = st.columns(3)
     if act1.button("✏️ Edit", key=f"panel_edit_{idx}", use_container_width=True):
@@ -222,6 +277,9 @@ def _render_single_panel(panel: dict, idx: int) -> None:
 
 def render() -> None:
     _init_panels()
+
+    # ── Portfolio symbols ──────────────────────────────────────────────────────
+    portfolio_syms: list[str] = _load_portfolio_syms()
 
     init_error = _check_init_sql()
     if init_error:
@@ -320,7 +378,7 @@ def render() -> None:
                     _publish_panel(current_name, current_sql, current_viz, result_df)
                     st.success(f"✅ Published **{current_name}** → `sqls/panels.json`")
 
-            _render_viz(result_df.head(200), st.session_state.get("sqllab_viz_type", "Table"), height=420)
+            _render_viz(result_df.head(200), st.session_state.get("sqllab_viz_type", "Table"), height=420, portfolio_syms=portfolio_syms)
 
             with st.expander("Column info"):
                 col_info = pd.DataFrame({
@@ -397,4 +455,4 @@ def render() -> None:
             for panel_idx, panel in enumerate(panels):
                 # Wraps each panel in a clean container that spans 100% width
                 with st.container():
-                    _render_single_panel(panel, panel_idx)
+                    _render_single_panel(panel, panel_idx, portfolio_syms=portfolio_syms)
