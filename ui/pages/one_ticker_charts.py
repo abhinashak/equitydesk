@@ -393,20 +393,59 @@ def render():
     # SELECTORS
     # ==============================================================================
     ticker_list = df_matrix['Ticker'].tolist()
+
+    # ── Prepend portfolio holdings to the selector if available ───────────────
+    _portfolio_syms = []
+    try:
+        _all_holdings = st.session_state.get("all_holdings") or {}
+        _excl = {s.upper() for s in (st.session_state.get("excluded_symbols") or [])}
+        for _holdings in _all_holdings.values():
+            for _h in _holdings:
+                _sym = _h.get("tradingsymbol", "")
+                if _sym and _sym.upper() not in _excl and _sym not in _portfolio_syms:
+                    _portfolio_syms.append(_sym)
+    except Exception:
+        pass
+
+    # Merge: portfolio tickers first (if they exist in df_matrix), then the rest
+    _port_in_matrix = [s for s in _portfolio_syms if s in ticker_list]
+    _rest           = sorted(t for t in ticker_list if t not in _port_in_matrix)
+    ticker_list_display = _port_in_matrix + _rest
+
     saved       = st.session_state.get("selected_asset")
-    default_idx = ticker_list.index(saved) if saved in ticker_list else 0
+    default_idx = ticker_list_display.index(saved) if saved in ticker_list_display else 0
 
     st.markdown("### 📊 Chart Explorer")
 
     sel_col, cmp_col, met_col = st.columns([1, 2, 2])
 
     with sel_col:
-        selected = st.selectbox(
-            "Stock:", ticker_list, index=default_idx, key="selected_asset"
-        )
+        my_col, all_col = st.columns(2)
+
+        my_default  = _port_in_matrix[0] if _port_in_matrix else None
+        my_selected = None
+        if _port_in_matrix:
+            with my_col:
+                my_selected = st.selectbox(
+                    "My Stocks:", _port_in_matrix,
+                    index=(_port_in_matrix.index(saved) if saved in _port_in_matrix else 0),
+                    key="my_stock_select"
+                )
+
+        with (all_col if _port_in_matrix else my_col):
+            all_selected = st.selectbox(
+                "All Stocks:", ticker_list_display, index=default_idx,
+                key="selected_asset"
+            )
+
+        # My Stocks takes priority if the user touched it last
+        if my_selected and st.session_state.get("my_stock_select") == my_selected:
+            selected = my_selected
+        else:
+            selected = all_selected
 
     with cmp_col:
-        compare_options = [t for t in ticker_list if t != selected]
+        compare_options = [t for t in ticker_list_display if t != selected]
         compare_tickers = st.multiselect(
             "Compare with:", compare_options, default=[],
             max_selections=3, placeholder="Overlay up to 3 tickers…",
@@ -441,25 +480,25 @@ def render():
     # ==============================================================================
     # PERIOD TABS + MAIN CHART
     # ==============================================================================
-    PERIOD_TABS  = ["📅 5Y","📅 3Y","📅 2Y","📅 1Y","📅 6M","📅 3M","📅 1M","📅 7D"]
-    PERIOD_DAYS  = [1825,    1095,   730,    365,    182,    91,     30,     7]
-    PERIOD_LABEL = ["5Y",    "3Y",   "2Y",   "1Y",   "6M",   "3M",   "1M",   "7D"]
+    with st.expander("➕ Playground"):
+        PERIOD_TABS  = ["📅 5Y","📅 3Y","📅 2Y","📅 1Y","📅 6M","📅 3M","📅 1M","📅 7D"]
+        PERIOD_DAYS  = [1825,    1095,   730,    365,    182,    91,     30,     7]
+        PERIOD_LABEL = ["5Y",    "3Y",   "2Y",   "1Y",   "6M",   "3M",   "1M",   "7D"]
 
-    period_tabs = st.tabs(PERIOD_TABS)
-    for tab_idx, tab in enumerate(period_tabs):
-        with tab:
-            fig = build_chart(all_tickers_to_plot, selected, compare_metrics,
-                              PERIOD_DAYS[tab_idx])
-            if fig:
-                st.plotly_chart(fig, use_container_width=True,
-                                key=f"main_{PERIOD_LABEL[tab_idx]}_{selected}_{'_'.join(compare_metrics)}")
-            else:
-                st.info(f"No data for {PERIOD_LABEL[tab_idx]}.")
+        period_tabs = st.tabs(PERIOD_TABS)
+        for tab_idx, tab in enumerate(period_tabs):
+            with tab:
+                fig = build_chart(all_tickers_to_plot, selected, compare_metrics,
+                                  PERIOD_DAYS[tab_idx])
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True,
+                                    key=f"main_{PERIOD_LABEL[tab_idx]}_{selected}_{'_'.join(compare_metrics)}")
+                else:
+                    st.info(f"No data for {PERIOD_LABEL[tab_idx]}.")
 
     # ==============================================================================
     # PIN MANAGER — below the chart
     # ==============================================================================
-    st.markdown("---")
     st.markdown("#### 📌 Saved Views")
 
     pins = _pins()
@@ -506,54 +545,21 @@ def render():
         st.markdown("---")
         st.markdown("#### 🗂 Saved Panel Dashboard")
 
-        dash_ctrl1, dash_ctrl2, dash_ctrl3 = st.columns([1, 2, 1])
-
-        with dash_ctrl1:
-            dash_period_label = st.selectbox(
-                "Period",
-                options=PERIOD_LABEL,
-                index=PERIOD_LABEL.index("1Y"),
-                key="dash_period"
-            )
-            dash_days = PERIOD_DAYS[PERIOD_LABEL.index(dash_period_label)]
-
-        with dash_ctrl2:
-            dash_compare = st.multiselect(
-                "Compare with",
-                options=[t for t in ticker_list if t != selected],
-                default=[],
-                max_selections=3,
-                placeholder="Overlay up to 3 tickers…",
-                key="dash_compare_tickers"
-            )
-
-        with dash_ctrl3:
-            dash_primary = st.selectbox(
-                "Primary ticker",
-                options=ticker_list,
-                index=default_idx,
-                key="dash_primary_ticker"
-            )
-
-        dash_all_tickers = tuple([dash_primary] + dash_compare)
+        dash_period_label = st.radio(
+            "Period", PERIOD_LABEL, index=PERIOD_LABEL.index("1Y"),
+            horizontal=True, key="dash_period", label_visibility="collapsed"
+        )
+        dash_days        = PERIOD_DAYS[PERIOD_LABEL.index(dash_period_label)]
+        dash_all_tickers = tuple([selected] + compare_tickers)
 
         panel_names = list(pins.keys())
         for name in panel_names:
             metrics = pins[name]
-            st.markdown(
-                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;"
-                f"border-radius:6px;padding:8px 12px 2px 12px;margin-bottom:4px'>"
-                f"<b style='font-size:13px'>{name}</b>"
-                f"<span style='color:#64748b;font-size:11px;margin-left:8px'>"
-                f"{'  +  '.join(metrics)}"
-                f"</span><span style='color:#94a3b8;font-size:11px;margin-left:12px'>"
-                f"{'  ·  '.join(dash_all_tickers)}</span></div>",
-                unsafe_allow_html=True,
-            )
-            panel_fig = build_chart(dash_all_tickers, dash_primary, metrics, dash_days)
-            if panel_fig:
-                panel_fig.update_layout(height=320, margin=dict(l=0, r=0, t=8, b=0))
-                st.plotly_chart(panel_fig, use_container_width=True,
-                                key=f"panel_{name}_{'_'.join(dash_all_tickers)}_{dash_days}")
-            else:
-                st.info("No data.")
+            with st.expander(f"**{name}** · {'  +  '.join(metrics)} · {'  ·  '.join(dash_all_tickers)}", expanded=True):
+                panel_fig = build_chart(dash_all_tickers, selected, metrics, dash_days)
+                if panel_fig:
+                    panel_fig.update_layout(height=320, margin=dict(l=0, r=0, t=8, b=0))
+                    st.plotly_chart(panel_fig, use_container_width=True,
+                                    key=f"panel_{name}_{'_'.join(dash_all_tickers)}_{dash_days}")
+                else:
+                    st.info("No data.")

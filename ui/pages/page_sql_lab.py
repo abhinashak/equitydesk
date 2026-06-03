@@ -394,11 +394,7 @@ def render() -> None:
                 unsafe_allow_html=True,
             )
         else:
-            for row_start in range(0, len(panels), 2):
-                cols = st.columns(2, gap="medium")
-                for col_idx, col in enumerate(cols):
-                    panel_idx = row_start + col_idx
-                    if panel_idx >= len(panels):
-                        break
-                    with col:
-                        _render_single_panel(panels[panel_idx], panel_idx)
+            for panel_idx, panel in enumerate(panels):
+                # Wraps each panel in a clean container that spans 100% width
+                with st.container():
+                    _render_single_panel(panel, panel_idx)

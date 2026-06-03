@@ -73,6 +73,19 @@ CREATE OR REPLACE VIEW shareholding_yearly AS
     SELECT ticker,category, dt, val
 FROM 'data/fundamental_clean/shareholding_yearly.parquet';
 
+
+-- Tickers and momentum
+ CREATE OR REPLACE VIEW tickers AS
+ WITH ticker_raw AS (
+     SELECT *, SPLIT_PART("Yahoo Symbol", '.', 1) AS nse_symbol
+     FROM read_csv("config/tickers.csv")  -- ◄── FIX 1: Specify your source table here
+ )
+ SELECT t.Name, t."Yahoo Symbol", t.Sector,  g.broad_industry AS industry, t.market_cap,
+     t.domestic_market_pct, t.num_clients, t.num_sectors_served,  t.nse_symbol,
+     g.market_cap as market_cap_amt, g.stock_p_e as p_e, dividend_yield
+ FROM ticker_raw t
+ LEFT JOIN general_info g ON g.ticker = t.nse_symbol;
+
 CREATE OR REPLACE VIEW ticker_prices AS
 SELECT Date, Close, High, Low, Open, Volume, Ticker, split_part(Ticker, '.', 1) AS nse_symbol, year
 FROM "data/ticker/year=*/*.parquet";

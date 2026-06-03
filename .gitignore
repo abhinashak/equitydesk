@@ -13,3 +13,6 @@ __pycache__/
 *.pyc
 venv/
 .venv/
+.secret/
+kk/
+gemini-ui.py

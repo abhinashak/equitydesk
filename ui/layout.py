@@ -8,30 +8,31 @@ import streamlit as st
 
 NAV: dict[str, dict[str, str]] = {
     "CONFIG": {
-        "🗂 Tickers":         "config_tickers",
-        "⚙️ App Settings":   "config_app",
+        "🗂 Tickers":                "config_tickers",
+        "⚙️ App Settings":           "config_app",
     },
     "DATA": {
-        "📈 Market Data":          "data_ticker",
-        "📊 Fundamental":     "data_fundamental",
-        "📡 Signals":         "signals",
+        "📈 Market Data":            "data_ticker",
+        "📊 Fundamental":            "data_fundamental",
+        "📡 Signals":                "signals",
     },
     "SCREENS": {
-	    "🎯 Quality Gates":    "quality_gates",
-        "🎯 Fundamental Analysis":    "fundamental_analysis",
-        "💼 Portfolio Evaluator":       "portfolio_evaluator",
-        "🧪 SQL Lab":         "sql_lab",       # ← NEW
+        "🏆 Winners ":               "sql_lab",
+        "⚛️ Fundamental Analysis":   "fundamental_analysis",
+        "🔬 DCF Analysis":           "dcf_analysis",
+        "🔬 Quality Gates":          "quality_gates",
+        "⚖️ Portfolio Evaluator":    "portfolio_evaluator",
     },
     "ALGOS": {
-        "💼 Genetic Algorithm":       "algo_ga",
-        "🧪 Momentum Rules":         "algo_momentum",       # ← NEW
+        "🔮 Genetic Algorithm":      "algo_ga",
+        "⚡ Momentum Rules":         "algo_momentum",
+        "🧮 Rule Discovery":         "algo_rules",
     },
     "TRADE": {
-        "🔴 Live":            "live",
-        "🏦 Account":         "trade_account",
-        "📋 Positions":       "trade_positions",
-        "🎯 Execution Plan":  "trade_plan",
-    },
+        "🪁 1. Kite Setup":          "kite_setup",
+        "🔴 2. Portfolio":           "trade_portfolio",
+        "⚖️ 3. Rebalance Planner":   "trade_rebalance",
+        "⚡  4. Live Execution":      "trade_execution",    },
 }
 
 _DARK_CSS = """

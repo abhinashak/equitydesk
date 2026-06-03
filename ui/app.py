@@ -68,3 +68,14 @@ elif page == "quality_gates":
 elif page == "fundamental_analysis":
     one_ticker_charts.render()
 
+# ── NEW TRADE ROUTER ──
+elif page == "kite_setup":
+    from ui.pages.trade.kite_setup import render; render()
+elif page == "trade_portfolio":
+    from ui.pages.trade.portfolio import render; render()
+elif page == "trade_execution":
+    from ui.pages.page_3_execution import render; render()
+elif page == "dcf_analysis":
+    from ui.pages.dcf_analysis import render; render()
+
+
