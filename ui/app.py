@@ -13,7 +13,7 @@ import streamlit as st
 from bll.config_service import ConfigService
 from ui.layout import inject_css, render_sidebar
 from ui.pages import page_sql_lab
-from ui.pages import page_portfolio
+from ui.pages import page_portfolio_evaluator
 from ui.pages import page_algo_ga 
 from ui.pages import one_ticker_gates
 from ui.pages import one_ticker_charts
@@ -49,8 +49,6 @@ elif page == "config_app":
     from ui.pages.page_config_app import render; render()
 elif page == "signals":
     from ui.pages.page_signals import render; render()
-elif page == "portfolio":
-    from ui.pages.page_portfolio import render; render()
 elif page == "trade_account":
     from ui.pages.page_trade import render_account; render_account()
 elif page == "trade_positions":
@@ -60,7 +58,7 @@ elif page == "trade_plan":
 elif page == "sql_lab":
     page_sql_lab.render()
 elif page == "portfolio_evaluator":
-    page_portfolio.render()
+    page_portfolio_evaluator.render()
 elif page == "algo_ga":
     page_algo_ga.render()
 elif page == "quality_gates":
