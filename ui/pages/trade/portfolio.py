@@ -174,20 +174,30 @@ def compute_portfolio_value_series(holdings_qty: dict,
         return pd.Series(dtype=float)
     pivot = price_df.pivot_table(index="date", columns="ticker",
                                  values="close", aggfunc="last")
-    pivot = pivot.ffill()
+    # ffill fills gaps within a series, but leading NaNs (tickers whose
+    # history starts after the window start) need bfill — or better, fill
+    # each column's leading NaNs with its first known price so a newly-listed
+    # stock doesn't drag the whole portfolio value to NaN.
+    pivot = pivot.ffill()                     # forward-fill mid-series gaps
+    for col in pivot.columns:
+        first_valid = pivot[col].first_valid_index()
+        if first_valid is not None and pivot[col].isna().any():
+            pivot[col] = pivot[col].fillna(pivot[col].loc[first_valid])
+
     port_val = pd.Series(0.0, index=pivot.index)
     for tkr, qty in holdings_qty.items():
         if tkr in pivot.columns:
-            port_val += pivot[tkr] * qty
+            port_val += pivot[tkr].fillna(0) * qty
     return port_val
 
 
 def compute_period_return(port_series: pd.Series) -> float:
     """% return over the series."""
-    if len(port_series) < 2:
+    clean = port_series.dropna()
+    if len(clean) < 2:
         return 0.0
-    start = port_series.iloc[0]
-    end   = port_series.iloc[-1]
+    start = clean.iloc[0]
+    end   = clean.iloc[-1]
     return ((end - start) / start * 100) if start else 0.0
 
 
@@ -446,6 +456,26 @@ def render():
         else:
             idx_pivot = pd.Series(dtype=float)
 
+        # ── SMA50 for ^NSEI ───────────────────────────────────────────────────
+        # Always fetch at least 200 days so SMA50 is well-seeded, regardless of
+        # the period the user chose for the portfolio movement chart.
+        _sma_days = max(days, 200)
+        _sma_ph   = get_price_history([INDEX_TICKER], _sma_days)
+        if not _sma_ph.empty:
+            _idx_full = (_sma_ph[_sma_ph["ticker"] == INDEX_TICKER]
+                         .set_index("date")["close"]
+                         .pipe(lambda s: s[~s.index.duplicated(keep="last")])
+                         .sort_index())
+            _sma50_full = _idx_full.rolling(window=50, min_periods=50).mean()
+            # Slice to the same date window as the chart
+            _sma50_chart = _sma50_full[_sma50_full.index >= idx_pivot.index[0]] if not idx_pivot.empty else _sma50_full
+            _nsei_last   = _idx_full.iloc[-1]  if not _idx_full.empty  else None
+            _sma50_last  = _sma50_full.iloc[-1] if not _sma50_full.empty else None
+        else:
+            _sma50_chart = pd.Series(dtype=float)
+            _nsei_last   = None
+            _sma50_last  = None
+
         # Only pass holding tickers to portfolio value (exclude index)
         ph_holdings = ph_df[ph_df["ticker"] != INDEX_TICKER] if not ph_df.empty else ph_df
         port_ser = compute_portfolio_value_series(holdings_qty_hist, ph_holdings) if not ph_holdings.empty else pd.Series(dtype=float)
@@ -454,16 +484,90 @@ def render():
         if not port_ser.empty:
             port_ser = port_ser[~port_ser.index.duplicated(keep="last")].sort_index()
 
+    # ── EXIT PANIC BANNER ─────────────────────────────────────────────────────
+    if _nsei_last is not None and _sma50_last is not None:
+        _below_sma50 = _nsei_last < _sma50_last
+        _gap_pct     = (_nsei_last - _sma50_last) / _sma50_last * 100
+        if _below_sma50:
+            st.markdown(
+                f"""
+                <div style="
+                    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+                    border: 2px solid #ef4444;
+                    border-radius: 12px;
+                    padding: 18px 24px;
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                ">
+                    <span style="font-size: 2.2rem;">🚨</span>
+                    <div>
+                        <div style="color: #fca5a5; font-size: 0.78rem; font-weight: 700;
+                                    letter-spacing: 0.12em; text-transform: uppercase;">
+                            Market Risk Alert
+                        </div>
+                        <div style="color: #fff; font-size: 1.25rem; font-weight: 800; margin: 2px 0;">
+                            EXIT PANIC — ^NSEI is below its SMA50
+                        </div>
+                        <div style="color: #fca5a5; font-size: 0.9rem;">
+                            NSEI: <strong style="color:#fff">{_nsei_last:,.0f}</strong>
+                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">{_sma50_last:,.0f}</strong>
+                            &nbsp;·&nbsp; Gap: <strong style="color:#fca5a5">{_gap_pct:+.2f}%</strong>
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"""
+                <div style="
+                    background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+                    border: 2px solid #22c55e;
+                    border-radius: 12px;
+                    padding: 14px 24px;
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                ">
+                    <span style="font-size: 1.8rem;">✅</span>
+                    <div>
+                        <div style="color: #86efac; font-size: 0.78rem; font-weight: 700;
+                                    letter-spacing: 0.12em; text-transform: uppercase;">
+                            Market Trend
+                        </div>
+                        <div style="color: #fff; font-size: 1.1rem; font-weight: 700;">
+                            ^NSEI is above its SMA50 — trend intact
+                        </div>
+                        <div style="color: #86efac; font-size: 0.85rem;">
+                            NSEI: <strong style="color:#fff">{_nsei_last:,.0f}</strong>
+                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">{_sma50_last:,.0f}</strong>
+                            &nbsp;·&nbsp; Gap: <strong style="color:#86efac">{_gap_pct:+.2f}%</strong>
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
     if not port_ser.empty:
         port_ret = compute_period_return(port_ser)
         idx_ret  = compute_period_return(idx_pivot) if not idx_pivot.empty else 0.0
         alpha    = port_ret - idx_ret
 
-        mc1, mc2, mc3 = st.columns(3)
+        mc1, mc2, mc3, mc4 = st.columns(4)
         mc1.metric(f"Portfolio ({sel_period})", f"{port_ret:+.2f}%")
         mc2.metric(f"NSEI ({sel_period})",  f"{idx_ret:+.2f}%")
         mc3.metric("Alpha", f"{alpha:+.2f}%",
                    delta_color="normal" if alpha >= 0 else "inverse")
+        if _sma50_last is not None:
+            mc4.metric("^NSEI SMA50",
+                       f"{_sma50_last:,.0f}",
+                       f"{(_nsei_last - _sma50_last) / _sma50_last * 100:+.2f}% vs price",
+                       delta_color="normal" if _nsei_last >= _sma50_last else "inverse")
 
         # Normalised line chart
         fig_trend = go.Figure()
@@ -481,6 +585,18 @@ def render():
                 name=INDEX_TICKER,
                 line=dict(color=COLORS[1], width=1.5, dash="dash")
             ))
+        # SMA50 line — normalise to the same base as idx_norm
+        if not _sma50_chart.empty and not idx_pivot.empty:
+            _sma50_aligned = _sma50_chart.reindex(port_ser.index, method="ffill").dropna()
+            _idx_base      = idx_aligned.iloc[0] if not idx_aligned.empty and idx_aligned.iloc[0] else None
+            if _idx_base:
+                _sma50_norm = _sma50_aligned / _idx_base * 100
+                fig_trend.add_trace(go.Scatter(
+                    x=_sma50_norm.index, y=_sma50_norm.values,
+                    name="NSEI SMA50",
+                    line=dict(color="#f59e0b", width=1.5, dash="dot"),
+                    opacity=0.85,
+                ))
         fig_trend.update_layout(
             height=320, margin=dict(l=0, r=0, t=10, b=0),
             legend=dict(orientation="h", y=1.05),
@@ -532,26 +648,64 @@ def render():
     # ── INDUSTRY ORIENTATION TABLE ────────────────────────────────────────────
     st.subheader("Industry Orientation")
 
+    # Pre-fetch price history for the fixed period columns (7D, 1M, 3M, 6M, 1Y)
+    _ORIENT_PERIODS = [("7D", 7), ("1M", 30), ("3M", 90), ("6M", 180), ("1Y", 365)]
+
+    def _industry_eq_returns(ph: pd.DataFrame) -> dict[str, float]:
+        """Equal-weight return per industry from a long-form price DataFrame."""
+        result = {}
+        if ph.empty:
+            return result
+        for industry in df["Industry"].unique():
+            ind_tickers = df[df["Industry"] == industry]["Symbol"].tolist()
+            series_list = []
+            for sym in ind_tickers:
+                s = ph[ph["ticker"] == sym].set_index("date")["close"]
+                s = s[~s.index.duplicated(keep="last")].sort_index().dropna()
+                if len(s) >= 2:
+                    series_list.append(s / s.iloc[0] * 100)
+            if series_list:
+                eq_ser = pd.concat(series_list, axis=1).mean(axis=1)
+                result[industry] = round(compute_period_return(eq_ser), 2)
+        return result
+
+    with st.spinner("Loading industry period returns…"):
+        _orient_returns: dict[str, dict[str, float]] = {}
+        for _lbl, _d in _ORIENT_PERIODS:
+            _ph = get_price_history(tickers_all, _d)
+            if not _ph.empty:
+                _ph = (_ph.sort_values(["ticker", "date"])
+                       .drop_duplicates(subset=["date", "ticker"], keep="last")
+                       .reset_index(drop=True))
+            _orient_returns[_lbl] = _industry_eq_returns(_ph)
+
     ind_orient = []
     for industry in df["Industry"].unique():
         idf = df[df["Industry"] == industry]
         _meta = _industry_meta(industry)
-        ind_orient.append({
+        row = {
             "Industry":       f"{_meta['icon']} {industry}",
             "Holdings":       len(idf),
             "Value (₹)":      idf["Curr Value"].sum(),
             "Wt%":            (idf["Curr Value"].sum() / total_value * 100).round(1),
             "Today's Gain ₹": idf["Today's Gain"].sum().round(0),
             "Avg Day Chg%":   idf["Day Chg%"].mean().round(2),
-            "Avg P/E":        round(idf["P/E"].dropna().mean(), 1) if idf["P/E"].notna().any() else None,
-            "Avg Div Yield%": round(idf["Div Yield%"].mean(), 2),
-            "Tickers":        ", ".join(idf["Symbol"].tolist()),
-        })
+        }
+        for _lbl, _ in _ORIENT_PERIODS:
+            row[_lbl] = _orient_returns[_lbl].get(industry, None)
+        row["Avg P/E"]        = round(idf["P/E"].dropna().mean(), 1) if idf["P/E"].notna().any() else None
+        row["Avg Div Yield%"] = round(idf["Div Yield%"].mean(), 2)
+        row["Tickers"]        = ", ".join(idf["Symbol"].tolist())
+        ind_orient.append(row)
 
     orient_df = (pd.DataFrame(ind_orient)
                  .sort_values("Value (₹)", ascending=False)
                  .reset_index(drop=True))
 
+    _period_col_cfg = {
+        lbl: st.column_config.NumberColumn(label=lbl, format="%.1f%%")
+        for lbl, _ in _ORIENT_PERIODS
+    }
     st.dataframe(
         orient_df,
         column_config={
@@ -559,6 +713,7 @@ def render():
             "Wt%":             st.column_config.NumberColumn(format="%.1f%%"),
             "Today's Gain ₹": st.column_config.NumberColumn(format="₹%.0f"),
             "Avg Day Chg%":    st.column_config.NumberColumn(format="%.2f%%"),
+            **_period_col_cfg,
             "Avg P/E":         st.column_config.NumberColumn(format="%.1f"),
             "Avg Div Yield%":  st.column_config.NumberColumn(format="%.2f%%"),
         },

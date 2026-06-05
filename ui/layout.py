@@ -7,14 +7,11 @@ Shared Streamlit layout helpers: CSS injection, sidebar nav, topbar.
 import streamlit as st
 
 NAV: dict[str, dict[str, str]] = {
-    "CONFIG": {
-        "🗂 Tickers":                "config_tickers",
-        "⚙️ App Settings":           "config_app",
-    },
-    "DATA": {
-        "📈 Market Data":            "data_ticker",
-        "📊 Fundamental":            "data_fundamental",
-        "📡 Signals":                "signals",
+    "TRADE": {
+        "🪁 1. Kite Setup":          "kite_setup",
+        "🔴 2. Portfolio":           "trade_portfolio",
+        "⚖️ 3. Rebalance Planner":   "trade_rebalance",
+        "⚡  4. Live Execution":      "trade_execution",
     },
     "SCREENS": {
         "🏆 Winners ":               "sql_lab",
@@ -28,11 +25,15 @@ NAV: dict[str, dict[str, str]] = {
         "⚡ Momentum Rules":         "algo_momentum",
         "🧮 Rule Discovery":         "algo_rules",
     },
-    "TRADE": {
-        "🪁 1. Kite Setup":          "kite_setup",
-        "🔴 2. Portfolio":           "trade_portfolio",
-        "⚖️ 3. Rebalance Planner":   "trade_rebalance",
-        "⚡  4. Live Execution":      "trade_execution",    },
+    "DATA": {
+        "📈 Market Data":            "data_ticker",
+        "📊 Fundamental":            "data_fundamental",
+        "📡 Signals":                "signals",
+    },
+    "CONFIG": {
+        "🗂 Tickers":                "config_tickers",
+        "⚙️ App Settings":           "config_app",
+    },
 }
 
 _DARK_CSS = """

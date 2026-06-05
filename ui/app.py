@@ -35,9 +35,16 @@ inject_css()
 render_sidebar()
 
 # ── Page router ───────────────────────────────────────────────────────────────
-page = st.session_state.get("active_page", "data_ticker")
+page = st.session_state.get("active_page", "kite_setup")
 
-if page == "data_ticker":
+# ── NEW TRADE ROUTER ──
+if page == "kite_setup":
+    from ui.pages.trade.kite_setup import render; render()
+elif page == "trade_portfolio":
+    from ui.pages.trade.portfolio import render; render()
+elif page == "trade_execution":
+    from ui.pages.page_3_execution import render; render()
+elif page == "data_ticker":
     from ui.pages.page_data_ticker import render; render()
 elif page == "data_fundamental":
     from ui.pages.page_data_fundamental import render; render()
@@ -66,13 +73,7 @@ elif page == "quality_gates":
 elif page == "fundamental_analysis":
     one_ticker_charts.render()
 
-# ── NEW TRADE ROUTER ──
-elif page == "kite_setup":
-    from ui.pages.trade.kite_setup import render; render()
-elif page == "trade_portfolio":
-    from ui.pages.trade.portfolio import render; render()
-elif page == "trade_execution":
-    from ui.pages.page_3_execution import render; render()
+
 elif page == "dcf_analysis":
     from ui.pages.dcf_analysis import render; render()
 
