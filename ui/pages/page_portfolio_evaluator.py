@@ -42,35 +42,41 @@ _CSS = """
     border-collapse: collapse;
     font-size: 0.78rem;
     margin-top: 0.5rem;
-    background: #0d0d0d;
+    background: #ffffff;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
 .evt-table th {
     text-align: left;
-    border-bottom: 1px solid #2a2a2a;
-    padding: 0.5rem 0.8rem;
-    color: #888;
-    letter-spacing: 0.1em;
+    border-bottom: 2px solid #e0e0e0;
+    padding: 0.55rem 0.9rem;
+    color: #1565c0;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-weight: 500;
-    background: #111;
+    font-weight: 700;
+    background: #e3edf9;
     font-size: 0.68rem;
 }
 .evt-table td {
-    padding: 0.38rem 0.8rem;
-    border-bottom: 1px solid #1a1a1a;
-    color: #c8c0b0;
+    padding: 0.38rem 0.9rem;
+    border-bottom: 1px solid #f0f0f0;
+    color: #222;
+    background: #ffffff;
 }
-.evt-table tr:hover td { background: #161616; }
-.evt-pos  { color: #4ade80 !important; font-weight: 500; }
-.evt-neg  { color: #f87171 !important; font-weight: 500; }
-.evt-na   { color: #3a3a3a !important; }
+.evt-table tr:hover td { background: #fffde7; }
+.evt-pos  { color: #1b7e34 !important; font-weight: 600; }
+.evt-neg  { color: #c62828 !important; font-weight: 600; }
+.evt-na   { color: #bdbdbd !important; }
 .evt-section td {
-    color: #484848 !important;
+    color: #1565c0 !important;
     font-size: 0.62rem !important;
     letter-spacing: 0.14em;
-    padding: 0.6rem 0.8rem 0.2rem !important;
-    background: #0a0a0a;
+    padding: 0.5rem 0.9rem 0.2rem !important;
+    background: #fff9c4 !important;
     text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 1px solid #ffe082 !important;
 }
 </style>
 """
@@ -198,7 +204,36 @@ def _fetch_local(
     return wide.sort_index()
 
 
-# ── YAHOO fetch (gentle — batched with sleep) ─────────────────────────────────
+# ── Load all available tickers from DuckDB (sqls/init.sql) ───────────────────
+@st.cache_data(ttl=3600, show_spinner=False)
+def _load_all_tickers() -> pd.DataFrame:
+    """
+    Load ticker mapping from DuckDB using sqls/init.sql.
+    Returns DataFrame with columns: Yahoo Symbol, nse_symbol.
+    """
+    try:
+        import duckdb
+    except ImportError:
+        return pd.DataFrame(columns=["Yahoo Symbol", "nse_symbol"])
+
+    init_sql_path = Path("sqls/init.sql")
+    if not init_sql_path.exists():
+        return pd.DataFrame(columns=["Yahoo Symbol", "nse_symbol"])
+
+    try:
+        con = duckdb.connect()
+        init_sql = init_sql_path.read_text()
+        con.execute(init_sql)
+        df = con.execute(
+            'SELECT "Yahoo Symbol", "nse_symbol" FROM tickers ORDER BY "nse_symbol"'
+        ).df()
+        con.close()
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["Yahoo Symbol", "nse_symbol"])
+
+
+
 def _parse_close_yf(raw: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
     if raw.empty:
         return pd.DataFrame()
@@ -361,41 +396,241 @@ def render():
     with p1_col:
         st.markdown('<div class="input-panel">', unsafe_allow_html=True)
         st.markdown("##### 🟡 Portfolio 1")
-        p1_name = st.text_input("Name", "GA Portfolio", key="p1_name")
+        p1_name = st.text_input("Name", "Portfolio 1", key="p1_name")
+
+        # ── Three-way loader for Portfolio 1 ──────────────────────────────────
+        load_mode1 = st.radio(
+            "Load from",
+            ["✏️ Manual", "📂 File", "📋 Current Holdings"],
+            horizontal=True,
+            key="p1_load_mode",
+            label_visibility="collapsed",
+        )
+
+        if load_mode1 == "📂 File":
+            # Option 1: CSV file (weights_train_*.csv or any uploaded CSV)
+            base_out = app_cfg.get("GA_OUT_DIR", "outputs")
+            wfiles   = sorted(Path(base_out).rglob("weights_train_*.csv")) if Path(base_out).exists() else []
+            uploaded_csv1 = st.file_uploader("Upload weights CSV", type=["csv"], key="p1_csv_upload")
+            if uploaded_csv1 is not None:
+                # Track file name so we only reload once per new upload
+                if st.session_state.get("_p1_csv_name") != uploaded_csv1.name:
+                    try:
+                        wdf   = pd.read_csv(uploaded_csv1)
+                        lines = "\n".join(
+                            f"{row['ticker']}: {row['weight']:.6f}"
+                            for _, row in wdf.iterrows() if row.get("weight", 0) > 0.001
+                        )
+                        st.session_state["p1_text"] = lines          # write directly into widget key
+                        st.session_state["_p1_csv_name"] = uploaded_csv1.name
+                        st.session_state["_p1_load_msg"] = f"✅ Loaded {len(lines.splitlines())} tickers from **{uploaded_csv1.name}**"
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Could not parse CSV: {e}")
+                if "_p1_load_msg" in st.session_state:
+                    st.success(st.session_state["_p1_load_msg"])
+            elif wfiles:
+                chosen_wf = st.selectbox(
+                    "Or pick a GA run file", ["— none —"] + [str(f) for f in wfiles], key="ga_wf"
+                )
+                if chosen_wf != "— none —" and st.button("Load weights", key="load_ga"):
+                    wdf   = pd.read_csv(chosen_wf)
+                    lines = "\n".join(
+                        f"{row['ticker']}: {row['weight']:.6f}"
+                        for _, row in wdf.iterrows() if row["weight"] > 0.001
+                    )
+                    st.session_state["p1_text"] = lines
+                    st.session_state["_p1_load_msg"] = f"✅ Loaded {len(lines.splitlines())} tickers from GA run"
+                    st.rerun()
+
+        elif load_mode1 == "📋 Current Holdings":
+            # Option 2: live holdings from session state
+            if "all_holdings" not in st.session_state or not st.session_state.all_holdings:
+                st.warning("Holdings not loaded. Please go to Setup and click 'Fetch Holdings'.")
+            else:
+                # Only rebuild when mode is freshly switched or holdings changed
+                if st.session_state.get("_p1_holdings_loaded") is not True:
+                    all_holdings = st.session_state.all_holdings
+                    excl_set     = {s.upper() for s in (getattr(st.session_state, "excluded_symbols", None) or set())}
+                    account_names = list(all_holdings.keys())
+                    ticker_data   = {}
+                    for acc_name, holdings in all_holdings.items():
+                        for h in holdings:
+                            sym = h["tradingsymbol"]
+                            if sym.upper() in excl_set:
+                                continue
+                            if sym not in ticker_data:
+                                ticker_data[sym] = {
+                                    "last_price":  h.get("last_price", 0),
+                                    "close_price": h.get("close_price", 0),
+                                    "avg_cost":    h.get("average_price", 0),
+                                    **{an: 0 for an in account_names},
+                                }
+                            ticker_data[sym][acc_name] += h.get("quantity", 0)
+
+                    holding_lines = []
+                    for sym, td in ticker_data.items():
+                        total_qty  = sum(td.get(an, 0) for an in account_names)
+                        val        = total_qty * (td["last_price"] or td["close_price"] or 1)
+                        if val > 0:
+                            holding_lines.append((sym, val))
+                    if holding_lines:
+                        total_val = sum(v for _, v in holding_lines)
+                        lines = "\n".join(
+                            f"{_ensure_ns(sym)}: {val/total_val*100:.4f}"
+                            for sym, val in sorted(holding_lines, key=lambda x: -x[1])
+                        )
+                        st.session_state["p1_text"] = lines
+                        st.session_state["_p1_holdings_loaded"] = True
+                        st.session_state["_p1_load_msg"] = f"✅ Loaded {len(holding_lines)} holdings from current portfolio"
+                        st.rerun()
+                    else:
+                        st.warning("No holdings with value found.")
+                if "_p1_load_msg" in st.session_state:
+                    st.success(st.session_state["_p1_load_msg"])
+        else:
+            # Manual mode — clear the stale load markers so switching back re-triggers
+            st.session_state.pop("_p1_holdings_loaded", None)
+            st.session_state.pop("_p1_csv_name", None)
+            st.session_state.pop("_p1_load_msg", None)
+
+        # Only pass value= when the widget key isn't already owned by Streamlit.
+        # Loaders write st.session_state["p1_text"] then call st.rerun(), which
+        # pre-populates the widget; passing value= on top would raise an exception.
+        _p1_ta_kwargs = {} if "p1_text" in st.session_state else {
+            "value": st.session_state.get("_p1_text_val", "")
+        }
         p1_text = st.text_area(
             "Tickers & weights  (TICKER: weight, one per line)",
-            height=180, key="p1_text",
-            placeholder="RELIANCE: 0.15\nTCS: 0.12\nINFY: 0.10\n...",
+            height=200, key="p1_text",
+            placeholder="RELIANCE: 2.0\nINFY: 1.5\nHDFCBANK: 1.0",
+            **_p1_ta_kwargs,
         )
-        # GA weights loader
-        base_out = app_cfg.get("GA_OUT_DIR", "outputs")
-        wfiles   = sorted(Path(base_out).rglob("weights_train_*.csv")) if Path(base_out).exists() else []
-        if wfiles:
-            chosen_wf = st.selectbox(
-                "Load from GA run", ["— none —"] + [str(f) for f in wfiles], key="ga_wf"
-            )
-            if chosen_wf != "— none —" and st.button("Load weights", key="load_ga"):
-                wdf   = pd.read_csv(chosen_wf)
-                lines = "\n".join(
-                    f"{row['ticker']}: {row['weight']:.6f}"
-                    for _, row in wdf.iterrows() if row["weight"] > 0.001
-                )
-                st.session_state["_p1_text_loaded"] = lines
-                st.rerun()
-        if "_p1_text_loaded" in st.session_state:
-            p1_text = st.session_state["_p1_text_loaded"]
+        st.session_state["_p1_text_val"] = p1_text
         st.markdown('</div>', unsafe_allow_html=True)
 
     with p2_col:
         st.markdown('<div class="input-panel">', unsafe_allow_html=True)
         st.markdown("##### 🟢 Portfolio 2")
-        p2_name = st.text_input("Name", "Benchmark / Equal Weight", key="p2_name")
+        p2_name = st.text_input("Name", "Portfolio 2", key="p2_name")
+
+        # ── Three-way loader for Portfolio 2 ──────────────────────────────────
+        load_mode2 = st.radio(
+            "Load from",
+            ["✏️ Manual", "📂 File", "📋 Current Holdings"],
+            horizontal=True,
+            key="p2_load_mode",
+            label_visibility="collapsed",
+        )
+
+        if load_mode2 == "📂 File":
+            uploaded_csv2 = st.file_uploader("Upload weights CSV", type=["csv"], key="p2_csv_upload")
+            if uploaded_csv2 is not None:
+                if st.session_state.get("_p2_csv_name") != uploaded_csv2.name:
+                    try:
+                        wdf2  = pd.read_csv(uploaded_csv2)
+                        lines2 = "\n".join(
+                            f"{row['ticker']}: {row['weight']:.6f}"
+                            for _, row in wdf2.iterrows() if row.get("weight", 0) > 0.001
+                        )
+                        st.session_state["p2_text"] = lines2
+                        st.session_state["_p2_csv_name"] = uploaded_csv2.name
+                        st.session_state["_p2_load_msg"] = f"✅ Loaded {len(lines2.splitlines())} tickers from **{uploaded_csv2.name}**"
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Could not parse CSV: {e}")
+                if "_p2_load_msg" in st.session_state:
+                    st.success(st.session_state["_p2_load_msg"])
+
+        elif load_mode2 == "📋 Current Holdings":
+            if "all_holdings" not in st.session_state or not st.session_state.all_holdings:
+                st.warning("Holdings not loaded. Please go to Setup and click 'Fetch Holdings'.")
+            else:
+                # Only rebuild when mode is freshly switched or holdings changed
+                if st.session_state.get("_p2_holdings_loaded") is not True:
+                    all_holdings2 = st.session_state.all_holdings
+                    excl_set2     = {s.upper() for s in (getattr(st.session_state, "excluded_symbols", None) or set())}
+                    account_names2 = list(all_holdings2.keys())
+                    ticker_data2   = {}
+                    for acc_name, holdings in all_holdings2.items():
+                        for h in holdings:
+                            sym = h["tradingsymbol"]
+                            if sym.upper() in excl_set2:
+                                continue
+                            if sym not in ticker_data2:
+                                ticker_data2[sym] = {
+                                    "last_price":  h.get("last_price", 0),
+                                    "close_price": h.get("close_price", 0),
+                                    "avg_cost":    h.get("average_price", 0),
+                                    **{an: 0 for an in account_names2},
+                                }
+                            ticker_data2[sym][acc_name] += h.get("quantity", 0)
+
+                    holding_lines2 = []
+                    for sym, td in ticker_data2.items():
+                        total_qty  = sum(td.get(an, 0) for an in account_names2)
+                        val        = total_qty * (td["last_price"] or td["close_price"] or 1)
+                        if val > 0:
+                            holding_lines2.append((sym, val))
+                    if holding_lines2:
+                        total_val2 = sum(v for _, v in holding_lines2)
+                        lines2 = "\n".join(
+                            f"{_ensure_ns(sym)}: {val/total_val2*100:.4f}"
+                            for sym, val in sorted(holding_lines2, key=lambda x: -x[1])
+                        )
+                        st.session_state["p2_text"] = lines2
+                        st.session_state["_p2_holdings_loaded"] = True
+                        st.session_state["_p2_load_msg"] = f"✅ Loaded {len(holding_lines2)} holdings from current portfolio"
+                        st.rerun()
+                    else:
+                        st.warning("No holdings with value found.")
+            if "_p2_load_msg" in st.session_state:
+                st.success(st.session_state["_p2_load_msg"])
+
+        else:
+            # Manual mode — clear stale load markers so switching back re-triggers
+            st.session_state.pop("_p2_holdings_loaded", None)
+            st.session_state.pop("_p2_load_msg", None)
+            st.session_state.pop("_p2_csv_name", None)
+
+        # Only pass value= when the widget key isn't already owned by Streamlit.
+        # Loaders write st.session_state["p2_text"] then call st.rerun(), which
+        # pre-populates the widget; passing value= on top would raise an exception.
+        _p2_ta_kwargs = {} if "p2_text" in st.session_state else {
+            "value": st.session_state.get("_p2_text_val", "")
+        }
         p2_text = st.text_area(
             "Tickers & weights  (TICKER: weight, one per line)",
-            height=180, key="p2_text",
+            height=200, key="p2_text",
             placeholder="NIFTYBEES: 1.0",
+            **_p2_ta_kwargs,
         )
+        st.session_state["_p2_text_val"] = p2_text
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── Available tickers from DuckDB ─────────────────────────────────────────
+    all_tickers_df = _load_all_tickers()
+    if not all_tickers_df.empty:
+        with st.expander("🔍 Browse available tickers", expanded=False):
+            search_q = st.text_input(
+                "Search NSE symbol or Yahoo symbol",
+                placeholder="e.g. RELIANCE or RELIANCE.NS",
+                key="ticker_search",
+            )
+            disp_df = all_tickers_df.copy()
+            if search_q:
+                mask = (
+                        disp_df["nse_symbol"].str.upper().str.contains(search_q.upper(), na=False) |
+                        disp_df["Yahoo Symbol"].str.upper().str.contains(search_q.upper(), na=False)
+                )
+                disp_df = disp_df[mask]
+            st.dataframe(
+                disp_df.rename(columns={"Yahoo Symbol": "Yahoo Symbol (use this)", "nse_symbol": "NSE Symbol"}),
+                use_container_width=True,
+                hide_index=True,
+                height=min(300, 35 + len(disp_df) * 35),
+            )
+            st.caption(f"{len(disp_df)} of {len(all_tickers_df)} tickers shown · Use the Yahoo Symbol column in the text areas above")
 
     # ── Settings row ──────────────────────────────────────────────────────────
     src_col, d1_col, d2_col, bench_col, macro_col = st.columns(
@@ -650,8 +885,8 @@ def render():
         d  = (r1 - r2) if (r1 is not None and r2 is not None) else None
         rows_html += (
             f"<tr>"
-            f"<td style='color:#e8e0d0'>{evt['name']}</td>"
-            f"<td style='color:#555;font-size:.68rem'>{evt['start']} → {evt['end']}</td>"
+            f"<td style='color:#212121;font-weight:500'>{evt['name']}</td>"
+            f"<td style='color:#9e9e9e;font-size:.68rem'>{evt['start']} → {evt['end']}</td>"
             f"{_fmt_cell(r1)}{_fmt_cell(r2)}{_fmt_cell(d)}{_fmt_cell(rb)}"
             f"</tr>"
         )
@@ -661,9 +896,9 @@ def render():
     <table class="evt-table">
       <thead><tr>
         <th>Period</th><th>Date Range</th>
-        <th style='color:#e8c96a'>{p1_name}</th>
-        <th style='color:#6ae8c9'>{p2_name}</th>
-        <th style='color:#aaa'>Δ (P1−P2)</th>
+        <th style='color:#c77a00'>{p1_name}</th>
+        <th style='color:#006064'>{p2_name}</th>
+        <th style='color:#1565c0'>Δ (P1−P2)</th>
         {bench_th}
       </tr></thead>
       <tbody>{rows_html}</tbody>
