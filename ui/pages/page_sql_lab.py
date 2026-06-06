@@ -215,11 +215,21 @@ def _render_viz(
             hits       = df["ticker"].str.upper().isin(port_set)
             hit_count  = int(hits.sum())
             if hit_count:
+                hit_tickers = df.loc[hits, "ticker"].str.upper().unique().tolist()
+                ticker_badges = "".join(
+                    f'<span style="display:inline-block;margin:0 2px;padding:1px 6px;'
+                    f'background:#fff3cd;border:1px solid #ffc107;border-radius:4px;'
+                    f'font-size:0.72rem;font-weight:600;color:#856404;">{t}</span>'
+                    for t in hit_tickers
+                )
                 st.markdown(
                     f'<span style="font-size:0.78rem;color:#856404;">'
-                    f'🌟 <strong>{hit_count}</strong> of your portfolio stock(s) highlighted below</span>',
+                    f'\U0001F31F <strong>{hit_count}</strong> of your portfolio stock(s) highlighted below:&nbsp;'
+                    f'{ticker_badges}</span>',
                     unsafe_allow_html=True,
                 )
+                with st.popover("📋 Copy tickers"):
+                    st.code("\n".join(hit_tickers), language=None)
             styled = _highlight_portfolio(df, port_syms)
             st.dataframe(styled, use_container_width=True, height=height)
         else:

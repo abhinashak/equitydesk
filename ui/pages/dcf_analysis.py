@@ -169,90 +169,156 @@ def _get_general_info(tkr: str, _conn) -> dict:
 @st.cache_data(ttl=300)
 def _get_historical_pe(tkr: str, _conn) -> dict:
     """
-    Compute time-decay weighted P/E from price history and EPS.
+    Compute time-decay weighted P/E by stitching two data sources:
 
-    Time decay logic
-    ────────────────
-    Each year gets an exponential weight = exp(decay_rate × rank) where rank=0
-    is the OLDEST year and rank=N-1 is the MOST RECENT year.
-    decay_rate = 0.3  →  most-recent year gets ~e^(0.3×N) times the weight of
-    the oldest year.  For a 10-year window that gives the last year ~20× the
-    weight of year 1, and the last 3 years collectively ~60% of total weight.
+    1. ANNUAL segment  — profit_loss EPS × annual avg price (up to ~10 years)
+       Each annual point uses the full-year average price vs full-year average EPS.
+
+    2. QUARTERLY segment — quarterly_results TTM EPS × quarter-end close price
+       TTM EPS = rolling sum of 4 consecutive quarterly EPS figures.
+       Quarter-end price = last Close in that calendar month from ticker_prices.
+       Provides ~10 recent quarterly observations with finer granularity.
+
+    Stitching rule
+    ──────────────
+    Find the earliest quarterly observation date.  Any annual point whose year-end
+    falls ON or AFTER that date is dropped — the quarterly data covers that period
+    more accurately.  Annual points before that cutoff are kept as-is.
+
+    Time-decay weighting
+    ────────────────────
+    Because the combined timeline is non-uniform (annual gaps early, quarterly
+    gaps recent), weights are based on calendar distance from today rather than
+    rank:
+
+        weight[i] = exp(−λ × days_ago[i])      λ = 0.001  (~1-year half-life)
+
+    This gives natural, continuous recency bias regardless of whether a point
+    comes from the annual or quarterly segment.
 
     Returns dict with keys:
-        weighted_median_pe  — time-decay weighted median (primary metric)
-        median_pe           — simple (unweighted) median for reference
-        mean_pe             — simple mean
-        min_pe, max_pe      — historical range
-        years_used          — number of annual data points
-        pe_series           — DataFrame with year, pe, weight columns
+        weighted_median_pe  — primary metric used in scan & detail
+        weighted_mean_pe
+        median_pe, mean_pe  — simple unweighted versions for reference
+        min_pe, max_pe      — full historical range
+        n_annual            — annual points used
+        n_quarterly         — quarterly TTM points used
+        pe_series           — DataFrame: dt, pe, source, weight_pct
     """
     try:
+        today = pd.Timestamp.today().normalize()
+        LAMBDA = 0.001   # decay per day  (half-life ≈ 693 days ≈ 1.9 years)
+
+        # ── 1. ANNUAL segment ─────────────────────────────────────────────────
         price_df = _conn.execute(f"""
             SELECT Date AS dt, Close AS price
             FROM ticker_prices
             WHERE REPLACE(Ticker, '.NS', '') = '{tkr}'
             ORDER BY Date
         """).df()
-        eps_df = _conn.execute(f"""
+        eps_ann_df = _conn.execute(f"""
             SELECT dt, val FROM profit_loss
             WHERE ticker = '{tkr}' AND metric = 'EPS in Rs'
             ORDER BY dt
         """).df()
-        if price_df.empty or eps_df.empty:
+
+        annual_rows = pd.DataFrame()
+        if not price_df.empty and not eps_ann_df.empty:
+            price_df["dt"]    = pd.to_datetime(price_df["dt"])
+            eps_ann_df["dt"]  = pd.to_datetime(eps_ann_df["dt"])
+
+            price_ann = (price_df.set_index("dt")["price"]
+                         .resample("YE").mean()
+                         .reset_index()
+                         .rename(columns={"dt": "dt", "price": "avg_price"}))
+            eps_ann   = (eps_ann_df.set_index("dt")["val"]
+                         .resample("YE").sum()          # annual EPS = sum of quarters
+                         .reset_index()
+                         .rename(columns={"dt": "dt", "val": "eps"}))
+            eps_ann   = eps_ann[eps_ann["eps"] > 0]
+
+            ann_merged = pd.merge(price_ann, eps_ann, on="dt", how="inner")
+            ann_merged["pe"]     = ann_merged["avg_price"] / ann_merged["eps"]
+            ann_merged["source"] = "annual"
+            annual_rows = ann_merged[["dt", "pe", "source"]].copy()
+
+        # ── 2. QUARTERLY segment — TTM EPS via rolling 4-quarter sum ─────────
+        qtr_df = _conn.execute(f"""
+            SELECT dt, val AS eps_q
+            FROM quarterly_results
+            WHERE ticker = '{tkr}' AND metric = 'EPS in Rs'
+            ORDER BY dt
+        """).df()
+
+        quarterly_rows = pd.DataFrame()
+        if not qtr_df.empty and not price_df.empty:
+            qtr_df["dt"] = pd.to_datetime(qtr_df["dt"])
+            qtr_df = qtr_df.sort_values("dt").reset_index(drop=True)
+
+            # TTM EPS: rolling 4-quarter sum, only keep rows where we have 4 qtrs
+            qtr_df["ttm_eps"] = qtr_df["eps_q"].rolling(4, min_periods=4).sum()
+            qtr_df = qtr_df.dropna(subset=["ttm_eps"])
+            qtr_df = qtr_df[qtr_df["ttm_eps"] > 0]
+
+            if not qtr_df.empty:
+                # Quarter-end price: last Close in the same calendar month as dt
+                price_df["ym"] = price_df["dt"].dt.to_period("M")
+                qtr_df["ym"]   = qtr_df["dt"].dt.to_period("M")
+                qtr_price = (price_df.sort_values("dt")
+                             .groupby("ym")["price"]
+                             .last()
+                             .reset_index()
+                             .rename(columns={"price": "close_price"}))
+                qtr_merged = pd.merge(qtr_df, qtr_price, on="ym", how="inner")
+                qtr_merged["pe"]     = qtr_merged["close_price"] / qtr_merged["ttm_eps"]
+                qtr_merged["source"] = "quarterly"
+                quarterly_rows = qtr_merged[["dt", "pe", "source"]].copy()
+
+        if annual_rows.empty and quarterly_rows.empty:
             return {}
-        price_df["dt"] = pd.to_datetime(price_df["dt"])
-        eps_df["dt"]   = pd.to_datetime(eps_df["dt"])
 
-        # Annual EPS
-        eps_ann = (eps_df.set_index("dt")["val"]
-                   .resample("YE").mean()
-                   .reset_index()
-                   .rename(columns={"dt": "year", "val": "eps"}))
-        eps_ann = eps_ann[eps_ann["eps"] > 0]
-        if eps_ann.empty:
+        # ── 3. Stitch — drop annual points covered by quarterly window ────────
+        if not quarterly_rows.empty and not annual_rows.empty:
+            qtr_cutoff = quarterly_rows["dt"].min()
+            annual_rows = annual_rows[annual_rows["dt"] < qtr_cutoff]
+
+        combined = pd.concat(
+            [df for df in [annual_rows, quarterly_rows] if not df.empty],
+            ignore_index=True,
+        ).sort_values("dt").reset_index(drop=True)
+
+        # Sanity filter
+        combined = combined[(combined["pe"] > 3) & (combined["pe"] < 300)]
+        if combined.empty:
             return {}
 
-        # Annual avg price
-        price_ann = (price_df.set_index("dt")["price"]
-                     .resample("YE").mean()
-                     .reset_index()
-                     .rename(columns={"dt": "year", "price": "avg_price"}))
+        # ── 4. Time-decay weights (calendar distance from today) ──────────────
+        combined["days_ago"] = (today - combined["dt"]).dt.days.clip(lower=0)
+        raw_w   = np.exp(-LAMBDA * combined["days_ago"].values)
+        weights = raw_w / raw_w.sum()
+        combined["weight"]     = weights
+        combined["weight_pct"] = (weights * 100).round(2)
 
-        merged = pd.merge(price_ann, eps_ann, on="year", how="inner")
-        merged["pe"] = merged["avg_price"] / merged["eps"]
-        merged = merged[(merged["pe"] > 3) & (merged["pe"] < 300)]  # sanity filter
-        if merged.empty:
-            return {}
-
-        # ── Time-decay weights ────────────────────────────────────────────────
-        # Sort oldest → newest so rank 0 = oldest, rank N-1 = most recent
-        merged = merged.sort_values("year").reset_index(drop=True)
-        n = len(merged)
-        decay_rate = 0.3          # tune here: higher = more recency bias
-        raw_w = np.array([np.exp(decay_rate * i) for i in range(n)])
-        weights = raw_w / raw_w.sum()          # normalise to sum=1
-        merged["weight"] = weights
-        merged["weight_pct"] = (weights * 100).round(1)
-
-        # Weighted median: sort by P/E, find the P/E where cumulative weight ≥ 0.5
-        pe_sorted = merged.sort_values("pe").reset_index(drop=True)
+        # ── 5. Weighted median ────────────────────────────────────────────────
+        pe_sorted = combined.sort_values("pe").reset_index(drop=True)
         pe_sorted["cum_w"] = pe_sorted["weight"].cumsum()
         weighted_median = float(pe_sorted[pe_sorted["cum_w"] >= 0.5]["pe"].iloc[0])
+        weighted_mean   = float((combined["pe"] * combined["weight"]).sum())
 
-        # Weighted mean
-        weighted_mean = float((merged["pe"] * merged["weight"]).sum())
+        n_ann = int((combined["source"] == "annual").sum())
+        n_qtr = int((combined["source"] == "quarterly").sum())
 
         return {
             "weighted_median_pe": weighted_median,
             "weighted_mean_pe":   weighted_mean,
-            "median_pe":          float(merged["pe"].median()),
-            "mean_pe":            float(merged["pe"].mean()),
-            "min_pe":             float(merged["pe"].min()),
-            "max_pe":             float(merged["pe"].max()),
-            "years_used":         n,
-            "decay_rate":         decay_rate,
-            "pe_series":          merged[["year", "pe", "weight_pct"]].copy(),
+            "median_pe":          float(combined["pe"].median()),
+            "mean_pe":            float(combined["pe"].mean()),
+            "min_pe":             float(combined["pe"].min()),
+            "max_pe":             float(combined["pe"].max()),
+            "n_annual":           n_ann,
+            "n_quarterly":        n_qtr,
+            "lambda":             LAMBDA,
+            "pe_series":          combined[["dt", "pe", "source", "weight_pct"]].copy(),
         }
     except Exception:
         return {}
@@ -692,6 +758,7 @@ def _render_portfolio_scan(
         conn,
         df_matrix: pd.DataFrame,
         pnl_map: dict | None = None,
+        key_prefix: str = "port",
 ):
     """Loops portfolio tickers, runs quick DCF, renders card rows with P&L."""
 
@@ -738,7 +805,7 @@ def _render_portfolio_scan(
 
     # ── HTML card renderer (shared) ────────────────────────────────────────────
     def _render_card(r: dict, icon: str, section: str,
-                     primary_lbl: str, secondary_lbl: str):
+                     primary_lbl: str, secondary_lbl: str, kp: str = key_prefix):
         """
         Renders a styled HTML card with coloured P&L + today's gain,
         plus a small 'Open ↗' button for navigation.
@@ -802,7 +869,7 @@ def _render_portfolio_scan(
         </div>
         """
         st.markdown(card_html, unsafe_allow_html=True)
-        if st.button("Open ↗", key=f"port_card_{r['ticker']}_{section}",
+        if st.button("Open ↗", key=f"{kp}_card_{r['ticker']}_{section}",
                      use_container_width=True):
             st.session_state["dcf_active_ticker"] = r["ticker"]
             st.session_state["_dcf_source"]       = "portfolio"
@@ -822,7 +889,7 @@ def _render_portfolio_scan(
                     f"{'below' if r['pe_premium'] < 0 else 'above'} hist. median"
                     if r.get("pe_premium") is not None else ""
                 )
-                _render_card(r, icon, section, dcf_lbl, pe_lbl)
+                _render_card(r, icon, section, dcf_lbl, pe_lbl, kp=key_prefix)
 
     def _card_row_pe(items, icon, section):
         cols = st.columns(min(len(items), 4))
@@ -838,7 +905,7 @@ def _render_portfolio_scan(
                     f"DCF: {abs(r['premium_pct']):.1f}% "
                     f"{'below' if r['premium_pct'] < 0 else 'above'}"
                 )
-                _render_card(r, icon, section, pe_lbl, dcf_lbl)
+                _render_card(r, icon, section, pe_lbl, dcf_lbl, kp=key_prefix)
 
     # ── Flagged by BOTH methods ────────────────────────────────────────────────
     if dual_under or dual_over:
@@ -997,14 +1064,19 @@ def _render_dcf_detail(ticker: str, conn, df_matrix: pd.DataFrame):
     )
     st.markdown(f"#### 🧮 Earnings Normalisation {ticker}")
 
-    # Scroll to this section if triggered from portfolio card click
+    # Scroll to this section if triggered from portfolio card click.
+    # Unique nonce forces Streamlit to re-render the iframe every time,
+    # fixing the "scrolls only once" bug caused by identical component content.
     if st.session_state.pop("_scroll_to_norm", False):
+        _scroll_nonce = st.session_state.get("_scroll_nonce", 0) + 1
+        st.session_state["_scroll_nonce"] = _scroll_nonce
         _st_components.html(
-            """
+            f"""
             <script>
+                /* nonce={_scroll_nonce} */
                 window.parent.document
                     .getElementById('earnings-normalisation-anchor')
-                    ?.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    ?.scrollIntoView({{behavior: 'smooth', block: 'start'}});
             </script>
             """,
             height=0,
@@ -1365,7 +1437,9 @@ back to today's money.
             mean_pe  = hist_pe_data["weighted_mean_pe"]
             min_pe   = hist_pe_data["min_pe"]
             max_pe   = hist_pe_data["max_pe"]
-            yrs      = hist_pe_data["years_used"]
+            n_ann    = hist_pe_data.get("n_annual", 0)
+            n_qtr    = hist_pe_data.get("n_quarterly", 0)
+            yrs      = n_ann + n_qtr   # total data points for display
             simple_median = hist_pe_data["median_pe"]
             curr_pe  = info.get("stock_p_e") or (current_price / latest_eps_val if latest_eps_val > 0 else None)
 
@@ -1384,19 +1458,19 @@ back to today's money.
                     pe_vtxt = f"OVERVALUED by {pe_premium:.1f}%"
                     pe_vsub = (f"Current ₹{current_price:,.1f} is {pe_premium:.1f}% above "
                                f"decay-weighted median P/E fair value ₹{fv_median:,.1f} "
-                               f"(weighted median {med_pe:.1f}x, simple median {simple_median:.1f}x, {yrs} yrs).")
+                               f"(weighted median {med_pe:.1f}x, simple median {simple_median:.1f}x, {n_ann}yr+{n_qtr}q).")
                 elif pe_premium < -20:
                     pe_vcls, pe_icon = "verdict-under", "🟢"
                     pe_vtxt = f"UNDERVALUED by {abs(pe_premium):.1f}%"
                     pe_vsub = (f"Current ₹{current_price:,.1f} is {abs(pe_premium):.1f}% below "
                                f"decay-weighted median P/E fair value ₹{fv_median:,.1f} "
-                               f"(weighted median {med_pe:.1f}x, simple median {simple_median:.1f}x, {yrs} yrs).")
+                               f"(weighted median {med_pe:.1f}x, simple median {simple_median:.1f}x, {n_ann}yr+{n_qtr}q).")
                 else:
                     pe_vcls, pe_icon = "verdict-fair",  "🟡"
                     pe_vtxt = f"FAIRLY VALUED ({pe_premium:+.1f}%)"
                     pe_vsub = (f"Current ₹{current_price:,.1f} is within ±20% of "
                                f"decay-weighted median P/E fair value ₹{fv_median:,.1f} "
-                               f"(weighted median {med_pe:.1f}x, simple median {simple_median:.1f}x, {yrs} yrs).")
+                               f"(weighted median {med_pe:.1f}x, simple median {simple_median:.1f}x, {n_ann}yr+{n_qtr}q).")
 
                 p1, p2 = st.columns(2)
                 p1.metric("Wtd Median P/E Fair Value", f"₹{fv_median:,.1f}")
@@ -1417,18 +1491,25 @@ back to today's money.
 
                 # Mini P/E history table
                 if "pe_series" in hist_pe_data:
-                    with st.expander("Historical P/E by Year (with decay weights)", expanded=False):
+                    with st.expander(
+                            f"Historical P/E data ({n_ann} annual + {n_qtr} quarterly TTM points)",
+                            expanded=False,
+                    ):
                         _pe_disp = hist_pe_data["pe_series"].copy()
-                        _pe_disp["year"] = _pe_disp["year"].dt.year
-                        _pe_disp["pe"]   = _pe_disp["pe"].round(1)
-                        # Rename only the columns that actually exist
-                        _col_rename = {"year": "Year", "pe": "P/E", "weight_pct": "Weight %"}
-                        _pe_disp = _pe_disp.rename(columns=_col_rename)
-                        st.dataframe(_pe_disp, use_container_width=True, hide_index=True)
+                        _pe_disp["Date"]     = _pe_disp["dt"].dt.strftime("%b %Y")
+                        _pe_disp["P/E"]      = _pe_disp["pe"].round(1)
+                        _pe_disp["Source"]   = _pe_disp["source"].str.capitalize()
+                        _pe_disp["Weight %"] = _pe_disp["weight_pct"]
+                        st.dataframe(
+                            _pe_disp[["Date", "P/E", "Source", "Weight %"]],
+                            use_container_width=True, hide_index=True,
+                        )
+                        _lam = hist_pe_data.get("lambda", 0.001)
+                        _half = round(0.693 / _lam / 365, 1)
                         st.caption(
-                            f"Decay rate = {hist_pe_data.get('decay_rate', 0.3):.1f} — "
-                            f"each year's weight grows exponentially toward the present. "
-                            f"Recent years carry significantly more influence on the weighted median."
+                            f"λ = {_lam} per day (half-life ≈ {_half} yrs). "
+                            f"Annual points cover years before the quarterly window; "
+                            f"quarterly points use TTM EPS (rolling 4-quarter sum) × quarter-end close price."
                         )
         else:
             st.info("⚠️ Insufficient price or EPS history to compute historical P/E fair value.")
@@ -1706,10 +1787,145 @@ def render():
         pass
 
     with st.expander(
-            f"📂 Portfolio DCF Scan  —  {len(portfolio_tickers)} holdings",
+            f"📂 Portfolio DCF Scan",
             expanded=bool(portfolio_tickers),
     ):
-        _render_portfolio_scan(portfolio_tickers, conn, df_matrix, pnl_map=_pnl_map)
+        _tab_holdings, _tab_manual, _tab_file = st.tabs(
+            ["📋 Current Holdings", "✏️ Manual", "📂 File Upload"]
+        )
+
+        with _tab_holdings:
+            _render_portfolio_scan(portfolio_tickers, conn, df_matrix, pnl_map=_pnl_map, key_prefix="holdings")
+
+        with _tab_manual:
+            st.markdown(
+                "<div style='font-size:0.88rem;color:#475569;margin-bottom:6px'>"
+                "Enter ticker symbols separated by commas or newlines.</div>",
+                unsafe_allow_html=True,
+            )
+            _manual_text = st.text_area(
+                "Tickers",
+                placeholder="e.g.  RELIANCE, INFY, TCS",
+                height=100,
+                key="dcf_scan_manual_text",
+                label_visibility="collapsed",
+            )
+            _manual_tickers_raw = [
+                t.strip().upper().replace(".NS", "")
+                for t in _manual_text.replace("\n", ",").split(",")
+                if t.strip()
+            ]
+            _manual_valid = [t for t in _manual_tickers_raw if t in ticker_list]
+            _manual_invalid = [t for t in _manual_tickers_raw if t and t not in ticker_list]
+
+            if _manual_tickers_raw:
+                _green_s = "background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _red_s   = "background:#fee2e2;color:#991b1b;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _vpills  = "  ".join(f"<span style='{_green_s}'>{t}</span>" for t in _manual_valid)
+                _ipills  = "  ".join(f"<span style='{_red_s}'>{t} ✗</span>" for t in _manual_invalid)
+                st.markdown(
+                    f"<div style='font-size:0.82rem;margin-bottom:4px'>{_vpills}{_ipills}</div>",
+                    unsafe_allow_html=True,
+                )
+                if _manual_invalid:
+                    st.caption(f"⚠️ {len(_manual_invalid)} ticker(s) not found in database and will be skipped.")
+
+            _run_manual = st.button(
+                f"▶ Proceed  ({len(_manual_valid)} ticker{'s' if len(_manual_valid) != 1 else ''})",
+                key="dcf_scan_manual_run",
+                disabled=not _manual_valid,
+                type="primary",
+            )
+            if _run_manual and _manual_valid:
+                st.session_state["_dcf_scan_manual_confirmed"] = _manual_valid
+            if st.session_state.get("_dcf_scan_manual_confirmed"):
+                _render_portfolio_scan(
+                    st.session_state["_dcf_scan_manual_confirmed"],
+                    conn, df_matrix, pnl_map={}, key_prefix="manual",
+                )
+
+        with _tab_file:
+            st.markdown(
+                "<div style='font-size:0.88rem;color:#475569;margin-bottom:6px'>"
+                "Upload a CSV or TXT file with a <code>ticker</code> column "
+                "(or one ticker per line). <code>.NS</code> suffix is stripped automatically.</div>",
+                unsafe_allow_html=True,
+            )
+            _uploaded = st.file_uploader(
+                "Upload file",
+                type=["csv", "txt"],
+                key="dcf_scan_file_upload",
+                label_visibility="collapsed",
+            )
+            _file_tickers_raw: list[str] = []
+            if _uploaded is not None:
+                try:
+                    import io as _io
+                    _raw_bytes = _uploaded.read()
+                    _text_content = _raw_bytes.decode("utf-8", errors="replace")
+                    # Try CSV first
+                    try:
+                        _fdf = pd.read_csv(_io.StringIO(_text_content))
+                        _fdf.columns = [c.strip().lower() for c in _fdf.columns]
+                        if "ticker" in _fdf.columns:
+                            _file_tickers_raw = (
+                                _fdf["ticker"]
+                                .dropna()
+                                .astype(str)
+                                .str.strip()
+                                .str.upper()
+                                .str.replace(r"\.NS$", "", regex=True)
+                                .tolist()
+                            )
+                        else:
+                            # No ticker column — use first column
+                            _first_col = _fdf.iloc[:, 0]
+                            _file_tickers_raw = (
+                                _first_col.dropna()
+                                .astype(str)
+                                .str.strip()
+                                .str.upper()
+                                .str.replace(r"\.NS$", "", regex=True)
+                                .tolist()
+                            )
+                    except Exception:
+                        # Fallback: one ticker per line
+                        _file_tickers_raw = [
+                            ln.strip().upper().replace(".NS", "")
+                            for ln in _text_content.splitlines()
+                            if ln.strip()
+                        ]
+                except Exception as _e:
+                    st.error(f"Could not read file: {_e}")
+
+            _file_valid   = [t for t in _file_tickers_raw if t in ticker_list]
+            _file_invalid = [t for t in _file_tickers_raw if t and t not in ticker_list]
+
+            if _file_tickers_raw:
+                _green_s = "background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _red_s   = "background:#fee2e2;color:#991b1b;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _vpills  = "  ".join(f"<span style='{_green_s}'>{t}</span>" for t in _file_valid)
+                _ipills  = "  ".join(f"<span style='{_red_s}'>{t} ✗</span>" for t in _file_invalid)
+                st.markdown(
+                    f"<div style='font-size:0.82rem;margin-bottom:4px'>{_vpills}{_ipills}</div>",
+                    unsafe_allow_html=True,
+                )
+                if _file_invalid:
+                    st.caption(f"⚠️ {len(_file_invalid)} ticker(s) not found in database and will be skipped.")
+
+            _run_file = st.button(
+                f"▶ Proceed  ({len(_file_valid)} ticker{'s' if len(_file_valid) != 1 else ''})",
+                key="dcf_scan_file_run",
+                disabled=not _file_valid,
+                type="primary",
+            )
+            if _run_file and _file_valid:
+                st.session_state["_dcf_scan_file_confirmed"] = _file_valid
+            if st.session_state.get("_dcf_scan_file_confirmed"):
+                _render_portfolio_scan(
+                    st.session_state["_dcf_scan_file_confirmed"],
+                    conn, df_matrix, pnl_map={}, key_prefix="file",
+                )
 
     # ── Stock selector ────────────────────────────────────────────────────────
     st.markdown("---")

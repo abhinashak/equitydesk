@@ -49,6 +49,33 @@ def _score_colour(score: int) -> str:
     return "background-color:rgba(220,38,38,0.13)"
 
 
+
+def _recommendation(q: int, v: int, t: int, tech: int) -> str:
+    """
+    Derive a one-line textual recommendation from the four gate scores.
+
+    Priority ladder (highest conviction first):
+      Strong Buy   — Quality ≥70 AND Valuation ≥70 AND (Timing OR Technical ≥60)
+      Buy          — Quality ≥70 AND Valuation ≥40 AND at least one of T/Tech ≥40
+      Accumulate   — Quality ≥70 but Valuation borderline (40–69), wait for better price
+      Watch        — Quality ≥40 but Valuation or Timing not confirmed yet
+      Avoid        — Quality <40 (fundamentals weak regardless of price)
+      Overvalued   — Quality ≥70 but Valuation <40 (good business, wrong price)
+    """
+    total = q + v + t + tech
+    if q >= 70 and v >= 70 and (t >= 60 or tech >= 60):
+        return "⭐ Strong Buy"
+    if q >= 70 and v >= 40 and (t >= 40 or tech >= 40):
+        return "✅ Buy"
+    if q >= 70 and v >= 40:
+        return "🟡 Accumulate"
+    if q >= 70 and v < 40:
+        return "🔴 Overvalued"
+    if q >= 40:
+        return "👀 Watch"
+    return "❌ Avoid"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # PORTFOLIO GATE MATRIX
 # ──────────────────────────────────────────────────────────────────────────────
@@ -86,7 +113,7 @@ SCORE_COLS = [
 ]
 
 
-def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFrame):
+def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFrame, key_prefix: str = "pm"):
     if not portfolio_tickers:
         st.info("No portfolio holdings matched the matrix. Connect your broker or add holdings.")
         return
@@ -106,6 +133,8 @@ def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFra
         # Score columns
         for short, col in SCORE_COLS:
             row[short] = int(r[col]) if pd.notna(r.get(col)) else 0
+        # Recommendation column
+        row["Rec"] = _recommendation(row["Q"], row["V"], row["T"], row["Tech"])
         # Gate columns
         for lbl, pos_c, neg_c in GATE_COLS:
             row[lbl] = _gate_cell(bool(r.get(pos_c, False)), bool(r.get(neg_c, False)))
@@ -114,6 +143,15 @@ def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFra
     disp = pd.DataFrame(records).set_index("Ticker")
 
     # Styler — colour the score columns
+    _REC_COLOUR = {
+        "⭐ Strong Buy":  "background-color:rgba(22,163,74,0.25);font-weight:600",
+        "✅ Buy":         "background-color:rgba(22,163,74,0.13);font-weight:600",
+        "🟡 Accumulate": "background-color:rgba(202,138,4,0.15)",
+        "👀 Watch":       "background-color:rgba(148,163,184,0.18)",
+        "🔴 Overvalued":  "background-color:rgba(220,38,38,0.13)",
+        "❌ Avoid":       "background-color:rgba(220,38,38,0.20);font-weight:600",
+    }
+
     def _style(df):
         styles = pd.DataFrame("", index=df.index, columns=df.columns)
         for short, _ in SCORE_COLS:
@@ -121,6 +159,8 @@ def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFra
                 styles[short] = df[short].apply(
                     lambda v: _score_colour(int(v)) if str(v).lstrip("-").isdigit() else ""
                 )
+        if "Rec" in df.columns:
+            styles["Rec"] = df["Rec"].apply(lambda v: _REC_COLOUR.get(v, ""))
         return styles
 
     st.dataframe(
@@ -130,7 +170,7 @@ def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFra
     )
     st.caption(
         "🟩 PASS &nbsp; 🟥 FAIL &nbsp; ⬜ N/A &nbsp;|&nbsp; "
-        "Q = Quality · V = Valuation · T = Timing · Tech = Technical &nbsp;|&nbsp; "
+        "Q = Quality · V = Valuation · T = Timing · Tech = Technical · Rec = Recommendation &nbsp;|&nbsp; "
         "Click a row to see full breakdown below."
     )
 
@@ -149,7 +189,7 @@ def _render_portfolio_matrix(portfolio_tickers: list[str], df_matrix: pd.DataFra
         with btn_cols[i % 8]:
             if st.button(
                     tkr,
-                    key=f"pm_btn_{tkr}",
+                    key=f"{key_prefix}_btn_{tkr}",
                     help=f"{rec['Company']} · Q:{rec['Q']} V:{rec['V']} T:{rec['T']} Tech:{rec['Tech']}",
                     use_container_width=True,
             ):
@@ -218,11 +258,243 @@ def render():
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION A — Portfolio gate matrix
     # ══════════════════════════════════════════════════════════════════════════
-    with st.expander(
-            f"📂 Portfolio Gate Matrix — {len(portfolio_tkrs)} holdings",
-            expanded=bool(portfolio_tkrs),
-    ):
-        _render_portfolio_matrix(portfolio_tkrs, df_matrix)
+    with st.expander("📂 Portfolio Gate Matrix", expanded=bool(portfolio_tkrs)):
+        _tab_holdings, _tab_manual, _tab_file = st.tabs(
+            ["📋 Current Holdings", "✏️ Manual", "📂 File Upload"]
+        )
+
+        with _tab_holdings:
+            _render_portfolio_matrix(portfolio_tkrs, df_matrix, key_prefix="pm_holdings")
+
+        with _tab_manual:
+            st.markdown(
+                "<div style='font-size:0.88rem;color:#475569;margin-bottom:6px'>"
+                "Enter ticker symbols separated by commas or newlines.</div>",
+                unsafe_allow_html=True,
+            )
+            _man_text = st.text_area(
+                "Tickers",
+                placeholder="e.g.  RELIANCE, INFY, TCS",
+                height=100,
+                key="gates_scan_manual_text",
+                label_visibility="collapsed",
+            )
+            _man_raw = [
+                t.strip().upper().replace(".NS", "")
+                for t in _man_text.replace("\n", ",").split(",")
+                if t.strip()
+            ]
+            _man_valid   = [t for t in _man_raw if t in ticker_list]
+            _man_invalid = [t for t in _man_raw if t and t not in ticker_list]
+
+            if _man_raw:
+                _gs = "background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _rs = "background:#fee2e2;color:#991b1b;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _vp = "  ".join(f"<span style='{_gs}'>{t}</span>" for t in _man_valid)
+                _ip = "  ".join(f"<span style='{_rs}'>{t} ✗</span>" for t in _man_invalid)
+                st.markdown(
+                    f"<div style='font-size:0.82rem;margin-bottom:4px'>{_vp}{_ip}</div>",
+                    unsafe_allow_html=True,
+                )
+                if _man_invalid:
+                    st.caption(f"⚠️ {len(_man_invalid)} ticker(s) not found in database and will be skipped.")
+
+            if st.button(
+                    f"▶ Proceed  ({len(_man_valid)} ticker{'s' if len(_man_valid) != 1 else ''})",
+                    key="gates_scan_manual_run",
+                    disabled=not _man_valid,
+                    type="primary",
+            ):
+                st.session_state["_gates_scan_manual_confirmed"] = _man_valid
+
+            if st.session_state.get("_gates_scan_manual_confirmed"):
+                _render_portfolio_matrix(
+                    st.session_state["_gates_scan_manual_confirmed"],
+                    df_matrix,
+                    key_prefix="pm_manual",
+                )
+
+        with _tab_file:
+            st.markdown(
+                "<div style='font-size:0.88rem;color:#475569;margin-bottom:6px'>"
+                "Upload a CSV or TXT file with a <code>ticker</code> column "
+                "(or one ticker per line). <code>.NS</code> suffix is stripped automatically.</div>",
+                unsafe_allow_html=True,
+            )
+            _uploaded = st.file_uploader(
+                "Upload file",
+                type=["csv", "txt"],
+                key="gates_scan_file_upload",
+                label_visibility="collapsed",
+            )
+            _file_raw: list[str] = []
+            if _uploaded is not None:
+                try:
+                    import io as _io
+                    _text = _uploaded.read().decode("utf-8", errors="replace")
+                    try:
+                        _fdf = pd.read_csv(_io.StringIO(_text))
+                        _fdf.columns = [c.strip().lower() for c in _fdf.columns]
+                        _col = "ticker" if "ticker" in _fdf.columns else _fdf.columns[0]
+                        _file_raw = (
+                            _fdf[_col].dropna().astype(str)
+                            .str.strip().str.upper()
+                            .str.replace(r"\.NS$", "", regex=True).tolist()
+                        )
+                    except Exception:
+                        _file_raw = [
+                            ln.strip().upper().replace(".NS", "")
+                            for ln in _text.splitlines() if ln.strip()
+                        ]
+                except Exception as _e:
+                    st.error(f"Could not read file: {_e}")
+
+            _file_valid   = [t for t in _file_raw if t in ticker_list]
+            _file_invalid = [t for t in _file_raw if t and t not in ticker_list]
+
+            if _file_raw:
+                _gs = "background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _rs = "background:#fee2e2;color:#991b1b;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block"
+                _vp = "  ".join(f"<span style='{_gs}'>{t}</span>" for t in _file_valid)
+                _ip = "  ".join(f"<span style='{_rs}'>{t} ✗</span>" for t in _file_invalid)
+                st.markdown(
+                    f"<div style='font-size:0.82rem;margin-bottom:4px'>{_vp}{_ip}</div>",
+                    unsafe_allow_html=True,
+                )
+                if _file_invalid:
+                    st.caption(f"⚠️ {len(_file_invalid)} ticker(s) not found in database and will be skipped.")
+
+            if st.button(
+                    f"▶ Proceed  ({len(_file_valid)} ticker{'s' if len(_file_valid) != 1 else ''})",
+                    key="gates_scan_file_run",
+                    disabled=not _file_valid,
+                    type="primary",
+            ):
+                st.session_state["_gates_scan_file_confirmed"] = _file_valid
+
+            if st.session_state.get("_gates_scan_file_confirmed"):
+                _render_portfolio_matrix(
+                    st.session_state["_gates_scan_file_confirmed"],
+                    df_matrix,
+                    key_prefix="pm_file",
+                )
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SECTION A2 — Buy Zone (full universe scan)
+    # ══════════════════════════════════════════════════════════════════════════
+    with st.expander("🛒 Buy Zone — Full Universe Scan", expanded=True):
+        st.markdown(
+            "<div style='font-size:0.88rem;color:#475569;margin-bottom:10px'>"
+            "Stocks from the <b>complete ticker universe</b> meeting: "
+            "<code>Quality ≥ 70</code> &nbsp;·&nbsp; "
+            "<code>Valuation ≥ 40</code> &nbsp;·&nbsp; "
+            "<code>Timing ≥ 40</code> <b>or</b> <code>Technical ≥ 40</code>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Filter
+        _bz = df_matrix.copy()
+        _q_col   = "Quality Score"
+        _v_col   = "Valuation Score"
+        _t_col   = "Timing Score"
+        _tec_col = "Technical Score"
+
+        for _c in [_q_col, _v_col, _t_col, _tec_col]:
+            _bz[_c] = pd.to_numeric(_bz[_c], errors="coerce").fillna(0)
+
+        _bz_filtered = _bz[
+            (_bz[_q_col]   >= 70) &
+            (_bz[_v_col]   >= 40) &
+            ((_bz[_t_col]  >= 40) | (_bz[_tec_col] >= 40))
+            ].copy()
+
+        if _bz_filtered.empty:
+            st.info("No stocks currently meet all Buy Zone criteria.")
+        else:
+            # Sort: Strong Buy first, then by Q+V desc
+            _bz_filtered["_total"] = (
+                    _bz_filtered[_q_col] + _bz_filtered[_v_col] +
+                    _bz_filtered[_t_col] + _bz_filtered[_tec_col]
+            )
+            _bz_filtered = _bz_filtered.sort_values("_total", ascending=False)
+
+            # Build display records
+            _bz_records = []
+            for _, _r in _bz_filtered.iterrows():
+                _q   = int(_r[_q_col])
+                _v   = int(_r[_v_col])
+                _t   = int(_r[_t_col])
+                _tec = int(_r[_tec_col])
+                _rec = _recommendation(_q, _v, _t, _tec)
+                _row = {
+                    "Ticker":  _r["Ticker"],
+                    "Company": str(_r.get("Company", _r["Ticker"]))[:22],
+                    "Q":   _q,
+                    "V":   _v,
+                    "T":   _t,
+                    "Tech": _tec,
+                    "Rec": _rec,
+                }
+                for _lbl, _pos_c, _neg_c in GATE_COLS:
+                    _row[_lbl] = _gate_cell(bool(_r.get(_pos_c, False)), bool(_r.get(_neg_c, False)))
+                _bz_records.append(_row)
+
+            _bz_disp = pd.DataFrame(_bz_records).set_index("Ticker")
+
+            _BZ_REC_COLOUR = {
+                "⭐ Strong Buy":  "background-color:rgba(22,163,74,0.25);font-weight:600",
+                "✅ Buy":         "background-color:rgba(22,163,74,0.13);font-weight:600",
+                "🟡 Accumulate": "background-color:rgba(202,138,4,0.15)",
+            }
+
+            def _bz_style(df):
+                styles = pd.DataFrame("", index=df.index, columns=df.columns)
+                for _sc in ["Q", "V", "T", "Tech"]:
+                    if _sc in df.columns:
+                        styles[_sc] = df[_sc].apply(
+                            lambda v: _score_colour(int(v)) if str(v).lstrip("-").isdigit() else ""
+                        )
+                if "Rec" in df.columns:
+                    styles["Rec"] = df["Rec"].apply(lambda v: _BZ_REC_COLOUR.get(v, ""))
+                return styles
+
+            st.markdown(
+                f"<div style='font-size:0.9rem;font-weight:600;color:#166534;"
+                f"margin-bottom:6px'>✅ {len(_bz_records)} stock(s) in Buy Zone</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.dataframe(
+                _bz_disp.style.apply(_bz_style, axis=None),
+                use_container_width=True,
+                height=min(80 + len(_bz_records) * 38, 600),
+            )
+            st.caption(
+                "🟩 PASS &nbsp; 🟥 FAIL &nbsp; ⬜ N/A &nbsp;|&nbsp; "
+                "Sorted by combined score (Q+V+T+Tech) descending. "
+                "Q = Quality · V = Valuation · T = Timing · Tech = Technical"
+            )
+
+            # Quick-select strip
+            st.markdown(
+                "<div style='font-size:0.78rem;color:#64748b;margin:6px 0 4px'>Quick select:</div>",
+                unsafe_allow_html=True,
+            )
+            _bz_btn_cols = st.columns(min(len(_bz_records), 8))
+            for _i, _rec in enumerate(_bz_records):
+                _tkr = _rec["Ticker"]
+                with _bz_btn_cols[_i % 8]:
+                    if st.button(
+                            _tkr,
+                            key=f"bz_btn_{_tkr}",
+                            help=f"{_rec['Company']} · Q:{_rec['Q']} V:{_rec['V']} T:{_rec['T']} Tech:{_rec['Tech']} · {_rec['Rec']}",
+                            use_container_width=True,
+                    ):
+                        st.session_state["selected_asset"] = _tkr
+                        st.session_state["_gates_source"]  = "all"
+                        st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION B — Pre-flight diagnostics
