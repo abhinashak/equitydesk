@@ -289,7 +289,85 @@ def render() -> None:
     _init_panels()
 
     # ── Portfolio symbols ──────────────────────────────────────────────────────
-    portfolio_syms: list[str] = _load_portfolio_syms()
+    # ── Portfolio symbols — 3-way selector ───────────────────────────────────
+    if "portfolio_syms" not in st.session_state:
+        st.session_state["portfolio_syms"] = _load_portfolio_syms()
+
+    with st.expander("🗂️ Choose your portfolio", expanded=True):
+        tab_hold, tab_manual, tab_file = st.tabs(
+            ["📋 Current Holdings", "✏️ Manual", "📂 File Upload"]
+        )
+
+        # ── Tab 1: Current Holdings ──────────────────────────────────────────
+        with tab_hold:
+            hold_syms = _load_portfolio_syms()
+            if hold_syms:
+                st.caption(f"{len(hold_syms)} ticker(s) loaded from broker session.")
+                st.code("\n".join(hold_syms), language=None)
+            else:
+                st.info("No holdings found in session.")
+            if st.button("▶ Use Current Holdings",
+                         disabled=not hold_syms, key="port_use_holdings"):
+                st.session_state["portfolio_syms"] = hold_syms
+                st.success(f"✅ {len(hold_syms)} ticker(s) loaded.")
+
+        # ── Tab 2: Manual ────────────────────────────────────────────────────
+        with tab_manual:
+            st.caption("Enter ticker symbols separated by commas or newlines.")
+            manual_txt = st.text_area(
+                "Tickers", height=120, key="port_manual_txt",
+                label_visibility="collapsed",
+                placeholder="e.g.  RELIANCE, INFY, TCS",
+            )
+            import re as _re
+            manual_syms = [s.strip().upper()
+                           for s in _re.split(r"[,\n;]+", manual_txt)
+                           if s.strip()]
+            manual_syms = list(dict.fromkeys(manual_syms))  # dedupe, preserve order
+            if st.button(f"▶ Proceed ({len(manual_syms)} tickers)",
+                         disabled=not manual_syms, key="port_use_manual"):
+                st.session_state["portfolio_syms"] = manual_syms
+                st.success(f"✅ {len(manual_syms)} ticker(s) loaded.")
+
+        # ── Tab 3: File Upload ───────────────────────────────────────────────
+        with tab_file:
+            st.caption("Upload a CSV or TXT file with a `ticker` column.")
+            uploaded = st.file_uploader(
+                "Drop file", type=["csv", "txt"], key="port_file_upload",
+                label_visibility="collapsed",
+            )
+            file_syms: list[str] = []
+            if uploaded:
+                import io as _io, json as _json
+                raw = uploaded.read().decode("utf-8", errors="replace")
+                if uploaded.name.lower().endswith(".csv"):
+                    import csv as _csv
+                    reader = _csv.DictReader(_io.StringIO(raw))
+                    col = next((c for c in (reader.fieldnames or [])
+                                if "ticker" in c.lower()), None)
+                    col = col or (reader.fieldnames[0] if reader.fieldnames else None)
+                    if col:
+                        file_syms = list(dict.fromkeys(
+                            r[col].strip().upper() for r in reader if r[col].strip()
+                        ))
+                else:
+                    import re as _re2
+                    file_syms = list(dict.fromkeys(
+                        s.strip().upper()
+                        for s in _re2.split(r"[,\n;]+", raw) if s.strip()
+                    ))
+                if file_syms:
+                    st.caption(f"{len(file_syms)} ticker(s) parsed from {uploaded.name}.")
+                    st.code("\n".join(file_syms), language=None)
+                else:
+                    st.warning("No tickers found in file.")
+            if st.button(f"▶ Proceed ({len(file_syms)} tickers)",
+                         disabled=not file_syms, key="port_use_file"):
+                st.session_state["portfolio_syms"] = file_syms
+                st.success(f"✅ {len(file_syms)} ticker(s) loaded.")
+
+    portfolio_syms: list[str] = st.session_state["portfolio_syms"]
+
 
     init_error = _check_init_sql()
     if init_error:

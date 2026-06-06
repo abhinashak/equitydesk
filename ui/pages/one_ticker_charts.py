@@ -394,55 +394,108 @@ def render():
     # ==============================================================================
     ticker_list = df_matrix['Ticker'].tolist()
 
-    # ── Prepend portfolio holdings to the selector if available ───────────────
-    _portfolio_syms = []
-    try:
-        _all_holdings = st.session_state.get("all_holdings") or {}
-        _excl = {s.upper() for s in (st.session_state.get("excluded_symbols") or [])}
-        for _holdings in _all_holdings.values():
-            for _h in _holdings:
-                _sym = _h.get("tradingsymbol", "")
-                if _sym and _sym.upper() not in _excl and _sym not in _portfolio_syms:
-                    _portfolio_syms.append(_sym)
-    except Exception:
-        pass
+    # ── Helper: load portfolio syms from session ───────────────────────────────
+    def _get_portfolio_syms() -> list[str]:
+        syms: list[str] = []
+        try:
+            _all_holdings = st.session_state.get("all_holdings") or {}
+            _excl = {s.upper() for s in (st.session_state.get("excluded_symbols") or [])}
+            for _holdings in _all_holdings.values():
+                for _h in _holdings:
+                    _sym = _h.get("tradingsymbol", "")
+                    if _sym and _sym.upper() not in _excl and _sym not in syms:
+                        syms.append(_sym)
+        except Exception:
+            pass
+        return syms
 
-    # Merge: portfolio tickers first (if they exist in df_matrix), then the rest
-    _port_in_matrix = [s for s in _portfolio_syms if s in ticker_list]
-    _rest           = sorted(t for t in ticker_list if t not in _port_in_matrix)
+    # ── Ticker shortcut pills: My Stocks / File Upload ─────────────────────────
+    import io as _io, csv as _csv, re as _re
+
+    _port_syms_raw = _get_portfolio_syms()
+    _port_in_matrix = [s for s in _port_syms_raw if s in ticker_list]
+
+    with st.expander("⚡ Quick-select tickers", expanded=True):
+        qs_tab_my, qs_tab_file = st.tabs(["📋 My Stocks", "📂 File Upload"])
+
+        # Tab 1 — My Stocks (current holdings)
+        with qs_tab_my:
+            if _port_in_matrix:
+                st.caption("Click a ticker to jump straight to it:")
+                cols_per_row = 6
+                for row_start in range(0, len(_port_in_matrix), cols_per_row):
+                    row_tickers = _port_in_matrix[row_start:row_start + cols_per_row]
+                    btn_cols = st.columns(len(row_tickers))
+                    for col, tk in zip(btn_cols, row_tickers):
+                        with col:
+                            if st.button(tk, key=f"qs_my_{tk}", use_container_width=True):
+                                st.session_state["selected_asset"] = tk
+                                st.rerun()
+            else:
+                st.info("No holdings found in session. Connect your broker account.")
+
+        # Tab 2 — File Upload
+        with qs_tab_file:
+            st.caption("Upload a CSV or TXT with a `ticker` column (or one ticker per line).")
+            qs_uploaded = st.file_uploader(
+                "Drop file", type=["csv", "txt"],
+                key="qs_file_upload", label_visibility="collapsed",
+            )
+            # Parse and persist tickers to session state so they survive rerun
+            if qs_uploaded:
+                raw = qs_uploaded.read().decode("utf-8", errors="replace")
+                if qs_uploaded.name.lower().endswith(".csv"):
+                    reader = _csv.DictReader(_io.StringIO(raw))
+                    col = next((c for c in (reader.fieldnames or []) if "ticker" in c.lower()), None)
+                    col = col or (reader.fieldnames[0] if reader.fieldnames else None)
+                    parsed = []
+                    if col:
+                        for r in reader:
+                            val = r[col].strip().upper()
+                            # Strip exchange suffix e.g. .NS so it matches ticker_list
+                            val = val.split(".")[0]
+                            if val and val not in parsed:
+                                parsed.append(val)
+                else:
+                    parsed = list(dict.fromkeys(
+                        s.strip().upper().split(".")[0]
+                        for s in _re.split(r"[,\n;]+", raw) if s.strip()
+                    ))
+                st.session_state["qs_file_syms"] = [s for s in parsed if s in ticker_list]
+
+            _file_syms: list[str] = st.session_state.get("qs_file_syms", [])
+
+            if _file_syms:
+                st.caption(f"{len(_file_syms)} ticker(s) found. Click to select:")
+                cols_per_row = 6
+                for row_start in range(0, len(_file_syms), cols_per_row):
+                    row_tickers = _file_syms[row_start:row_start + cols_per_row]
+                    btn_cols = st.columns(len(row_tickers))
+                    for col, tk in zip(btn_cols, row_tickers):
+                        with col:
+                            if st.button(tk, key=f"qs_file_{tk}", use_container_width=True):
+                                st.session_state["selected_asset"] = tk
+                                st.rerun()
+            elif qs_uploaded:
+                st.warning("No matching tickers found in the matrix. Check the file has a `ticker` column.")
+
+    # ── All Stocks dropdown ────────────────────────────────────────────────────
+    _rest               = sorted(t for t in ticker_list if t not in _port_in_matrix)
     ticker_list_display = _port_in_matrix + _rest
 
     saved       = st.session_state.get("selected_asset")
     default_idx = ticker_list_display.index(saved) if saved in ticker_list_display else 0
 
-    st.markdown("### 📊 Chart Explorer")
+    st.markdown("### 🔬 Fundamental Analysis")
 
     sel_col, cmp_col, met_col = st.columns([1, 2, 2])
 
     with sel_col:
-        my_col, all_col = st.columns(2)
-
-        my_default  = _port_in_matrix[0] if _port_in_matrix else None
-        my_selected = None
-        if _port_in_matrix:
-            with my_col:
-                my_selected = st.selectbox(
-                    "My Stocks:", _port_in_matrix,
-                    index=(_port_in_matrix.index(saved) if saved in _port_in_matrix else 0),
-                    key="my_stock_select"
-                )
-
-        with (all_col if _port_in_matrix else my_col):
-            all_selected = st.selectbox(
-                "All Stocks:", ticker_list_display, index=default_idx,
-                key="selected_asset"
-            )
-
-        # My Stocks takes priority if the user touched it last
-        if my_selected and st.session_state.get("my_stock_select") == my_selected:
-            selected = my_selected
-        else:
-            selected = all_selected
+        all_selected = st.selectbox(
+            "All Stocks:", ticker_list_display, index=default_idx,
+            key="selected_asset"
+        )
+        selected = all_selected
 
     with cmp_col:
         compare_options = [t for t in ticker_list_display if t != selected]
