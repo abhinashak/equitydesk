@@ -364,19 +364,25 @@ def render() -> None:
     # bulk_acct is chosen in the UI; fall back to the first available account.
     order_account = bulk_acct or (acct_opts[0] if acct_opts else "")
 
-    # ── Portfolio qty map  {ticker: qty_held}  for the selected account ───
-    # Source: all_holdings keyed by account name.
+    # ── Portfolio sellable qty map  {ticker: sellable_qty} ─────────────────
+    # Kite holdings fields:
+    #   quantity        — total qty held (includes T1 unsettled)
+    #   t1_quantity     — qty bought today, not yet settled (cannot sell CNC)
+    #   authorised_quantity — qty pending demat authorisation (cannot sell)
+    # Sellable = quantity - t1_quantity - authorised_quantity
     portfolio_qty_map: dict[str, int] = {}
     all_holdings = st.session_state.get("all_holdings") or {}
-    # Prefer the selected account; if absent, merge all accounts (conservative).
     holdings_src = (all_holdings.get(order_account) or
                     [h for hlds in all_holdings.values() for h in hlds])
     for h in holdings_src:
         sym = (h.get("tradingsymbol") or h.get("ticker") or "").upper()
-        if sym:
-            portfolio_qty_map[sym] = portfolio_qty_map.get(sym, 0) + int(
-                h.get("quantity") or h.get("qty") or 0
-            )
+        if not sym:
+            continue
+        total_qty      = int(h.get("quantity")             or 0)
+        t1_qty         = int(h.get("t1_quantity")          or 0)
+        authorised_qty = int(h.get("authorised_quantity")  or 0)
+        sellable       = max(0, total_qty - t1_qty - authorised_qty)
+        portfolio_qty_map[sym] = portfolio_qty_map.get(sym, 0) + sellable
 
     # ── Open-order qty map from Exchange Orders (both BUY and SELL) ────────
     # Source: exchange orders fetched in Part 1 that are still OPEN/PLACED.
@@ -422,10 +428,11 @@ def render() -> None:
         if side == "SELL":
             # COMPLETE + OPEN on exchange = total already sent
             already_sold  = exch_sent_sell_map.get(tk, 0)
-            portfolio_qty = portfolio_qty_map.get(tk, ask_qty)
+            # sellable = held qty minus T1 (unsettled) and unauthorised qty
+            sellable_qty  = portfolio_qty_map.get(tk, 0)
             rebalance_remaining = max(0, ask_qty - already_sold)
-            # Never sell more than what we hold
-            residual = max(0, min(rebalance_remaining, portfolio_qty))
+            # Never sell more than what is actually sellable today
+            residual = max(0, min(rebalance_remaining, sellable_qty))
         else:  # BUY
             # COMPLETE + OPEN on exchange = total already sent
             already_bought = exch_sent_buy_map.get(tk, 0)
@@ -472,6 +479,7 @@ def render() -> None:
             "Ask Qty":      ask_qty,
             "Plan Qty":     ask_qty,       # kept for display compatibility (always positive)
             "Filled":       already_sold if side == "SELL" else already_bought,
+            "Sellable":     sellable_qty  if side == "SELL" else "",
             "Send Qty":     residual,
             "LTP ₹":        ltp,
             "Exec Price ₹": exec_price,
@@ -577,23 +585,27 @@ def render() -> None:
     edited_builder = st.data_editor(
         builder_df[[
             "✓", "Account", "Ticker", "Exchange", "Side",
-            "Ask Qty", "Plan Qty", "Filled", "Send Qty",
+            "Ask Qty", "Plan Qty", "Filled", "Sellable", "Send Qty",
             "LTP ₹", "Exec Price ₹", "Send Value ₹",
             "Day Fluc%", "Order Type", "Tiers",
         ]],
         use_container_width=True, hide_index=True,
         disabled=["Account", "Ticker", "Exchange", "Side",
-                  "Ask Qty", "Plan Qty", "Filled", "LTP ₹", "Send Value ₹",
+                  "Ask Qty", "Plan Qty", "Filled", "Sellable", "LTP ₹", "Send Value ₹",
                   "Day Fluc%", "Tiers"],
         column_config={
-            "✓":            st.column_config.CheckboxColumn("Send", width="small"),
-            "Account":      st.column_config.TextColumn("Account", width="medium"),
-            "Ask Qty":      st.column_config.NumberColumn("Ask Qty",       width="small"),
-            "LTP ₹":        st.column_config.NumberColumn("LTP ₹",        format="₹%.2f", width="small"),
+            "✓":            st.column_config.CheckboxColumn("Send",     width="small"),
+            "Account":      st.column_config.TextColumn("Account",      width="medium"),
+            "Ask Qty":      st.column_config.NumberColumn("Ask Qty",    width="small"),
+            "Filled":       st.column_config.NumberColumn("Sent",       width="small",
+                                                          help="COMPLETE + OPEN orders already on exchange"),
+            "Sellable":     st.column_config.TextColumn("Sellable",     width="small",
+                                                        help="Qty available to sell today (excl. T1 & unauthorised)"),
+            "LTP ₹":        st.column_config.NumberColumn("LTP ₹",     format="₹%.2f", width="small"),
             "Exec Price ₹": st.column_config.NumberColumn("Exec Price ₹", format="₹%.2f", width="small"),
-            "Send Value ₹": st.column_config.NumberColumn("Value ₹",      format="₹%.0f", width="small"),
-            "Day Fluc%":    st.column_config.NumberColumn("Fluc%",         format="%.3f%%", width="small"),
-            "Send Qty":     st.column_config.NumberColumn("Send Qty",      step=1,          width="small"),
+            "Send Value ₹": st.column_config.NumberColumn("Value ₹",   format="₹%.0f", width="small"),
+            "Day Fluc%":    st.column_config.NumberColumn("Fluc%",      format="%.3f%%", width="small"),
+            "Send Qty":     st.column_config.NumberColumn("Send Qty",   step=1, width="small"),
             "Order Type":   st.column_config.SelectboxColumn(
                 "Type", options=["LIMIT", "MARKET"], width="small"),
             "Tiers":        st.column_config.TextColumn("Tier Preview", width="large"),

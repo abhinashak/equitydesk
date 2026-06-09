@@ -621,13 +621,62 @@ def render():
     # ── PORTFOLIO TABLE (after movement) ─────────────────────────────────────
     st.subheader("Portfolio Holdings")
 
+    # ── Absolute Return: driven by table checkboxes ───────────────────────────
+    all_syms = df["Symbol"].tolist()
+
+    # Initialise session state — default all selected
+    if "abs_ret_selected" not in st.session_state:
+        st.session_state.abs_ret_selected = all_syms.copy()
+
+    # Select All / Clear All buttons
+    _btn_col1, _btn_col2, _spacer = st.columns([1, 1, 8])
+    with _btn_col1:
+        if st.button("✅ Select All", use_container_width=True, key="abs_ret_select_all"):
+            st.session_state.abs_ret_selected = all_syms.copy()
+            st.rerun()
+    with _btn_col2:
+        if st.button("☐ Clear All", use_container_width=True, key="abs_ret_clear_all"):
+            st.session_state.abs_ret_selected = []
+            st.rerun()
+
+    abs_ret_selected = st.session_state.abs_ret_selected
+
+    # ── Compute & display absolute return for selected stocks ─────────────────
+    if abs_ret_selected:
+        sel_df = df[df["Symbol"].isin(abs_ret_selected)]
+        sel_invested   = (sel_df["Total Qty"] * sel_df.apply(
+            lambda r: ticker_data.get(r["Symbol"], {}).get("avg_cost", 0), axis=1
+        )).sum()
+        sel_curr_value = sel_df["Curr Value"].sum()
+        sel_abs_pnl    = sel_curr_value - sel_invested
+        sel_abs_pct    = (sel_abs_pnl / sel_invested * 100) if sel_invested else 0.0
+
+        _ar1, _ar2, _ar3, _ar4 = st.columns(4)
+        _ar1.metric("Selected Holdings", len(abs_ret_selected))
+        _ar2.metric("Invested (Selected)", f"₹{sel_invested:,.0f}")
+        _ar3.metric("Current Value (Selected)", f"₹{sel_curr_value:,.0f}")
+        _ar4.metric(
+            "Absolute Return",
+            f"₹{sel_abs_pnl:+,.0f}",
+            f"{sel_abs_pct:+.2f}%",
+            delta_color="normal" if sel_abs_pnl >= 0 else "inverse",
+        )
+    else:
+        st.info("Select at least one stock above to see the Absolute Return.")
+
+    st.divider()
+
     _display_cols_quick = (
-            ["Symbol", "Industry", "Market Cap", "Portfolio Wt%", "Total Qty"]
+            ["Inclusion", "Symbol", "Industry", "Market Cap", "Portfolio Wt%", "Total Qty"]
             + account_names
             #+ ["Last Price", "Curr Value", "Today's Gain", "Today Gain%", "Day Chg%"]
             + ["Last Price", "Curr Value", "Today's Gain", "Day Chg%", "P&L%"]
     )
-    _display_cols_quick = [c for c in _display_cols_quick if c in df.columns]
+
+    # Add the Send checkbox column — True if symbol is in abs_ret_selected
+    df_display = df.copy()
+    df_display["Inclusion"] = df_display["Symbol"].isin(st.session_state.abs_ret_selected)
+    _display_cols_quick = [c for c in _display_cols_quick if c in df_display.columns]
 
     def _row_style_quick(row):
         if row["Symbol"] == winner_sym:
@@ -637,19 +686,29 @@ def render():
         return [""] * len(row)
 
     _col_cfg_quick = {
+        "Inclusion":          st.column_config.CheckboxColumn(label="Inclusion", help="Include in Absolute Return"),
         "Last Price":    st.column_config.NumberColumn(format="₹%.2f"),
         "Curr Value":    st.column_config.NumberColumn(format="₹%.0f"),
         "Today's Gain":  st.column_config.NumberColumn(format="₹%.0f"),
         "Today Gain%":   st.column_config.NumberColumn(format="%.2f%%"),
         "Day Chg%":      st.column_config.NumberColumn(format="%.2f%%"),
-        "P&L%":      st.column_config.NumberColumn(format="%.2f%%"),
+        "P&L%":          st.column_config.NumberColumn(format="%.2f%%"),
         "Portfolio Wt%": st.column_config.NumberColumn(format="%.2f%%"),
     }
-    st.dataframe(
-        df[_display_cols_quick].style.apply(_row_style_quick, axis=1),
+    edited_df = st.data_editor(
+        df_display[_display_cols_quick],
         column_config=_col_cfg_quick,
-        use_container_width=True, hide_index=True,
+        use_container_width=True,
+        hide_index=True,
+        disabled=[c for c in _display_cols_quick if c != "Inclusion"],
+        key="holdings_table_editor",
     )
+    # Sync checkbox selections back to session state
+    if edited_df is not None:
+        selected_syms = df_display.loc[edited_df["Inclusion"].values, "Symbol"].tolist()
+        if selected_syms != st.session_state.abs_ret_selected:
+            st.session_state.abs_ret_selected = selected_syms
+            st.rerun()
 
     st.divider()
 
@@ -695,9 +754,9 @@ def render():
             "Industry":       f"{_meta['icon']} {industry}",
             "Holdings":       len(idf),
             "Value (₹)":      idf["Curr Value"].sum(),
-            "Wt%":            (idf["Curr Value"].sum() / total_value * 100).round(1),
-            "Today's Gain ₹": idf["Today's Gain"].sum().round(0),
-            "Avg Day Chg%":   idf["Day Chg%"].mean().round(2),
+            "Wt%":            round((idf["Curr Value"].sum() / total_value * 100),1),
+            "Today's Gain ₹": round(idf["Today's Gain"].sum(),0),
+            "Avg Day Chg%":   round(idf["Day Chg%"].mean(), 2),
         }
         for _lbl, _ in _ORIENT_PERIODS:
             row[_lbl] = _orient_returns[_lbl].get(industry, None)
