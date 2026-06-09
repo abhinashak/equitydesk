@@ -16,3 +16,6 @@ venv/
 .secret/
 kk/
 gemini-ui.py
+equitydesk.iml
+data/benchmark/
+outputs/**

@@ -1,0 +1,4 @@
+git ls-files "*.parquet" | xargs git update-index --assume-unchanged
+git update-index --assume-unchanged data/**/*.parquet
+git ls-files "*.parquet" | xargs git update-index --no-assume-unchanged
+
