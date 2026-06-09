@@ -82,9 +82,8 @@ def render():
         with st.expander("🚀 Quick Start & Authorization Workflow", expanded=True):
             st.markdown("Follow these steps to authenticate your Zerodha Kite connect application:")
             st.markdown(
-                "**1. Start the Process** \n"
-                "Begin by navigating to the main dashboard:  \n"
-                "[Start - Abhinashak Streamlit App](https://abhinashak.streamlit.app/)"
+                "**1. Find your IP** \n https://whatismyipaddress.com/"
+                "**2. Set the IP in profile** \n https://developers.kite.trade/login"
             )
             st.divider() # Visual separator line
             st.markdown(

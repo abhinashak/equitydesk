@@ -10,8 +10,8 @@ NAV: dict[str, dict[str, str]] = {
     "TRADE": {
         "🪁 1. Kite Setup":          "kite_setup",
         "🔴 2. Portfolio":           "trade_portfolio",
-        "⚖️ 3. Rebalance Planner":   "trade_rebalance",
-        "⚡  4. Live Execution":      "trade_execution",
+        "⚖️ 3. Rebalance Planner":   "trade_rebalance_planner",
+        "⚡  4. Live Execution":      "trade_live_execution",
     },
     "SCREENS": {
         "🏆 Winners ":               "sql_lab",

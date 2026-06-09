@@ -42,8 +42,10 @@ if page == "kite_setup":
     from ui.pages.trade.kite_setup import render; render()
 elif page == "trade_portfolio":
     from ui.pages.trade.portfolio import render; render()
-elif page == "trade_execution":
-    from ui.pages.page_3_execution import render; render()
+elif page == "trade_rebalance_planner":
+    from  ui.pages.trade.rebalance_planner import render; render()
+elif page == "trade_live_execution":
+    from  ui.pages.trade.live_execution import render; render()
 elif page == "data_ticker":
     from ui.pages.page_data_ticker import render; render()
 elif page == "data_fundamental":

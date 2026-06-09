@@ -18,6 +18,7 @@ import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
+import time
 import plotly.graph_objects as go
 from ui.pages.one_ticker_common import get_duckdb_connection, initialize_views_or_mock, COLORS, COLORS_PALE
 from plotly.subplots import make_subplots
@@ -349,7 +350,14 @@ def render():
 
 
     # ── TOP METRICS ───────────────────────────────────────────────────────────
-    st.title("📊 Portfolio Dashboard")
+    col_title, col_btn = st.columns([8, 1])
+    col_title.title("📊 Portfolio Dashboard")
+    if col_btn.button("⚖️ Rebalance Now", type="primary",
+                      key="dash_rebalance_now", use_container_width=True):
+        with st.spinner("Redirecting to Portfolio Rebalance in 4 seconds..."):
+            time.sleep(4)
+        st.session_state["active_page"] = "trade_rebalance_planner"
+        st.rerun()
 
     # ── Pinned ticker config ──────────────────────────────────────────────────
     PINNED_FILE = os.path.join(os.path.dirname(__file__),
