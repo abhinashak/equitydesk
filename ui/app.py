@@ -14,7 +14,8 @@ from bll.config_service import ConfigService
 from ui.layout import inject_css, render_sidebar
 from ui.pages import page_sql_lab
 from ui.pages import page_portfolio_evaluator
-from ui.pages import page_algo_ga 
+from ui.pages import page_algo_ga
+from ui.pages import page_algo_momentum
 from ui.pages import one_ticker_gates
 from ui.pages import one_ticker_charts
 
@@ -70,10 +71,18 @@ elif page == "portfolio_evaluator":
     page_portfolio_evaluator.render()
 elif page == "algo_ga":
     page_algo_ga.render()
+elif page == "algo_momentum":
+    page_algo_momentum.render()
 elif page == "quality_gates":
     one_ticker_gates.render()
 elif page == "fundamental_analysis":
     one_ticker_charts.render()
+
+# ── MACRO / NEWS SCREENS (new) ────────────────────────────────────────────────
+elif page == "us_economy_pipeline":
+    from ui.pages.page_us_economy import render; render()
+elif page == "news":
+    from ui.pages.page_news import render; render()
 
 
 elif page == "dcf_analysis":

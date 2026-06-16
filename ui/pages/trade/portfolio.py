@@ -226,33 +226,153 @@ def render():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Guard ─────────────────────────────────────────────────────────────────
-    if "all_holdings" not in st.session_state or not st.session_state.all_holdings:
-        st.warning("Holdings not loaded. Please go to Setup and click 'Fetch Holdings'.")
+    # ── Input-mode tab bar ────────────────────────────────────────────────────
+    # All three tabs are always rendered by Streamlit on every run.
+    # We resolve ticker_data inside each tab context so only the active
+    # tab's logic actually produces output / stops the page.
+    ticker_data   = None
+    account_names = []
+    input_mode    = "current"   # will be overwritten inside the active tab
+
+    tab_curr, tab_manual, tab_upload = st.tabs(
+        ["📋 Current Holdings", "✏️ Manual", "📂 File Upload"]
+    )
+
+    # ── Tab: Current Holdings ─────────────────────────────────────────────────
+    with tab_curr:
+        input_mode    = "current"
+        account_names = []
+        _ticker_data_curr = None
+
+        if "all_holdings" not in st.session_state or not st.session_state.all_holdings:
+            st.warning(
+                "No portfolio holdings matched the matrix. "
+                "Connect your broker or add holdings."
+            )
+        else:
+            all_holdings  = st.session_state.all_holdings
+            print(all_holdings)
+            excl_set      = {s.upper() for s in (getattr(st.session_state, "excluded_symbols", None) or set())}
+            account_names = list(all_holdings.keys())
+            _ticker_data_curr = {}
+            for acc_name, holdings in all_holdings.items():
+                for h in holdings:
+                    sym = h["tradingsymbol"]
+                    if sym.upper() in excl_set:
+                        continue
+                    if sym not in _ticker_data_curr:
+                        _ticker_data_curr[sym] = {
+                            "last_price":     h.get("last_price",  0),
+                            "close_price":    h.get("close_price", 0),
+                            "day_change_pct": h.get("day_change_percentage", 0),
+                            "avg_cost":       h.get("average_price", 0),
+                            **{an: 0 for an in account_names},
+                        }
+                    _ticker_data_curr[sym][acc_name] += h.get("quantity", 0)
+
+    # ── Tab: Manual ───────────────────────────────────────────────────────────
+    with tab_manual:
+        _input_mode_manual  = "manual"
+        _account_names_manual = ["Manual"]
+        st.markdown("Enter NSE symbols separated by commas or newlines (e.g. `RELIANCE, TCS, INFY`).")
+        _raw_input = st.text_area(
+            "Tickers",
+            value=st.session_state.get("manual_tickers_raw", ""),
+            height=120,
+            placeholder="RELIANCE, TCS, INFY, HDFCBANK",
+            label_visibility="collapsed",
+            key="manual_tickers_input",
+        )
+        st.session_state.manual_tickers_raw = _raw_input
+        _manual_symbols = [
+            s.strip().upper()
+            for s in _raw_input.replace("\n", ",").split(",")
+            if s.strip()
+        ]
+        if not _manual_symbols:
+            st.info("Enter at least one ticker symbol above to continue.")
+        _ticker_data_manual = {
+            sym: {
+                "last_price": 0, "close_price": 0,
+                "day_change_pct": 0, "avg_cost": 0,
+                "Manual": 1,
+            }
+            for sym in _manual_symbols
+        } if _manual_symbols else None
+
+    # ── Tab: File Upload ──────────────────────────────────────────────────────
+    with tab_upload:
+        _input_mode_upload    = "upload"
+        _account_names_upload = ["Uploaded"]
+        st.markdown(
+            "Upload a CSV with at minimum a **`ticker`** column. "
+            "Optional columns: `quantity` (defaults to 1), `avg_cost` (defaults to 0)."
+        )
+        _uploaded_file = st.file_uploader(
+            "Upload CSV", type=["csv"],
+            key="holdings_csv_upload",
+            label_visibility="collapsed",
+        )
+        _ticker_data_upload = None
+        if _uploaded_file is not None:
+            try:
+                udf = pd.read_csv(_uploaded_file)
+                udf.columns = [c.strip().lower() for c in udf.columns]
+                _ticker_col = next(
+                    (c for c in ["ticker", "symbol", "nse_symbol"] if c in udf.columns), None
+                )
+                if _ticker_col is None:
+                    st.error("CSV must have a column named `ticker`, `symbol`, or `nse_symbol`.")
+                else:
+                    udf["_sym"] = udf[_ticker_col].str.strip().str.upper()
+                    udf["_sym"] = udf["_sym"].str.replace(r"\.(NS|BO)$", "", regex=True)
+                    _ticker_data_upload = {}
+                    for _, row in udf.iterrows():
+                        sym = row["_sym"]
+                        if not sym:
+                            continue
+                        qty      = float(row["quantity"]) if "quantity" in row and pd.notna(row["quantity"]) else 1.0
+                        avg_cost = float(row["avg_cost"])  if "avg_cost"  in row and pd.notna(row["avg_cost"])  else 0.0
+                        _ticker_data_upload[sym] = {
+                            "last_price": 0, "close_price": 0,
+                            "day_change_pct": 0, "avg_cost": avg_cost,
+                            "Uploaded": qty,
+                        }
+                    if not _ticker_data_upload:
+                        st.warning("No valid tickers found in the uploaded file.")
+                        _ticker_data_upload = None
+            except Exception as exc:
+                st.error(f"Could not parse CSV: {exc}")
+
+    # ── Resolve active tab via session state ──────────────────────────────────
+    # Streamlit doesn't expose which tab is selected, so we track it via a
+    # hidden radio that each tab sets using st.session_state directly.
+    # Instead, we detect which data source is "ready" and prefer the last
+    # one the user interacted with (stored in session_state).
+    #
+    # Logic: whichever tab has non-None data AND matches the persisted mode
+    # is used. Clicking a tab that has data will persist its mode.
+    if _ticker_data_upload is not None:
+        st.session_state.holdings_input_mode = "upload"
+    elif _ticker_data_manual is not None and st.session_state.get("manual_tickers_raw", "").strip():
+        st.session_state.holdings_input_mode = "manual"
+    elif _ticker_data_curr is not None:
+        st.session_state.holdings_input_mode = "current"
+
+    input_mode = st.session_state.get("holdings_input_mode", "current")
+
+    if input_mode == "upload" and _ticker_data_upload is not None:
+        ticker_data   = _ticker_data_upload
+        account_names = ["Uploaded"]
+    elif input_mode == "manual" and _ticker_data_manual is not None:
+        ticker_data   = _ticker_data_manual
+        account_names = ["Manual"]
+    elif _ticker_data_curr is not None:
+        ticker_data   = _ticker_data_curr
+        account_names = list(st.session_state.all_holdings.keys())
+        input_mode    = "current"
+    else:
         st.stop()
-
-    all_holdings  = st.session_state.all_holdings
-    print(all_holdings)
-    # Normalise once to uppercase so all comparisons are case-insensitive
-    excl_set = {s.upper() for s in (getattr(st.session_state, "excluded_symbols", None) or set())}
-    account_names = list(all_holdings.keys())
-
-    # ── Build ticker_data map ─────────────────────────────────────────────────
-    ticker_data = {}
-    for acc_name, holdings in all_holdings.items():
-        for h in holdings:
-            sym = h["tradingsymbol"]
-            if sym.upper() in excl_set:
-                continue
-            if sym not in ticker_data:
-                ticker_data[sym] = {
-                    "last_price":  h.get("last_price",  0),
-                    "close_price": h.get("close_price", 0),
-                    "day_change_pct": h.get("day_change_percentage", 0),
-                    "avg_cost": h.get("average_price", 0),
-                    **{an: 0 for an in account_names},
-                }
-            ticker_data[sym][acc_name] += h.get("quantity", 0)
 
     # ── Load ticker metadata from DuckDB (industry, market_cap, p_e, dividend_yield) ──
     # Kite tradingsymbol == nse_symbol in tickers table (e.g. "RELIANCE")
@@ -352,8 +472,15 @@ def render():
     # ── TOP METRICS ───────────────────────────────────────────────────────────
     col_title, col_btn = st.columns([8, 1])
     col_title.title("📊 Portfolio Dashboard")
-    if col_btn.button("⚖️ Rebalance Now", type="primary",
-                      key="dash_rebalance_now", use_container_width=True):
+    _rebalance_enabled = (input_mode == "current")
+    if col_btn.button(
+            "⚖️ Rebalance Now",
+            type="primary",
+            key="dash_rebalance_now",
+            use_container_width=True,
+            disabled=not _rebalance_enabled,
+            help=None if _rebalance_enabled else "Rebalance is only available in Current Holdings mode",
+    ):
         with st.spinner("Redirecting to Portfolio Rebalance in 4 seconds..."):
             time.sleep(4)
         st.session_state["active_page"] = "trade_rebalance_planner"

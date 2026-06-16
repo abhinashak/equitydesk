@@ -232,5 +232,49 @@
       "7D%",
       "1D%"
     ]
+  },
+  {
+    "name": "ROE MOMENTUM",
+    "sql": "-- -----------------------------------------------------------------------------\n-- 1. ROE MOMENTUM\n--    Definition : delta ROE over the last 5 available quarters\n--    ROE_q      = quarterly Net Profit / (Equity Capital + Reserves)\n--                 Equity is taken from the most-recent annual balance sheet\n--                 on or before each quarter-end (ASOF join via window).\n--    Signal     : roe_q at latest quarter  \u2212  roe_q at 5th-most-recent quarter\n--    Direction  : higher is better (increasing ROE = positive momentum)\n-- -----------------------------------------------------------------------------\nWITH qr_ranked AS (\n    -- Last 5 quarters of Net Profit per ticker\n    SELECT\n        ticker, dt, val AS net_profit,\n        DENSE_RANK() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk\n    FROM quarterly_results\n    WHERE metric = 'Net Profit'\n      AND val IS NOT NULL\n      AND dt < CURRENT_DATE        -- exclude TTM placeholder rows\n),\nnp_q AS (\n    SELECT ticker, dt, net_profit, rk\n    FROM qr_ranked\n    WHERE rk <= 5\n),\nbs_equity AS (\n    -- Annual equity = Equity Capital + Reserves from balance_sheet\n    SELECT\n        ticker, dt,\n        COALESCE(MAX(CASE WHEN metric = 'Equity Capital' THEN val END), 0)\n      + COALESCE(MAX(CASE WHEN metric = 'Reserves'       THEN val END), 0)\n            AS equity\n    FROM balance_sheet\n    WHERE dt < CURRENT_DATE\n    GROUP BY ticker, dt\n    HAVING equity > 0\n),\nroe_quarterly AS (\n    -- ASOF: attach most-recent annual equity on-or-before each quarter date\n    SELECT\n        n.ticker,\n        n.dt        AS quarter_dt,\n        n.rk,\n        n.net_profit,\n        b.equity,\n        n.net_profit / NULLIF(b.equity, 0) AS roe_q\n    FROM np_q n\n    ASOF JOIN bs_equity b\n        ON  n.ticker = b.ticker\n        AND n.dt    >= b.dt          -- most-recent annual date \u2264 quarter\n),\nroe_endpoints AS (\n    SELECT\n        ticker,\n        MAX(CASE WHEN rk = 1 THEN roe_q END) AS roe_latest,\n        MAX(CASE WHEN rk = 5 THEN roe_q END) AS roe_oldest\n    FROM roe_quarterly\n    GROUP BY ticker\n)\nSELECT\n    ticker,\n    roe_latest - roe_oldest        AS roe_momentum     -- positive = improving ROE\nFROM roe_endpoints\nWHERE roe_latest IS NOT NULL\n  AND roe_oldest IS NOT NULL\nORDER BY roe_momentum DESC;",
+    "viz": "Table",
+    "published_at": "2026-06-10 11:24",
+    "row_count": 368,
+    "columns": [
+      "ticker",
+      "roe_momentum"
+    ]
+  },
+  {
+    "name": "ACCRUALS RATIO",
+    "sql": "-- -----------------------------------------------------------------------------\n-- 2. ACCRUALS RATIO\n--    Definition : (Net Income \u2212 CFO) / Total Assets   [annual, latest year]\n--    Sources    : profit_loss (Net Profit)\n--                 cash_flows  (Cash from Operating Activity)\n--                 balance_sheet (Total Assets)\n--    Direction  : lower (more negative) is better \u2192 signal negates this\n--                 High accruals = earnings not backed by cash = red flag\n-- -----------------------------------------------------------------------------\nWITH pl_latest AS (\n    SELECT ticker,\n           MAX(CASE WHEN metric = 'Net Profit' THEN val END) AS net_income\n    FROM profit_loss\n    WHERE dt = (\n        SELECT MAX(dt) FROM profit_loss p2\n        WHERE p2.ticker = profit_loss.ticker\n          AND p2.dt < CURRENT_DATE\n    )\n    GROUP BY ticker\n),\ncf_latest AS (\n    SELECT ticker,\n           MAX(CASE WHEN metric = 'Cash from Operating Activity' THEN val END) AS cfo\n    FROM cash_flows\n    WHERE dt = (\n        SELECT MAX(dt) FROM cash_flows c2\n        WHERE c2.ticker = cash_flows.ticker\n          AND c2.dt < CURRENT_DATE\n    )\n    GROUP BY ticker\n),\nbs_assets AS (\n    SELECT ticker,\n           MAX(CASE WHEN metric = 'Total Assets' THEN val END) AS total_assets\n    FROM balance_sheet\n    WHERE dt = (\n        SELECT MAX(dt) FROM balance_sheet b2\n        WHERE b2.ticker = balance_sheet.ticker\n          AND b2.dt < CURRENT_DATE\n    )\n    GROUP BY ticker\n)\nSELECT\n    p.ticker,\n    (p.net_income - c.cfo) / NULLIF(a.total_assets, 0)  AS accruals_ratio\nFROM pl_latest  p\nJOIN cf_latest  c ON p.ticker = c.ticker\nJOIN bs_assets  a ON p.ticker = a.ticker\nWHERE p.net_income   IS NOT NULL\n  AND c.cfo          IS NOT NULL\n  AND a.total_assets IS NOT NULL\n  AND a.total_assets  > 0\nORDER BY accruals_ratio;\n",
+    "viz": "Table",
+    "published_at": "2026-06-10 11:25",
+    "row_count": 340,
+    "columns": [
+      "ticker",
+      "accruals_ratio"
+    ]
+  },
+  {
+    "name": "REVENUE CV",
+    "sql": "-- -----------------------------------------------------------------------------\n-- 3. REVENUE CV  (coefficient of variation of quarterly sales)\n--    Definition : stddev(sales_4q) / abs(mean(sales_4q))\n--    Source     : quarterly_results metric 'Sales' (last 4 quarters)\n--    Direction  : lower is better (consistent revenue) \u2192 signal negates this\n-- -----------------------------------------------------------------------------\nWITH qr_sales AS (\n    SELECT\n        ticker, dt, val AS sales,\n        DENSE_RANK() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk\n    FROM quarterly_results\n    WHERE metric IN ('Sales', 'Revenue')   -- some tickers use 'Revenue'\n      AND val IS NOT NULL\n      AND dt < CURRENT_DATE\n),\nsales_4q AS (\n    SELECT ticker, sales\n    FROM qr_sales\n    WHERE rk <= 4\n),\nstats AS (\n    SELECT\n        ticker,\n        COUNT(*)           AS n,\n        AVG(sales)         AS mean_sales,\n        STDDEV_SAMP(sales) AS std_sales\n    FROM sales_4q\n    GROUP BY ticker\n    HAVING COUNT(*) = 4          -- require all 4 quarters present\n       AND AVG(sales) <> 0\n)\nSELECT\n    ticker,\n    std_sales / ABS(mean_sales)  AS rev_cv\nFROM stats\nORDER BY rev_cv;",
+    "viz": "Table",
+    "published_at": "2026-06-10 11:25",
+    "row_count": 365,
+    "columns": [
+      "ticker",
+      "rev_cv"
+    ]
+  },
+  {
+    "name": "debt-to-equity trajectory",
+    "sql": "-- -----------------------------------------------------------------------------\n-- 4. D/E TREND  (debt-to-equity trajectory)\n--    Definition : D/E at latest annual period  \u2212  D/E 4 annual periods ago\n--    D/E        : (Borrowings | Borrowing) / (Equity Capital + Reserves)\n--    Source     : balance_sheet  (annual dates, excluding TTM CURRENT_DATE row)\n--    Direction  : declining (negative delta) is better \u2192 signal negates this\n-- -----------------------------------------------------------------------------\nWITH bs_annual AS (\n    SELECT\n        ticker, dt,\n        COALESCE(MAX(CASE WHEN metric IN ('Borrowings','Borrowing') THEN val END), 0)\n                                                        AS debt,\n        COALESCE(MAX(CASE WHEN metric = 'Equity Capital' THEN val END), 0)\n      + COALESCE(MAX(CASE WHEN metric = 'Reserves'       THEN val END), 0)\n                                                        AS equity\n    FROM balance_sheet\n    WHERE dt < CURRENT_DATE\n    GROUP BY ticker, dt\n    HAVING equity > 0\n),\nde_ranked AS (\n    SELECT\n        ticker, dt,\n        debt / NULLIF(equity, 0) AS de_ratio,\n        DENSE_RANK() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk\n    FROM bs_annual\n    WHERE debt / NULLIF(equity, 0) IS NOT NULL\n),\nde_endpoints AS (\n    SELECT\n        ticker,\n        MAX(CASE WHEN rk = 1 THEN de_ratio END) AS de_latest,\n        MAX(CASE WHEN rk = 4 THEN de_ratio END) AS de_oldest\n    FROM de_ranked\n    GROUP BY ticker\n)\nSELECT\n    ticker,\n    de_latest - de_oldest         AS de_trend   -- negative = D/E declining = good\nFROM de_endpoints\nWHERE de_latest IS NOT NULL\n  AND de_oldest IS NOT NULL\nORDER BY de_trend;",
+    "viz": "Table",
+    "published_at": "2026-06-10 11:26",
+    "row_count": 366,
+    "columns": [
+      "ticker",
+      "de_trend"
+    ]
   }
 ]

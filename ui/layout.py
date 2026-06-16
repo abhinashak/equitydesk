@@ -14,6 +14,8 @@ NAV: dict[str, dict[str, str]] = {
         "⚡  4. Live Execution":      "trade_live_execution",
     },
     "SCREENS": {
+        "🇺🇸 US Economy Pipeline":   "us_economy_pipeline",
+        "🤖 News":           "news",
         "🏆 Winners ":               "sql_lab",
         "⚛️ Fundamental Analysis":   "fundamental_analysis",
         "🔬 DCF Analysis":           "dcf_analysis",
