@@ -264,22 +264,77 @@ def fetch_inr_historical():
     return interp
 
 
+def _yf_fetch(ticker: str, label: str):
+    """Fetch current price and day-change % from Yahoo Finance via yfinance."""
+    try:
+        t = yf.Ticker(ticker)
+        info = t.fast_info
+        price = info.last_price
+        prev  = info.previous_close
+        if price is None or prev is None or prev == 0:
+            raise ValueError("missing price")
+        pct   = (price - prev) / prev * 100
+        sign  = '+' if pct >= 0 else ''
+        return {
+            'value':  price,
+            'change': f"{sign}{pct:.2f}%",
+            'change_pct': pct,         # raw float for colour logic
+            'source': f'Yahoo Finance · {label}',
+            'status': 'live',
+        }
+    except Exception as e:
+        return {
+            'value':  None,
+            'change': 'N/A',
+            'change_pct': 0.0,
+            'source': f'Yahoo Finance error ({label})',
+            'status': 'error',
+        }
+
+
 @st.cache_data(ttl=300)
 def get_live_prices():
+    # Yahoo Finance tickers
+    gold     = _yf_fetch('GC=F',    'GC=F')       # Gold futures (USD/oz)
+    usd_inr  = _yf_fetch('USDINR=X','USDINR=X')   # USD/INR spot
+    wti      = _yf_fetch('CL=F',    'CL=F')        # WTI Crude futures
+    brent    = _yf_fetch('BZ=F',    'BZ=F')        # Brent Crude futures
+    sp500    = _yf_fetch('^GSPC',   'GSPC')        # S&P 500
+    nifty    = _yf_fetch('^NSEI',   'NSEI')        # Nifty 50
+    btc      = _yf_fetch('BTC-USD', 'BTC-USD')     # Bitcoin
+    us10y    = _yf_fetch('^TNX',    'TNX')         # US 10-Year yield
+
     prices = {
-        'gold_usd':    {'value': 4139.0,   'change': '+0.3%', 'source': 'Known (Jun 12 2026)', 'status': 'known'},
-        'usd_inr':     {'value': 95.25,    'change': '+0.2%', 'source': 'Known (Jun 12 2026)', 'status': 'known'},
-        'crude_wti':   {'value': 89.4,     'change': '+1.1%', 'source': 'Estimated',            'status': 'estimated'},
-        'crude_brent': {'value': 92.8,     'change': '+0.9%', 'source': 'Estimated',            'status': 'estimated'},
-        'sp500':       {'value': 5821.0,   'change': '-0.8%', 'source': 'Estimated',            'status': 'estimated'},
-        'nifty':       {'value': 24350.0,  'change': '+0.4%', 'source': 'Estimated',            'status': 'estimated'},
-        'btc_usd':     {'value': 104200.0, 'change': '-1.2%', 'source': 'Estimated',            'status': 'estimated'},
-        'us10y':       {'value': 4.68,     'change': '+0.04', 'source': 'Estimated',            'status': 'estimated'},
-        'gold_inr':    {'value': None,     'change': None,    'source': 'Derived',               'status': 'derived'},
+        'gold_usd':    gold,
+        'usd_inr':     usd_inr,
+        'crude_wti':   wti,
+        'crude_brent': brent,
+        'sp500':       sp500,
+        'nifty':       nifty,
+        'btc_usd':     btc,
+        'us10y':       us10y,
+        'gold_inr':    {'value': None, 'change': 'derived', 'change_pct': 0.0,
+                        'source': 'Gold × INR / 31.1035', 'status': 'derived'},
     }
-    gold_inr_val = prices['gold_usd']['value'] * prices['usd_inr']['value'] / 31.1035
-    prices['gold_inr'] = {'value': round(gold_inr_val, 0), 'change': 'derived',
-                          'source': 'Gold × INR / 31.1', 'status': 'derived'}
+
+    # Derive Gold/INR (per gram)
+    g_val   = gold.get('value')
+    inr_val = usd_inr.get('value')
+    if g_val and inr_val:
+        gold_inr_val = g_val * inr_val / 31.1035
+        # approximate combined day-change
+        gold_pct = gold.get('change_pct', 0.0)
+        inr_pct  = usd_inr.get('change_pct', 0.0)
+        combined_pct = gold_pct + inr_pct           # additive approximation
+        sign = '+' if combined_pct >= 0 else ''
+        prices['gold_inr'] = {
+            'value':      round(gold_inr_val, 0),
+            'change':     f"{sign}{combined_pct:.2f}%",
+            'change_pct': combined_pct,
+            'source':     'Gold × INR / 31.1035',
+            'status':     'derived',
+        }
+
     return prices
 
 
@@ -514,25 +569,55 @@ def render():
     st.markdown("<div class='section-header'>Live market snapshot</div>", unsafe_allow_html=True)
     cols = st.columns(8)
     metric_defs = [
-        ('Gold USD',    'gold_usd',    '$',  '',     'metric-warn'),
-        ('USD / INR',   'usd_inr',     '₹',  '',     'metric-down'),
-        ('Gold / INR*', 'gold_inr',    '₹',  '/g',   'metric-warn'),
-        ('Crude WTI',   'crude_wti',   '$',  '/bbl', 'metric-warn'),
-        ('Crude Brent', 'crude_brent', '$',  '/bbl', 'metric-warn'),
-        ('S&P 500',     'sp500',       '',   '',     'metric-neutral'),
-        ('Nifty 50',    'nifty',       '',   '',     'metric-neutral'),
-        ('US 10Y Yield','us10y',       '',   '%',    'metric-down'),
+        ('Gold USD',    'gold_usd',    '$',  ''),
+        ('USD / INR',   'usd_inr',     '₹',  ''),
+        ('Gold / INR*', 'gold_inr',    '₹',  '/g'),
+        ('Crude WTI',   'crude_wti',   '$',  '/bbl'),
+        ('Crude Brent', 'crude_brent', '$',  '/bbl'),
+        ('S&P 500',     'sp500',       '',   ''),
+        ('Nifty 50',    'nifty',       '',   ''),
+        ('US 10Y Yield','us10y',       '',   '%'),
     ]
-    for col, (label, key, prefix, suffix, cls) in zip(cols, metric_defs):
+    for col, (label, key, prefix, suffix) in zip(cols, metric_defs):
         with col:
             p   = prices[key]
             v   = p['value']
-            fmt = f"₹{v:,.0f}/g" if key == 'gold_inr' else f"{prefix}{v:,.2f}{suffix}"
+            pct = p.get('change_pct', 0.0)
+            status = p.get('status', '')
+            # Colour logic: green = up, red = down, amber = derived/error
+            if status in ('derived', 'error') or pct == 0.0:
+                val_cls = 'metric-warn'
+            elif pct > 0:
+                val_cls = 'metric-up'
+            else:
+                val_cls = 'metric-down'
+            # Change badge colour
+            if pct > 0:
+                chg_style = "color:#2D6A0F;background:#EAF3DE;padding:1px 5px;border-radius:3px;"
+            elif pct < 0:
+                chg_style = "color:#7A1F1F;background:#FCEBEB;padding:1px 5px;border-radius:3px;"
+            else:
+                chg_style = "color:#666560;background:#F1EFE8;padding:1px 5px;border-radius:3px;"
+            if v is None:
+                fmt = '—'
+            elif key == 'gold_inr':
+                fmt = f"₹{v:,.0f}/g"
+            elif key == 'us10y':
+                fmt = f"{v:.2f}%"
+            elif key == 'usd_inr':
+                fmt = f"₹{v:.2f}"
+            else:
+                fmt = f"{prefix}{v:,.2f}{suffix}"
+            chg_text = p['change'] or '—'
+            src_text = p['source']
             st.markdown(f"""
             <div class='metric-card'>
               <div class='metric-label'>{label}</div>
-              <div class='metric-value {cls}'>{fmt}</div>
-              <div class='metric-sub'>{p['change']} · {p['source']}</div>
+              <div class='metric-value {val_cls}'>{fmt}</div>
+              <div class='metric-sub'>
+                <span style='{chg_style};font-size:10px;font-weight:500;'>{chg_text}</span>
+                &nbsp;·&nbsp;{src_text}
+              </div>
             </div>""", unsafe_allow_html=True)
 
     # ── IPO pipeline cards ────────────────────────────────────────────────────

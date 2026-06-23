@@ -1,4 +1,4 @@
- """
+"""
 FundamentalSpreadSignal — Streamlit App
 ========================================
 Sector-relative composite ranking built entirely from DuckDB views
