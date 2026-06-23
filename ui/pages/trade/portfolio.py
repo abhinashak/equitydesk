@@ -188,7 +188,8 @@ def compute_portfolio_value_series(holdings_qty: dict,
     port_val = pd.Series(0.0, index=pivot.index)
     for tkr, qty in holdings_qty.items():
         if tkr in pivot.columns:
-            port_val += pivot[tkr].fillna(0) * qty
+            #port_val += pivot[tkr].fillna(0) * qty
+            port_val += pivot[tkr].bfill().ffill().fillna(0) * qty
     return port_val
 
 
@@ -251,7 +252,6 @@ def render():
             )
         else:
             all_holdings  = st.session_state.all_holdings
-            print(all_holdings)
             excl_set      = {s.upper() for s in (getattr(st.session_state, "excluded_symbols", None) or set())}
             account_names = list(all_holdings.keys())
             _ticker_data_curr = {}
@@ -259,6 +259,7 @@ def render():
                 for h in holdings:
                     sym = h["tradingsymbol"]
                     if sym.upper() in excl_set:
+                        print(f"[Ticker] Excluded : {sym.upper()}")   # ← add this
                         continue
                     if sym not in _ticker_data_curr:
                         _ticker_data_curr[sym] = {
@@ -710,7 +711,8 @@ def render():
         fig_trend.add_trace(go.Scatter(
             x=port_norm.index, y=port_norm.values,
             name="Portfolio", line=dict(color=COLORS[0], width=2),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.07)"
+            #fill="tonexty", fillcolor="rgba(37,99,235,0.07)"
+            fill = None
         ))
         if not idx_pivot.empty:
             idx_aligned = idx_pivot.reindex(port_ser.index, method="ffill")
@@ -732,11 +734,22 @@ def render():
                     line=dict(color="#f59e0b", width=1.5, dash="dot"),
                     opacity=0.85,
                 ))
+
+        # ── Y-axis floor = min drawdown across all three normalised series ──
+        _y_mins = []
+        if not port_norm.empty:
+            _y_mins.append(port_norm.min())
+        if not idx_pivot.empty:
+            _y_mins.append(idx_norm.min())
+        if not _sma50_chart.empty and not idx_pivot.empty and '_sma50_norm' in dir():
+            _y_mins.append(_sma50_norm.min())
+        _y_floor = min(_y_mins) * 0.995 if _y_mins else 0   # small padding below
+
         fig_trend.update_layout(
             height=320, margin=dict(l=0, r=0, t=10, b=0),
             legend=dict(orientation="h", y=1.05),
             xaxis=dict(showgrid=False),
-            yaxis=dict(title="Indexed (base=100)", showgrid=True, gridcolor="#f0f0f0"),
+            yaxis=dict(title="Indexed (base=100)", showgrid=True, gridcolor="#f0f0f0", range=[_y_floor, None]),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)"
         )
         st.plotly_chart(fig_trend, use_container_width=True)

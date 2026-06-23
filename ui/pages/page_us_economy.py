@@ -175,12 +175,18 @@ def render():
     st.markdown("---")
 
     # ── BLS API key loader ────────────────────────────────────────────────────
-    def load_bls_api_key(path="../../.secret/bls.secret"):
+    from pathlib import Path
+    def load_bls_api_key(path=".secret/bls.secret"):
         try:
             with open(path, "r") as f:
+                abs_path = Path(path).resolve()
+                print(f"File loaded from : {abs_path}")
                 key = f.read().strip()
+            print (key)
             return key if key else None
         except FileNotFoundError:
+            abs_path = Path(path).resolve()
+            print(f"File not found. Absolute path searched: {abs_path}")
             return None
 
     BLS_API_KEY = load_bls_api_key()
@@ -363,6 +369,7 @@ def render():
                   f"{data['Debt']['QoQ']:.2f}% QoQ")
         st.caption("Unfunded Liabilities: **$200+ T**")
         st.caption("Annual Deficit: **~$1.9 T**")
+        st.caption("Governments eventually monetize debt indirectly through the banks and central bank liquidity.")
 
     with col2:
         st.markdown("### 🖨️ Step 2\n**Monetary Liquidity**")
@@ -370,13 +377,16 @@ def render():
                   f"${data['M2']['latest']:.1f} T",
                   f"{data['M2']['MoM']:.2f}% MoM")
         st.caption(f"3-Month Shift: {data['M2']['3MoM']:.2f}%")
+        st.caption("Cash, Checking/Savings deposits, Money market funds")
 
     with col3:
         st.markdown("### 🌎 Step 3\n**Market Indicators**")
-        st.write("**CRB Commodity Index**")
+        st.write("**CRB Commodity Index **")
         display_trend_table(data['CRB'])
+        st.caption("Measures: Oil, Metals, Agriculture, Raw materials")
         st.write("**US Dollar Index (DXY)**")
         display_trend_table(data['DXY'])
+        st.caption("Measures USD against major currencies. A stronger dollar Makes imports cheaper hence Lowers commodity prices.")
 
     with col4:
         st.markdown("### 🏭 Step 4\n**Supply-Side Costs**")
@@ -384,6 +394,8 @@ def render():
                   f"{data['PPI']['latest']:.1f}",
                   f"{data['PPI']['MoM']:.2f}% MoM")
         st.caption(f"3-Month Trajectory: +{data['PPI']['3MoM']:.2f}%")
+        st.caption("PPI - paid by producers before products reach consumers.")
+        st.caption("Increases because of Input, Labor, Transportation, Tariffs, Suppy Chain, Energy costs.")
 
     with col5:
         st.markdown("### 🛒 Step 5\n**End Impact**")
@@ -396,6 +408,23 @@ def render():
           <p style="margin:2px 0 0 0;font-size:11px;opacity:0.8;">
             3-Month Trend: {data['CPI']['3MoM']:.2f}%</p>
         </div>""", unsafe_allow_html=True)
+
+    st.subheader("Losers")
+    st.markdown("""
+    1. Financial Repression → Savers lose purchasing power.<br>
+    2. Nominal GDP Growth → AI, manufacturing, energy.<br>
+    3. Controlled Inflation → Erode debt without panic.<br>
+    4. Currency Devaluation → Foreign Treasury holders lose.<br>
+    5. Yield Curve Control → Negative real yields.<br>
+    6. Pension Adjustment → Raise retirement age.<br>
+    7. Tax Inflation → Bracket creep boosts revenue.<br>
+    8. Asset Inflation → Stocks & housing rise.<br>
+    9. Energy Dominance → GDP and trade balance improve.<br>
+    10. Selective Default → Inflation exceeds borrowing cost.<br>
+    11. Sovereign Wealth Strategy → Build productive assets.<br>
+    12. Gold Revaluation → Treasury balance sheet improves.<br>
+    13. Capital Controls → Restrict capital movement.
+    """, unsafe_allow_html=True)
 
     # ── 401(k) Status Box ─────────────────────────────────────────────────────
     st.markdown("""<style>
