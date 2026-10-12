@@ -95,7 +95,8 @@ def render():
     # ==============================================================================
     # METRIC CATALOGUE
     # ==============================================================================
-    TIMESERIES_METRICS = ["Price (Close)", "Return %"]
+    REBASED_METRIC = "Price (Rebased=100)"
+    TIMESERIES_METRICS = ["Price (Close)", REBASED_METRIC, "Return %"]
 
     _SNAP_EXCLUDE = {
         'Ticker', 'Company', 'Sector',
@@ -108,12 +109,16 @@ def render():
 
     @st.cache_data(ttl=300)
     def get_momentum_columns():
-        try:
-            cols = conn.execute("SELECT * FROM ticker_momentum LIMIT 0").df().columns.tolist()
-            skip = {'ticker', 'Ticker', 'date', 'Date', 'nse_symbol'}
-            return [f"[M] {c}" for c in cols if c not in skip]
-        except Exception:
-            return []
+        skip = {'ticker', 'Ticker', 'date', 'Date', 'nse_symbol'}
+        cols: list[str] = []
+        for table in ("ticker_momentum", "benchmark_momentum"):
+            try:
+                for c in conn.execute(f"SELECT * FROM {table} LIMIT 0").df().columns:
+                    if c not in skip and c not in cols:
+                        cols.append(c)
+            except Exception:
+                pass
+        return [f"[M] {c}" for c in cols]
 
     MOMENTUM_COLS = get_momentum_columns()
 
@@ -138,28 +143,61 @@ def render():
     @st.cache_data(ttl=120)
     def get_price_history(tickers: tuple):
         ticker_sql = ", ".join(f"'{t}'" for t in tickers)
-        try:
-            return conn.execute(f"""
-                SELECT REPLACE(Ticker, '.NS', '') AS Ticker, Date, Close
-                FROM ticker_prices
-                WHERE REPLACE(Ticker, '.NS', '') IN ({ticker_sql})
-                ORDER BY Date
-            """).df()
-        except Exception:
+        frames = []
+        # Stocks + benchmark ETFs (BANKBEES, GOLDBEES, ...) live in separate tables.
+        for table in ("ticker_prices", "benchmark_prices"):
+            try:
+                frames.append(conn.execute(f"""
+                    SELECT REPLACE(Ticker, '.NS', '') AS Ticker, Date, Close
+                    FROM {table}
+                    WHERE REPLACE(Ticker, '.NS', '') IN ({ticker_sql})
+                """).df())
+            except Exception:
+                pass
+        frames = [f for f in frames if not f.empty]
+        if not frames:
             return pd.DataFrame()
+        df = pd.concat(frames, ignore_index=True)
+        df = df.drop_duplicates(subset=["Ticker", "Date"], keep="first")
+        return df.sort_values("Date").reset_index(drop=True)
+
+    @st.cache_data(ttl=300)
+    def get_benchmark_symbols():
+        try:
+            rows = conn.execute("""
+                SELECT DISTINCT REPLACE(Ticker, '.NS', '') AS sym
+                FROM benchmark_prices
+                ORDER BY sym
+            """).df()
+            return rows['sym'].dropna().tolist()
+        except Exception:
+            return []
 
     @st.cache_data(ttl=120)
     def get_momentum_snapshot(tickers: tuple, col_raw: str):
         ticker_sql = ", ".join(f"'{t}'" for t in tickers)
-        try:
-            return conn.execute(f"""
-                SELECT date, nse_symbol AS ticker, {col_raw}
-                FROM ticker_momentum
-                WHERE nse_symbol IN ({ticker_sql})
-                ORDER BY date ASC
-            """).df()
-        except Exception:
+        # Column is double-quoted so names like 1Y / 6M / 3M are valid identifiers.
+        # Stocks key on nse_symbol; benchmark ETFs key on ticker (may carry '.NS').
+        sources = [
+            ("ticker_momentum",    "nse_symbol"),
+            ("benchmark_momentum", "REPLACE(ticker, '.NS', '')"),
+        ]
+        frames = []
+        for table, sym_expr in sources:
+            try:
+                frames.append(conn.execute(f"""
+                    SELECT date, {sym_expr} AS ticker, "{col_raw}"
+                    FROM {table}
+                    WHERE {sym_expr} IN ({ticker_sql})
+                """).df())
+            except Exception:
+                pass
+        frames = [f for f in frames if not f.empty]
+        if not frames:
             return pd.DataFrame()
+        df = pd.concat(frames, ignore_index=True)
+        df = df.drop_duplicates(subset=["date", "ticker"], keep="first")
+        return df.sort_values("date").reset_index(drop=True)
 
     @st.cache_data(ttl=300)
     def get_fundamental_ts(tickers: tuple, view_label: str, metric: str):
@@ -294,6 +332,33 @@ def render():
                         else:    fig.add_trace(trace, secondary_y=True)
                     return fund_metric, sfx
 
+                elif metric == REBASED_METRIC:
+                    # Start every ticker at 100 on the first date ALL tickers have
+                    # data, so the lines are directly comparable (same start date).
+                    complete = pivot.dropna(how="any")
+                    if complete.empty:
+                        # No common date: fall back to each ticker's own first value
+                        base = pivot.apply(lambda c: c.dropna().iloc[0] if c.notna().any() else float("nan"))
+                        rebased = pivot / base * 100
+                    else:
+                        start = complete.index[0]
+                        window = pivot.loc[start:]
+                        rebased = window / window.iloc[0] * 100
+                    for i, tk in enumerate(ticker_order):
+                        s = rebased[tk].dropna()
+                        trace = go.Scatter(
+                            x=s.index, y=s.values, mode="lines",
+                            name=f"{tk} (100)",
+                            line=dict(color=palette[i % len(palette)],
+                                      width=2.5 if i == 0 else 1.8,
+                                      dash="dot" if secondary else "solid"),
+                            hovertemplate="%{x|%d %b %Y}<br>%{y:,.1f}<extra>" + tk + "</extra>",
+                            yaxis="y2" if (dual and secondary) else "y",
+                        )
+                        if dual: fig.add_trace(trace, secondary_y=secondary)
+                        else:    fig.add_trace(trace)
+                    return "Rebased (start = 100)", ""
+
                 else:  # Return %
                     first_valid = pivot.bfill().iloc[0]
                     perf = ((pivot / first_valid) - 1) * 100
@@ -340,6 +405,8 @@ def render():
 
             if "Return" in m1:
                 fig.add_hline(y=0, line_dash="dash", line_color="#94a3b8", line_width=1)
+            elif m1 == REBASED_METRIC:
+                fig.add_hline(y=100, line_dash="dash", line_color="#94a3b8", line_width=1)
             return fig
 
         # ── SNAPSHOT PATH ─────────────────────────────────────────────────────────
@@ -393,6 +460,11 @@ def render():
     # SELECTORS
     # ==============================================================================
     ticker_list = df_matrix['Ticker'].tolist()
+    # Add benchmark ETFs (price-only: no fundamentals) so they can be selected/compared
+    _bench_syms  = get_benchmark_symbols()
+    _existing    = set(ticker_list)
+    _bench_extra = [s for s in _bench_syms if s not in _existing]
+    ticker_list  = ticker_list + _bench_extra
 
     # ── Helper: load portfolio syms from session ───────────────────────────────
     def _get_portfolio_syms() -> list[str]:
@@ -516,6 +588,7 @@ def render():
             placeholder="Choose metrics…", key="compare_metrics",
             help=(
                 "Price (Close) / Return % → time-series line chart.\n"
+                "Price (Rebased=100) → all tickers start at 100 for easy comparison.\n"
                 "[M] columns → momentum time-series overlay.\n"
                 "[F] columns → quarterly fundamentals as bars on secondary Y.\n"
                 "All others → snapshot bar chart.  Pick 2 to compare."
@@ -529,6 +602,11 @@ def render():
     st.session_state["_metrics_init"] = compare_metrics
 
     all_tickers_to_plot = tuple([selected] + compare_tickers)
+
+    _bench_in_use = [t for t in all_tickers_to_plot if t in _bench_extra]
+    if _bench_in_use and any(not (m in TIMESERIES_METRICS or m.startswith("[M] ")) for m in compare_metrics):
+        st.caption(f"ℹ️ {', '.join(_bench_in_use)} is a benchmark/ETF — price metrics only "
+                   f"(no fundamentals), so it will be blank for fundamental/snapshot metrics.")
 
     # ==============================================================================
     # PERIOD TABS + MAIN CHART

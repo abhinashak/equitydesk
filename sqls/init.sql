@@ -1,6 +1,7 @@
 CREATE OR REPLACE VIEW general_info AS
 SELECT ticker, bse_code, nse_symbol, company_name, about, broad_sector, sector, broad_industry, industry, market_cap, current_price, high_low, stock_p_e, book_value, dividend_yield, roce, roe, face_value
-FROM 'data/fundamental_clean/general_info.parquet';
+FROM 'data/fundamental_clean/general_info.parquet'
+QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY current_price DESC) = 1;
 
 CREATE OR REPLACE VIEW pros AS SELECT ticker,item
 FROM 'data/fundamental_clean/pros.parquet';
@@ -242,9 +243,9 @@ LEFT JOIN benchmark_momentum b
 
 CREATE OR REPLACE VIEW gate_score AS
      (WITH company AS (
-        SELECT nse_symbol AS ticker, company_name, sector, market_cap, stock_p_e, roce, roe, book_value, current_price
+        SELECT COALESCE(NULLIF(nse_symbol, ''), ticker) AS ticker, company_name, sector, market_cap, stock_p_e, roce, roe, book_value, current_price
         FROM general_info
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY nse_symbol ORDER BY nse_symbol) = 1
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY COALESCE(NULLIF(nse_symbol, ''), ticker) ORDER BY ticker) = 1
     ),
     sector_pe AS (
         SELECT sector, MEDIAN(stock_p_e) AS sector_median_pe

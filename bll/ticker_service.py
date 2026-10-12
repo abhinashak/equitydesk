@@ -52,7 +52,9 @@ class TickerService:
     # ── Ticker list helpers ───────────────────────────────────────────────────
 
     def get_ticker_names(self) -> list[str]:
-        return self._cfg.load()["Name"].dropna().tolist()
+        tickers = self._cfg.load()["Name"].dropna().tolist()
+        print(f"{len(tickers)} tickers: {tickers}")
+        return tickers
 
     def load_ohlcv(self, ticker: str) -> pd.DataFrame | None:
         return self._dal.load_ticker(ticker)

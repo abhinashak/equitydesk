@@ -23,13 +23,13 @@
             defer></script>
 
     <!-- FONT -->
-    <link rel="stylesheet" href="https://cdn-static.screener.in/inter/inter.bccd7465af74.css?v=2" />
-    <link rel="stylesheet" href="https://cdn-static.screener.in/fontello/css/fontello.835ae8880a8b.css?v=2" />
+    <link rel="stylesheet" href="https://cdn-static.screener.in/inter/inter.c622a5e75782.css" />
+    <link rel="stylesheet" href="https://cdn-static.screener.in/fontello/css/fontello.1d1b3a0a264b.css?v=3" />
 
     <!-- CSS -->
     <link rel="stylesheet" href="https://cdn-static.screener.in/css/normalize.a2444750a947.css" media="all">
-    <link rel="stylesheet" href="https://cdn-static.screener.in/css/skeleton.e1c50fcb2cfe.css" media="all">
-    <link rel="stylesheet" href="https://cdn-static.screener.in/css/custom.face9eb25802.css" media="all">
+    <link rel="stylesheet" href="https://cdn-static.screener.in/css/skeleton.c6872bc14f71.css" media="all">
+    <link rel="stylesheet" href="https://cdn-static.screener.in/css/custom.8037f7bd4ff9.css" media="all">
 
     
     
@@ -39,7 +39,7 @@
   
 
   
-  <meta name="description" content="Bajaj Finance · Mkt Cap: 5,65,472 Crore (down -1.07% in 1 year) · Revenue: 69,851 Cr · Profit: 17,804 Cr · Stock is trading at 5.48 times its book value · Promoter Holding: 54.7%">
+  <meta name="description" content="Bajaj Finance · Mkt Cap: 6,53,103 Crore (up 12.2% in 1 year) · Revenue: 73,287 Cr · Profit: 19,016 Cr · Stock is trading at 6.33 times its book value · Promoter Holding: 54.7%">
   
 
   <style>
@@ -147,7 +147,7 @@
   <li>
     <button type="button"
             onclick="MobileMenu.toggleSearch(this)"
-            class="search-button"
+            class="round height-48 button-primary"
             title="Search">
       <i class="icon-search" style="font-size: 18px"></i>
     </button>
@@ -208,7 +208,7 @@
             <li>
               <a href="/screen/new/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/screens.e960a5daedf9.svg" alt="Create a stock screen">
                 </div>
                 <div>
@@ -230,7 +230,7 @@
               <li>
                 <a href="/ai/"
                    class="flex flex-align-center flex-gap-16">
-                  <div class="bg-stripes square-56">
+                  <div class="bg-stripes square height-56">
                     <img src="https://cdn-static.screener.in/icons/ai.970ef1d1cabb.svg" alt="Screener AI">
                   </div>
                   <div>
@@ -242,7 +242,7 @@
             
             <li>
               <a href="/hs/" class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/export.d623f0029933.svg" alt="Commodity Prices">
                 </div>
                 <div>
@@ -254,7 +254,7 @@
             <li>
               <a href="/people/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/shares.10acc20cb936.svg"
                        alt="Search shareholders by name">
                 </div>
@@ -267,7 +267,7 @@
             <li>
               <a href="/announcements/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/loudspeaker.88769927f6eb.svg" alt="Loudspeaker">
                 </div>
                 <div>
@@ -348,15 +348,16 @@
         
           
 
-<button type="button"
-        data-open-screener-ai="true"
-        class="bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
-        onclick="Modal.openInModal(event)"
-        data-url="/company/chat/372/"
-        data-title="Bajaj Finance"
-        data-is-bottom-modal="true">
+<a href="/ai/company/372/"
+   data-open-screener-ai="true"
+   data-url="/ai/company/372/"
+   data-modal-group="stock-chat-372"
+   class="button bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
+   onclick="event.preventDefault(); Modal.openInModal(event)"
+   data-title="Bajaj Finance"
+   data-is-bottom-modal="true">
   <i class="icon-chat-ai"></i> AI
-</button>
+</a>
 
         
       </div>
@@ -397,15 +398,16 @@
           
             
 
-<button type="button"
-        data-open-screener-ai="true"
-        class="bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
-        onclick="Modal.openInModal(event)"
-        data-url="/company/chat/372/"
-        data-title="Bajaj Finance"
-        data-is-bottom-modal="true">
+<a href="/ai/company/372/"
+   data-open-screener-ai="true"
+   data-url="/ai/company/372/"
+   data-modal-group="stock-chat-372"
+   class="button bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
+   onclick="event.preventDefault(); Modal.openInModal(event)"
+   data-title="Bajaj Finance"
+   data-is-bottom-modal="true">
   <i class="icon-chat-ai"></i> AI
-</button>
+</a>
 
           
         </div>
@@ -447,19 +449,19 @@
         </div>
         <div class="font-size-18 strong line-height-14">
           <div class="flex flex-align-center">
-            <span>₹ 908</span>
+            <span>₹ 1,052</span>
             
-              <span class="font-size-12 down margin-left-4">
-                <i class="icon-circle-down"></i>
-                -2.46%
+              <span class="font-size-12 up margin-left-4">
+                <i class="icon-circle-up"></i>
+                0.68%
               </span>
             
           </div>
           <div class="ink-600 font-size-11 font-weight-500">
             
-              29 May
+              04 Sep
               
-                - close price
+                9:20 a.m.
               
             
           </div>
@@ -467,7 +469,7 @@
       </div>
 
       <form method="post" class="flex margin-0" style="align-items: center">
-        <input type="hidden" name="csrfmiddlewaretoken" value="iC2kdhoEhhhrRv57Yo9vAkty5qk3O2bh1jbqVFc7iiuKYc1r96pA7Fii1efCDVmu">
+        <input type="hidden" name="csrfmiddlewaretoken" value="TPeeXyJeAmSlomNd64iDTQ3cxd9Orr4DVESrVNgcyKpGFdxqXSuZ5jSGpaE92sV3">
         <input type="hidden" name="next" value="/company/BAJFINANCE/">
 
         
@@ -493,7 +495,7 @@
     </div>
 
     
-    <div class="company-links show-from-tablet-landscape"
+    <div class="show-from-tablet-landscape flex-row flex-nowrap flex-align-center gap-32"
          style="font-weight: 500;
                 margin-top: 8px">
       
@@ -524,6 +526,13 @@
           </span>
         </a>
       
+
+      
+        <a href="https://www.nseindia.com/get-quotes/derivatives?symbol=BAJFINANCE" target="_blank" rel="noopener noreferrer">
+          <i class="icon-link-ext"></i>
+          <span class="ink-700 upper">F&amp;O</span>
+        </a>
+      
     </div>
     
 
@@ -537,12 +546,12 @@
           
             <div class="title">Key Points</div>
             <div class="sub commentary always-show-more-box">
-              <p><strong>Amongst Largest NBFCs in India</strong> <br>
-The company is one of India’s leading and most diversified financial services companies. Since its inception, it has leveraged technology to launch 26 product lines and 51 product variants for retail, MSME, and commercial consumers, with major product innovations like the EMI card and Flexi with a significant presence in both urban and rural India. It also accepts public and corporate deposits. <sup><a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/23ae9a75-9bfa-49c2-89e4-5e1ee7a20f8c.pdf#page=26" target="_blank" rel="noopener noreferrer">[1]</a></sup> <sup><a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/23ae9a75-9bfa-49c2-89e4-5e1ee7a20f8c.pdf#page=38" target="_blank" rel="noopener noreferrer">[2]</a></sup></p>
+              <p><strong>Business Overview:</strong><sup><a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/0670e08f-bc55-4155-9cbe-89e4637b3b05.pdf#page=32" target="_blank" rel="noopener noreferrer">[1]</a></sup> <br>
+The company is <strong>India's largest private-sector Non-Banking Financial Company (NBFC)</strong>, catering to both individual and business customers through a portfolio of financial products and services. Its offerings span loans, fixed deposits, payments, insurance, and mutual funds through its mobile app, website, and social media, and through its branch network. </p>
               <div class="show-more-button" style="height: 20px"></div>
             </div>
 
-            <button class="a upper font-weight-500 letter-spacing plausible-event-name=Key+Insight plausible-event-user=unregistered"
+            <button class="a upper font-weight-500 letter-spacing plausible-event-name=Key+Insight plausible-event-user=free"
                     style="font-size: 1.4rem"
                     type="button"
                     onclick="Modal.openInModal(event)"
@@ -554,7 +563,7 @@ The company is one of India’s leading and most diversified financial services 
           
         </div>
 
-        <div class="company-links hide-from-tablet-landscape margin-top-20"
+        <div class="hide-from-tablet-landscape margin-top-20 flex-row flex-align-center gap-12-22 nowrap"
              style="font-weight: 500">
           
             <a href="http://www.bajajfinserv.in/finance"
@@ -581,6 +590,13 @@ The company is one of India’s leading and most diversified financial services 
               </span>
             </a>
           
+
+          
+            <a href="https://www.nseindia.com/get-quotes/derivatives?symbol=BAJFINANCE" target="_blank" rel="noopener noreferrer">
+              <i class="icon-link-ext"></i>
+              <span class="ink-700 upper">F&amp;O</span>
+            </a>
+          
         </div>
       </div>
       
@@ -600,7 +616,7 @@ The company is one of India’s leading and most diversified financial services 
     
       <span class="nowrap value">
         ₹
-        <span class="number">5,65,472</span>
+        <span class="number">6,55,095</span>
         
           Cr.
         
@@ -618,7 +634,7 @@ The company is one of India’s leading and most diversified financial services 
     
       <span class="nowrap value">
         ₹
-        <span class="number">908</span>
+        <span class="number">1,052</span>
         
       </span>
     
@@ -632,7 +648,7 @@ The company is one of India’s leading and most diversified financial services 
     </span>
 
     
-      <span class="nowrap value">₹ <span class="number">1,102</span> / <span class="number">788</span></span>
+      <span class="nowrap value">₹ <span class="number">1,178</span> / <span class="number">788</span></span>
     
   </li>
 
@@ -646,7 +662,7 @@ The company is one of India’s leading and most diversified financial services 
     
       <span class="nowrap value">
         
-        <span class="number">33.4</span>
+        <span class="number">36.0</span>
         
       </span>
     
@@ -678,7 +694,7 @@ The company is one of India’s leading and most diversified financial services 
     
       <span class="nowrap value">
         
-        <span class="number">0.59</span>
+        <span class="number">0.51</span>
         
           %
         
@@ -696,7 +712,7 @@ The company is one of India’s leading and most diversified financial services 
     
       <span class="nowrap value">
         
-        <span class="number">11.1</span>
+        <span class="number">11.2</span>
         
           %
         
@@ -714,7 +730,7 @@ The company is one of India’s leading and most diversified financial services 
     
       <span class="nowrap value">
         
-        <span class="number">17.7</span>
+        <span class="number">17.1</span>
         
           %
         
@@ -970,13 +986,15 @@ The company is one of India’s leading and most diversified financial services 
         <div class="pros" style="flex-basis: 50%;">
           <p class="title">Pros</p>
           <ul>
-            <li>Company has delivered good profit growth of 33.7% CAGR over last 5 years</li><li>Company has been maintaining a healthy dividend payout of 19.8%</li><li>Company&#x27;s median sales growth is 29.8% of last 10 years</li>
+            <li>Company has been maintaining a healthy dividend payout of 19.8%</li><li>Company&#x27;s median sales growth is 29.1% of last 10 years</li>
           </ul>
         </div>
         <div class="cons" style="flex-basis: 50%;">
           <p class="title">Cons</p>
           <ul>
-            <li>Stock is trading at 5.48 times its book value</li>
+            
+              <li>Stock is trading at 6.34 times its book value</li>
+            
           </ul>
         </div>
       </div>
@@ -985,7 +1003,7 @@ The company is one of India’s leading and most diversified financial services 
         <span class="font-weight-500">The pros and cons are machine generated.</span>
         <span class="has-tooltip">
           <i class="icon-info"></i>
-          <span class="tooltip arrow-down" style="width: 300px; left: -100px;">
+          <span class="tooltip position-area-top-center" style="width: 300px">
             Pros / cons are based on a checklist to highlight important points. Please exercise caution and do your own analysis.
           </span>
         </span>
@@ -1095,8 +1113,8 @@ The company is one of India’s leading and most diversified financial services 
                    target="_blank">BSE SENSEX 50</a>
               
                 <a href="/company/1017/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+100+ESG+Index+(INR)"
-                   target="_blank">BSE 100 ESG Index (INR)</a>
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+100+ESG"
+                   target="_blank">BSE 100 ESG</a>
               
                 <a href="/company/1181/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+250+LargeMidCap+Index"
@@ -1118,10 +1136,6 @@ The company is one of India’s leading and most diversified financial services 
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+100+LargeCap+TMC+Index"
                    target="_blank">BSE 100 LargeCap TMC Index</a>
               
-                <a href="/company/NI200MOM30/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty200+Momentum+30"
-                   target="_blank">Nifty200 Momentum 30</a>
-              
                 <a href="/company/LMIDCAP250/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+LargeMidcap+250"
                    target="_blank">Nifty LargeMidcap 250</a>
@@ -1142,17 +1156,9 @@ The company is one of India’s leading and most diversified financial services 
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Total+Market"
                    target="_blank">Nifty Total Market</a>
               
-                <a href="/company/ALPHALOWVO/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Alpha+Low-Volatility+30"
-                   target="_blank">Nifty Alpha Low-Volatility 30</a>
-              
                 <a href="/company/ENHANCE250/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty100+Enhanced+ESG"
                    target="_blank">Nifty100 Enhanced ESG</a>
-              
-                <a href="/company/NLOWVOLATI/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Alpha+Quality+Low-Volatility+30"
-                   target="_blank">Nifty Alpha Quality Low-Volatility 30</a>
               
                 <a href="/company/1193/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+200+Equal+Weight"
@@ -1165,10 +1171,6 @@ The company is one of India’s leading and most diversified financial services 
                 <a href="/company/1190/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+Sensex+Sixty"
                    target="_blank">BSE Sensex Sixty</a>
-              
-                <a href="/company/NIF500MO50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Momentum+50"
-                   target="_blank">Nifty500 Momentum 50</a>
               
                 <a href="/company/1200/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+Sensex+Equal+Weight"
@@ -1186,10 +1188,6 @@ The company is one of India’s leading and most diversified financial services 
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Equal+Weight"
                    target="_blank">Nifty500 Equal Weight</a>
               
-                <a href="/company/NY500MMQ50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Multicap+Momentum+Quality+50"
-                   target="_blank">Nifty500 Multicap Momentum Quality 50</a>
-              
                 <a href="/company/NTYTOP20EW/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Top+20+Equal+Weight"
                    target="_blank">Nifty Top 20 Equal Weight</a>
@@ -1202,17 +1200,9 @@ The company is one of India’s leading and most diversified financial services 
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+LargeMidSmall+Equal-Cap+Weighted"
                    target="_blank">Nifty500 LargeMidSmall Equal-Cap Weighted</a>
               
-                <a href="/company/N500MQVL50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Multifactor+MQVLv50"
-                   target="_blank">Nifty500 Multifactor MQVLv50</a>
-              
                 <a href="/company/1205/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+India+150"
                    target="_blank">BSE India 150</a>
-              
-                <a href="/company/NFY500LV50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Low+Volatility+50"
-                   target="_blank">Nifty500 Low Volatility 50</a>
               
                 <a href="/company/1202/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+1000"
@@ -1226,9 +1216,9 @@ The company is one of India’s leading and most diversified financial services 
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+India+FPI+150"
                    target="_blank">Nifty India FPI 150</a>
               
-                <a href="/company/NFTTMMQ50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Total+Market+Momentum+Quality+50"
-                   target="_blank">Nifty Total Market Momentum Quality 50</a>
+                <a href="/company/1215/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+LargeMid+(60:40)+Stable+Dividend+50+Index"
+                   target="_blank">BSE LargeMid (60:40) Stable Dividend 50 Index</a>
               
               
                 <button type="button"
@@ -1300,13 +1290,6 @@ The company is one of India’s leading and most diversified financial services 
         <th class="text"></th>
         
           <th class="highlight-cell"
-              data-date-key="2023-03-31">
-            Mar 2023
-            
-            
-          </th>
-        
-          <th class=""
               data-date-key="2023-06-30">
             Jun 2023
             
@@ -1327,14 +1310,14 @@ The company is one of India’s leading and most diversified financial services 
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2024-03-31">
             Mar 2024
             
             
           </th>
         
-          <th class=""
+          <th class="highlight-cell"
               data-date-key="2024-06-30">
             Jun 2024
             
@@ -1355,14 +1338,14 @@ The company is one of India’s leading and most diversified financial services 
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2025-03-31">
             Mar 2025
             
             
           </th>
         
-          <th class=""
+          <th class="highlight-cell"
               data-date-key="2025-06-30">
             Jun 2025
             
@@ -1383,9 +1366,16 @@ The company is one of India’s leading and most diversified financial services 
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2026-03-31">
             Mar 2026
+            
+            
+          </th>
+        
+          <th class="highlight-cell"
+              data-date-key="2026-06-30">
+            Jun 2026
             
             
           </th>
@@ -1407,12 +1397,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="highlight-cell">
                 
-                  9,717
-                
-              </td>
-            
-              <td class="">
-                
                   10,665
                 
               </td>
@@ -1429,13 +1413,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   12,760
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   13,724
                 
@@ -1453,13 +1437,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   15,638
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   16,697
                 
@@ -1477,9 +1461,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   18,430
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  19,802
                 
               </td>
             
@@ -1495,12 +1485,6 @@ The company is one of India’s leading and most diversified financial services 
             </td>
             
               <td class="highlight-cell">
-                
-                  2,614
-                
-              </td>
-            
-              <td class="">
                 
                   3,013
                 
@@ -1518,13 +1502,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   3,861
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   4,202
                 
@@ -1542,13 +1526,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4,913
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   5,222
                 
@@ -1566,9 +1550,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   5,487
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  5,874
                 
               </td>
             
@@ -1588,12 +1578,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="highlight-cell">
                 
-                  3,153
-                
-              </td>
-            
-              <td class="">
-                
                   3,505
                 
               </td>
@@ -1610,13 +1594,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4,158
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   4,736
                 
@@ -1634,13 +1618,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   5,596
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   5,693
                 
@@ -1658,9 +1642,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   6,221
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  6,496
                 
               </td>
             
@@ -1676,12 +1666,6 @@ The company is one of India’s leading and most diversified financial services 
             </td>
             
               <td class="highlight-cell">
-                
-                  3,950
-                
-              </td>
-            
-              <td class="">
                 
                   4,147
                 
@@ -1699,13 +1683,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4,741
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   4,786
                 
@@ -1723,13 +1707,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   5,129
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   5,782
                 
@@ -1747,9 +1731,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   6,722
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  7,432
                 
               </td>
             
@@ -1765,12 +1755,6 @@ The company is one of India’s leading and most diversified financial services 
             </td>
             
               <td class="highlight-cell">
-                
-                  41%
-                
-              </td>
-            
-              <td class="">
                 
                   39%
                 
@@ -1788,13 +1772,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   37%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   35%
                 
@@ -1812,13 +1796,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   33%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   35%
                 
@@ -1836,9 +1820,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   36%
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  38%
                 
               </td>
             
@@ -1858,12 +1848,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="highlight-cell">
                 
-                  2
-                
-              </td>
-            
-              <td class="">
-                
                   1
                 
               </td>
@@ -1880,13 +1864,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   2
                 
@@ -1904,13 +1888,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   11
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   1
                 
@@ -1925,6 +1909,12 @@ The company is one of India’s leading and most diversified financial services 
               <td class="">
                 
                   1,167
+                
+              </td>
+            
+              <td class="">
+                
+                  1
                 
               </td>
             
@@ -1947,12 +1937,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="highlight-cell">
                 
-                  123
-                
-              </td>
-            
-              <td class="">
-                
                   143
                 
               </td>
@@ -1969,13 +1953,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   179
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   186
                 
@@ -1993,13 +1977,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   236
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   236
                 
@@ -2017,9 +2001,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   238
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  270
                 
               </td>
             
@@ -2035,12 +2025,6 @@ The company is one of India’s leading and most diversified financial services 
             </td>
             
               <td class="highlight-cell">
-                
-                  3,830
-                
-              </td>
-            
-              <td class="">
                 
                   4,005
                 
@@ -2058,13 +2042,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4,566
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   4,602
                 
@@ -2082,13 +2066,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4,905
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   5,546
                 
@@ -2106,9 +2090,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   6,484
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  7,163
                 
               </td>
             
@@ -2155,12 +2145,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  26%
-                
-              </td>
-            
-              <td class="">
-                
                   22%
                 
               </td>
@@ -2171,13 +2155,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   20%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   25%
                 
@@ -2192,6 +2176,12 @@ The company is one of India’s leading and most diversified financial services 
               <td class="">
                 
                   23%
+                
+              </td>
+            
+              <td class="">
+                
+                  25%
                 
               </td>
             
@@ -2217,12 +2207,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="highlight-cell">
                 
-                  2,837
-                
-              </td>
-            
-              <td class="">
-                
                   2,959
                 
               </td>
@@ -2239,13 +2223,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   3,402
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   3,402
                 
@@ -2263,13 +2247,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   3,940
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   4,133
                 
@@ -2287,9 +2271,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   4,840
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  5,346
                 
               </td>
             
@@ -2305,12 +2295,6 @@ The company is one of India’s leading and most diversified financial services 
             </td>
             
               <td class="highlight-cell">
-                
-                  4.69
-                
-              </td>
-            
-              <td class="">
                 
                   4.88
                 
@@ -2328,13 +2312,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   5.50
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   5.50
                 
@@ -2352,13 +2336,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   6.34
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   6.65
                 
@@ -2376,9 +2360,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   7.78
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  8.59
                 
               </td>
             
@@ -2394,12 +2384,6 @@ The company is one of India’s leading and most diversified financial services 
             </td>
             
               <td class="highlight-cell">
-                
-                  1.19%
-                
-              </td>
-            
-              <td class="">
                 
                   1.09%
                 
@@ -2417,13 +2401,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   1.05%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   1.06%
                 
@@ -2441,13 +2425,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   1.18%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   1.28%
                 
@@ -2465,9 +2449,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   1.27%
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  1.20%
                 
               </td>
             
@@ -2484,12 +2474,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="highlight-cell">
                 
-                  0.43%
-                
-              </td>
-            
-              <td class="">
-                
                   0.39%
                 
               </td>
@@ -2497,6 +2481,12 @@ The company is one of India’s leading and most diversified financial services 
               <td class="">
                 
                   0.39%
+                
+              </td>
+            
+              <td class="">
+                
+                  0.46%
                 
               </td>
             
@@ -2507,12 +2497,6 @@ The company is one of India’s leading and most diversified financial services 
               </td>
             
               <td class="highlight-cell">
-                
-                  0.46%
-                
-              </td>
-            
-              <td class="">
                 
                   0.47%
                 
@@ -2530,13 +2514,13 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   0.56%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   0.63%
                 
@@ -2554,9 +2538,15 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   0.52%
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  0.49%
                 
               </td>
             
@@ -2569,16 +2559,6 @@ The company is one of India’s leading and most diversified financial services 
           <td class="text ink-600">Raw PDF</td>
           
             <td class="hover-link highlight-cell">
-              <a href="/company/source/quarter/372/3/2023/"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 aria-label="Raw PDF"
-                 class="plausible-event-name=Quarterly+PDF plausible-event-user=unregistered">
-                <i class="icon-file-pdf ink-600-link"></i>
-              </a>
-            </td>
-          
-            <td class="hover-link ">
               <a href="/company/source/quarter/372/6/2023/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2608,7 +2588,7 @@ The company is one of India’s leading and most diversified financial services 
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/372/3/2024/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2618,7 +2598,7 @@ The company is one of India’s leading and most diversified financial services 
               </a>
             </td>
           
-            <td class="hover-link ">
+            <td class="hover-link highlight-cell">
               <a href="/company/source/quarter/372/6/2024/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2648,7 +2628,7 @@ The company is one of India’s leading and most diversified financial services 
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/372/3/2025/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2658,7 +2638,7 @@ The company is one of India’s leading and most diversified financial services 
               </a>
             </td>
           
-            <td class="hover-link ">
+            <td class="hover-link highlight-cell">
               <a href="/company/source/quarter/372/6/2025/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2688,8 +2668,18 @@ The company is one of India’s leading and most diversified financial services 
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/372/3/2026/"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 aria-label="Raw PDF"
+                 class="plausible-event-name=Quarterly+PDF plausible-event-user=unregistered">
+                <i class="icon-file-pdf ink-600-link"></i>
+              </a>
+            </td>
+          
+            <td class="hover-link highlight-cell">
+              <a href="/company/source/quarter/372/6/2026/"
                  target="_blank"
                  rel="noopener noreferrer"
                  aria-label="Raw PDF"
@@ -2838,6 +2828,13 @@ The company is one of India’s leading and most diversified financial services 
             
           </th>
         
+          <th class=""
+              data-date-key="TTM">
+            TTM
+            
+            
+          </th>
+        
       </tr>
     </thead>
     <tbody>
@@ -2917,13 +2914,19 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  61,949
+                  61,093
                 
               </td>
             
               <td class="">
                 
-                  69,851
+                  71,267
+                
+              </td>
+            
+              <td class="">
+                
+                  73,287
                 
               </td>
             
@@ -3000,13 +3003,19 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  18,657
+                  18,656
                 
               </td>
             
               <td class="">
                 
-                  21,417
+                  21,648
+                
+              </td>
+            
+              <td class="">
+                
+                  22,069
                 
               </td>
             
@@ -3086,13 +3095,19 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  20,776
+                  19,921
                 
               </td>
             
               <td class="">
                 
-                  24,989
+                  24,741
+                
+              </td>
+            
+              <td class="">
+                
+                  26,122
                 
               </td>
             
@@ -3175,7 +3190,13 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  23,445
+                  24,878
+                
+              </td>
+            
+              <td class="">
+                
+                  25,095
                 
               </td>
             
@@ -3252,7 +3273,13 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  36%
+                  37%
+                
+              </td>
+            
+              <td class="">
+                
+                  35%
                 
               </td>
             
@@ -3339,6 +3366,12 @@ The company is one of India’s leading and most diversified financial services 
               <td class="">
                 
                   -18
+                
+              </td>
+            
+              <td class="">
+                
+                  -264
                 
               </td>
             
@@ -3431,6 +3464,12 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
+              <td class="">
+                
+                  977
+                
+              </td>
+            
           </tr>
         
       
@@ -3514,6 +3553,12 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
+              <td class="">
+                
+                  25,288
+                
+              </td>
+            
           </tr>
         
       
@@ -3594,6 +3639,12 @@ The company is one of India’s leading and most diversified financial services 
               <td class="">
                 
                   25%
+                
+              </td>
+            
+              <td class="">
+                
+                  
                 
               </td>
             
@@ -3683,6 +3734,12 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
+              <td class="">
+                
+                  19,016
+                
+              </td>
+            
           </tr>
         
       
@@ -3763,6 +3820,12 @@ The company is one of India’s leading and most diversified financial services 
               <td class="">
                 
                   28.61
+                
+              </td>
+            
+              <td class="">
+                
+                  30.56
                 
               </td>
             
@@ -3849,6 +3912,12 @@ The company is one of India’s leading and most diversified financial services 
                 
               </td>
             
+              <td class="">
+                
+                  
+                
+              </td>
+            
           </tr>
         
       
@@ -3869,19 +3938,19 @@ The company is one of India’s leading and most diversified financial services 
           </tr>
           <tr>
             <td>10 Years:</td>
-            <td>25%</td>
+            <td>26%</td>
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>24%</td>
-          </tr>
-          <tr>
-            <td>3 Years:</td>
             <td>25%</td>
           </tr>
           <tr>
+            <td>3 Years:</td>
+            <td>26%</td>
+          </tr>
+          <tr>
             <td>TTM:</td>
-            <td>13%</td>
+            <td>18%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3894,15 +3963,15 @@ The company is one of India’s leading and most diversified financial services 
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>34%</td>
+            <td>33%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>18%</td>
+            <td>17%</td>
           </tr>
           <tr>
             <td>TTM:</td>
-            <td>15%</td>
+            <td>18%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3911,19 +3980,19 @@ The company is one of India’s leading and most diversified financial services 
           </tr>
           <tr>
             <td>10 Years:</td>
-            <td>28%</td>
+            <td>25%</td>
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>9%</td>
+            <td>7%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>9%</td>
+            <td>13%</td>
           </tr>
           <tr>
             <td>1 Year:</td>
-            <td>-1%</td>
+            <td>12%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3932,19 +4001,19 @@ The company is one of India’s leading and most diversified financial services 
           </tr>
           <tr>
             <td>10 Years:</td>
-            <td>19%</td>
+            <td>18%</td>
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>19%</td>
+            <td>18%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>19%</td>
+            <td>18%</td>
           </tr>
           <tr>
             <td>Last Year:</td>
-            <td>18%</td>
+            <td>17%</td>
           </tr>
         </table>
       </div>
@@ -4402,7 +4471,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  5,034
+                  4,656
                 
               </td>
             
@@ -4485,7 +4554,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  368,248
+                  367,870
                 
               </td>
             
@@ -4577,7 +4646,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  3,782
+                  3,724
                 
               </td>
             
@@ -4594,37 +4663,37 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  -0
+                  0
                 
               </td>
             
               <td class="">
                 
-                  -0
+                  0
                 
               </td>
             
               <td class="">
                 
-                  -0
+                  0
                 
               </td>
             
               <td class="">
                 
-                  -0
+                  0
                 
               </td>
             
               <td class="">
                 
-                  -0
+                  0
                 
               </td>
             
               <td class="">
                 
-                  -0
+                  0
                 
               </td>
             
@@ -4660,7 +4729,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  62
+                  119
                 
               </td>
             
@@ -4823,7 +4892,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  322,917
+                  322,539
                 
               </td>
             
@@ -4906,7 +4975,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  368,248
+                  367,870
                 
               </td>
             
@@ -5125,7 +5194,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  -50,995
+                  -50,633
                 
               </td>
             
@@ -5211,7 +5280,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  -1,099
+                  -1,462
                 
               </td>
             
@@ -5463,7 +5532,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  -51,994
+                  -51,632
                 
               </td>
             
@@ -5552,7 +5621,7 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  -78%
+                  -76%
                 
               </td>
             
@@ -5762,13 +5831,13 @@ The company is one of India’s leading and most diversified financial services 
             
               <td class="">
                 
-                  18%
+                  17%
                 
               </td>
             
               <td class="">
                 
-                  18%
+                  17%
                 
               </td>
             
@@ -5836,16 +5905,6 @@ The company is one of India’s leading and most diversified financial services 
         <th class="text"></th>
         
           <th>
-            Mar 2014
-            
-          </th>
-        
-          <th>
-            Mar 2015
-            
-          </th>
-        
-          <th>
             Mar 2016
             
           </th>
@@ -5895,16 +5954,21 @@ The company is one of India’s leading and most diversified financial services 
             
           </th>
         
+          <th>
+            Mar 2026
+            
+          </th>
+        
       </tr>
     </thead>
     <tbody>
       
         <tr class="stripe">
-          <td class="text border-right">Customer Franchise<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
+          <td class="text border-right">Customer franchise<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
           
             <td class="position-relative"
-                rowspan="8"
-                colspan="12">
+                rowspan="4"
+                colspan="11">
               
 
 <div class="position-absolute inset-0">
@@ -5917,14 +5981,6 @@ The company is one of India’s leading and most diversified financial services 
         <tr class="stripe">
           
             <td style="padding-left: var(--cell-padding)">
-              x.xx
-            </td>
-          
-            <td >
-              xx.xx
-            </td>
-          
-            <td >
               xx.xx
             </td>
           
@@ -5964,6 +6020,10 @@ The company is one of India’s leading and most diversified financial services 
               xxx.xx
             </td>
           
+            <td >
+              xxx.xx
+            </td>
+          
         </tr>
       
         <tr class="">
@@ -5973,11 +6033,7 @@ The company is one of India’s leading and most diversified financial services 
             </td>
           
             <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
+              xx.xx
             </td>
           
             <td >
@@ -6025,171 +6081,7 @@ The company is one of India’s leading and most diversified financial services 
             </td>
           
             <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xxx,xxx
-            </td>
-          
-            <td >
-              xxx,xxx
-            </td>
-          
-            <td >
-              xxx,xxx
-            </td>
-          
-            <td >
-              xxx,xxx
-            </td>
-          
-            <td >
-              xxx,xxx
-            </td>
-          
-            <td >
-              xxx,xxx
-            </td>
-          
-        </tr>
-      
-        <tr class="">
-          
-            <td style="padding-left: var(--cell-padding)">
               
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-            <td >
-              x,xxx
-            </td>
-          
-        </tr>
-      
-        <tr class="stripe">
-          
-            <td style="padding-left: var(--cell-padding)">
-              
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-        </tr>
-      
-        <tr class="">
-          
-            <td style="padding-left: var(--cell-padding)">
-              
-            </td>
-          
-            <td >
-              
-            </td>
-          
-            <td >
-              
-            </td>
-          
-            <td >
-              x.xx
             </td>
           
             <td >
@@ -6214,54 +6106,6 @@ The company is one of India’s leading and most diversified financial services 
           
             <td >
               xx.xx
-            </td>
-          
-            <td >
-              xx.xx
-            </td>
-          
-            <td >
-              xx.xx
-            </td>
-          
-        </tr>
-      
-        <tr class="stripe">
-          
-            <td style="padding-left: var(--cell-padding)">
-              
-            </td>
-          
-            <td >
-              
-            </td>
-          
-            <td >
-              
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
             </td>
           
             <td >
@@ -6305,27 +6149,23 @@ The company is one of India’s leading and most diversified financial services 
             </td>
           
             <td >
-              
+              x.xx
             </td>
           
             <td >
-              xx.xx
+              x.xx
             </td>
           
             <td >
-              xx.xx
+              x.xx
             </td>
           
             <td >
-              xx.xx
+              x.xx
             </td>
           
             <td >
-              xx.xx
-            </td>
-          
-            <td >
-              xx.xx
+              x.xx
             </td>
           
         </tr>
@@ -6348,37 +6188,17 @@ The company is one of India’s leading and most diversified financial services 
         </tr>
       
         <tr class="">
-          <td class="text border-right">New Loans Booked<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
+          <td class="text border-right">New loans booked<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
           
         </tr>
       
         <tr class="stripe">
-          <td class="text border-right">Active Distribution Points<br><span class="font-weight-500 font-size-12 sub">Number</span></td>
+          <td class="text border-right">Cross-sell franchise<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
           
         </tr>
       
         <tr class="">
-          <td class="text border-right">Geographic Presence (Locations)<br><span class="font-weight-500 font-size-12 sub">Number</span></td>
-          
-        </tr>
-      
-        <tr class="stripe">
-          <td class="text border-right">Product Per Customer (PPC)<br><span class="font-weight-500 font-size-12 sub">Number</span></td>
-          
-        </tr>
-      
-        <tr class="">
-          <td class="text border-right">EMI Card Franchise (Cards in Force)<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
-          
-        </tr>
-      
-        <tr class="stripe">
-          <td class="text border-right">New Customer Addition<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
-          
-        </tr>
-      
-        <tr class="">
-          <td class="text border-right">Total App Net Installs<br><span class="font-weight-500 font-size-12 sub">MM</span></td>
+          <td class="text border-right">Products per Customer (PPC)<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
         </tr>
       
@@ -6427,7 +6247,7 @@ The company is one of India’s leading and most diversified financial services 
         
           <div class="ink-700 font-size-12"
                style="position: absolute;
-                      padding-left: 15px">6 Recently</div>
+                      padding-left: 15px">2 Recently</div>
         
       </div>
     
@@ -6442,7 +6262,7 @@ The company is one of India’s leading and most diversified financial services 
       <thead>
         <tr>
           <th class="text"></th>
-          <th>Jun 2023</th><th>Sep 2023</th><th>Dec 2023</th><th>Mar 2024</th><th>Jun 2024</th><th>Sep 2024</th><th>Dec 2024</th><th>Mar 2025</th><th>Jun 2025</th><th>Sep 2025</th><th>Dec 2025</th><th>Mar 2026</th>
+          <th>Sep 2023</th><th>Dec 2023</th><th>Mar 2024</th><th>Jun 2024</th><th>Sep 2024</th><th>Dec 2024</th><th>Mar 2025</th><th>Jun 2025</th><th>Sep 2025</th><th>Dec 2025</th><th>Mar 2026</th><th>Jun 2026</th>
         </tr>
       </thead>
       <tbody>
@@ -6454,8 +6274,6 @@ The company is one of India’s leading and most diversified financial services 
                 Promoters&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>55.87%</td>
             
               <td>55.87%</td>
             
@@ -6479,6 +6297,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>54.71%</td>
             
+              <td>54.68%</td>
+            
           </tr>
         
           <tr class="">
@@ -6488,8 +6308,6 @@ The company is one of India’s leading and most diversified financial services 
                 FIIs&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>20.09%</td>
             
               <td>20.41%</td>
             
@@ -6513,6 +6331,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>21.33%</td>
             
+              <td>20.20%</td>
+            
           </tr>
         
           <tr class="stripe">
@@ -6522,8 +6342,6 @@ The company is one of India’s leading and most diversified financial services 
                 DIIs&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>12.83%</td>
             
               <td>13.05%</td>
             
@@ -6547,6 +6365,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>15.10%</td>
             
+              <td>16.30%</td>
+            
           </tr>
         
           <tr class="">
@@ -6563,8 +6383,6 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>0.07%</td>
             
-              <td>0.07%</td>
-            
               <td>0.09%</td>
             
               <td>0.09%</td>
@@ -6580,6 +6398,8 @@ The company is one of India’s leading and most diversified financial services 
               <td>0.08%</td>
             
               <td>0.08%</td>
+            
+              <td>0.09%</td>
             
           </tr>
         
@@ -6590,8 +6410,6 @@ The company is one of India’s leading and most diversified financial services 
                 Public&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>10.99%</td>
             
               <td>10.50%</td>
             
@@ -6615,6 +6433,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>8.73%</td>
             
+              <td>8.64%</td>
+            
           </tr>
         
           <tr class="">
@@ -6624,8 +6444,6 @@ The company is one of India’s leading and most diversified financial services 
                 Others&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>0.13%</td>
             
               <td>0.10%</td>
             
@@ -6649,11 +6467,13 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>0.07%</td>
             
+              <td>0.08%</td>
+            
           </tr>
         
         <tr class="sub">
           <td class="text">No. of Shareholders</td>
-          <td>7,84,883</td><td>7,26,583</td><td>7,45,040</td><td>7,99,199</td><td>8,05,241</td><td>7,81,913</td><td>7,91,392</td><td>7,05,610</td><td>8,99,777</td><td>9,41,999</td><td>9,61,994</td><td>10,02,945</td>
+          <td>7,26,583</td><td>7,45,040</td><td>7,99,199</td><td>8,05,241</td><td>7,81,913</td><td>7,91,392</td><td>7,05,610</td><td>8,99,777</td><td>9,41,999</td><td>9,61,994</td><td>10,02,945</td><td>9,85,158</td>
         </tr>
       </tbody>
     </table>
@@ -6670,7 +6490,7 @@ The company is one of India’s leading and most diversified financial services 
       <thead>
         <tr>
           <th class="text"></th>
-          <th>Mar 2017</th><th>Mar 2018</th><th>Mar 2019</th><th>Mar 2020</th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>Mar 2025</th><th>Mar 2026</th>
+          <th>Mar 2017</th><th>Mar 2018</th><th>Mar 2019</th><th>Mar 2020</th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>Mar 2025</th><th>Mar 2026</th><th>Jun 2026</th>
         </tr>
       </thead>
       <tbody>
@@ -6703,6 +6523,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>54.71%</td>
             
+              <td>54.68%</td>
+            
           </tr>
         
           <tr class="">
@@ -6732,6 +6554,8 @@ The company is one of India’s leading and most diversified financial services 
               <td>21.45%</td>
             
               <td>21.33%</td>
+            
+              <td>20.20%</td>
             
           </tr>
         
@@ -6763,6 +6587,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>15.10%</td>
             
+              <td>16.30%</td>
+            
           </tr>
         
           <tr class="">
@@ -6792,6 +6618,8 @@ The company is one of India’s leading and most diversified financial services 
               <td>0.08%</td>
             
               <td>0.08%</td>
+            
+              <td>0.09%</td>
             
           </tr>
         
@@ -6823,6 +6651,8 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>8.73%</td>
             
+              <td>8.64%</td>
+            
           </tr>
         
           <tr class="">
@@ -6853,11 +6683,13 @@ The company is one of India’s leading and most diversified financial services 
             
               <td>0.07%</td>
             
+              <td>0.08%</td>
+            
           </tr>
         
         <tr class="sub">
           <td class="text">No. of Shareholders</td>
-          <td>94,633</td><td>1,31,959</td><td>1,68,420</td><td>3,54,901</td><td>4,64,394</td><td>7,18,638</td><td>8,90,706</td><td>7,99,199</td><td>7,05,610</td><td>10,02,945</td>
+          <td>94,633</td><td>1,31,959</td><td>1,68,420</td><td>3,54,901</td><td>4,64,394</td><td>7,18,638</td><td>8,90,706</td><td>7,99,199</td><td>7,05,610</td><td>10,02,945</td><td>9,85,158</td>
         </tr>
       </tbody>
     </table>
@@ -6871,7 +6703,7 @@ The company is one of India’s leading and most diversified financial services 
     * The classifications might have changed from Sep'2022 onwards.
     <span class="has-tooltip">
       <i class="icon-info"></i>
-      <span class="tooltip arrow-down" style="width: 300px">
+      <span class="tooltip position-area-top-center" style="width: 300px">
         The new XBRL format added more details from Sep'22 onwards.
         <br>
         <br>
@@ -6939,61 +6771,61 @@ The company is one of India’s leading and most diversified financial services 
   <ul class="list-links">
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=3e0f3d83-df11-44f6-b32a-f9b287fad54f.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=723c0839-80bd-4e52-a29c-1c8ac0a5f879.pdf"
            target="_blank"
            rel="noopener noreferrer">
-          Compliances-Reg.24(A)-Annual Secretarial Compliance
+          Announcement under Regulation 30 (LODR)-Change in Registered Office Address
 
           
-            <div class="ink-600 smaller">20 May - Bajaj Finance filed FY2026 secretarial compliance report; some RPTs lacked prior audit committee approval.</div>
+            <div class="ink-600 smaller"><time datetime="2026-09-01T18:47:25+05:30" data-time-since>1 Sep</time> - Bajaj Finance shifted registered office to Viman Nagar, Pune, effective 1 September 2026.</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6c682060-bcc6-4223-a7fe-c1c26aad5976.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=865bbb1b-1f2d-4924-979b-6b9c2018258b.pdf"
            target="_blank"
            rel="noopener noreferrer">
-          Announcement under Regulation 30 (LODR)-Issue of Securities
+          Announcement under Regulation 30 (LODR)-Allotment
 
           
-            <div class="ink-600 smaller">20 May - Bajaj Finance allotted 1,02,500 NCDs worth Rs 1,025 crore at 8.08% on 20 May 2026.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-27T11:29:36+05:30">27 Aug</time> - Allotted 5,00,000 secured NCDs worth ₹5,000 crore on 27 August 2026, maturing 27 August 2036.</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=62aa9357-aabd-4c72-a7af-d58feb726d4a.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=04798d08-45bc-4fcb-9103-49ab72823fa0.pdf"
            target="_blank"
            rel="noopener noreferrer">
           Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation
 
           
-            <div class="ink-600 smaller">13 May - Schedule of Analyst/ Institutional Investor Meetings from 18 May 2026 to 20 May 2026</div>
+            <span class="ink-600 smaller"><time datetime="2026-08-26T17:14:15+05:30">26 Aug</time></span>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=bcb15b3f-0ba3-4ea1-859e-fa45439d500b.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=cdada893-d041-45ee-8c2a-dd9d61487d77.pdf"
+           target="_blank"
+           rel="noopener noreferrer">
+          Announcement under Regulation 30 (LODR)-Allotment
+
+          
+            <div class="ink-600 smaller"><time datetime="2026-08-18T12:36:06+05:30">18 Aug</time> - Allotted 50,000 secured NCDs worth Rs. 498.22 crore on 18 August 2026 at 7.79% p.a., maturing 4 July 2036.</div>
+          
+        </a>
+      </li>
+    
+      <li class="overflow-wrap-anywhere">
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b0d1ea93-4acc-462c-9cff-74d7933ae6b3.pdf"
            target="_blank"
            rel="noopener noreferrer">
           Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation
 
           
-            <div class="ink-600 smaller">13 May - Bajaj Finance to meet institutional investors in Pune on 15 June 2026.</div>
-          
-        </a>
-      </li>
-    
-      <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=bfc22e1b-f81e-42e2-980f-ad8cc79c46bb.pdf"
-           target="_blank"
-           rel="noopener noreferrer">
-          Announcement under Regulation 30 (LODR)-Issue of Securities
-
-          
-            <div class="ink-600 smaller">12 May - Allotted 2.89 crore NCDs worth Rs 2,892.42 crore on private placement basis.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-17T15:12:11+05:30">17 Aug</time> - Bajaj Finance to host institutional investor meetings on 20 August 2026 at Bajaj Finserv Leadership Day.</div>
           
         </a>
       </li>
@@ -7017,8 +6849,17 @@ The company is one of India’s leading and most diversified financial services 
 <ul class="list-links">
 
   <li>
+    <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a2357f0b-2828-4790-8a02-61064bd1929b.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Annual Report 2026
+      <div class="ink-600 smaller">
+        from bse
+      </div>
+    </a>
+  </li>
+
+  <li>
     <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/0670e08f-bc55-4155-9cbe-89e4637b3b05.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2025
+      Annual Report 2025
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7027,7 +6868,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/23ae9a75-9bfa-49c2-89e4-5e1ee7a20f8c.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2024
+      Annual Report 2024
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7036,7 +6877,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/46404117-5ed9-40e3-9891-2953ee625245.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2023
+      Annual Report 2023
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7045,7 +6886,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/73448500034.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2022
+      Annual Report 2022
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7054,7 +6895,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/68650500034.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2021
+      Annual Report 2021
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7063,7 +6904,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340320.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2020
+      Annual Report 2020
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7072,7 +6913,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340319.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2019
+      Annual Report 2019
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7081,7 +6922,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340318.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2018
+      Annual Report 2018
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7090,7 +6931,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340317.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2017
+      Annual Report 2017
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7099,7 +6940,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340316.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2016
+      Annual Report 2016
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7108,7 +6949,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340315.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2015
+      Annual Report 2015
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7117,7 +6958,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340314.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2014
+      Annual Report 2014
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7126,7 +6967,7 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340313.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2013
+      Annual Report 2013
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -7135,18 +6976,9 @@ The company is one of India’s leading and most diversified financial services 
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/500034/5000340312.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2012
+      Annual Report 2012
       <div class="ink-600 smaller">
         from bse
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://archives.nseindia.com/annual_reports/AR_BAJFINANCE_2011_2012_22062012102503.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2012
-      <div class="ink-600 smaller">
-        from nse
       </div>
     </a>
   </li>
@@ -7178,55 +7010,55 @@ The company is one of India’s leading and most diversified financial services 
 <ul class="list-links">
 
   <li>
+    <a href="https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/BajajFinanceLimited_July 29_ 2026_RR_401403.html" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Rating update
+      <div class="ink-600 smaller">
+        29 Jul from crisil
+      </div>
+    </a>
+  </li>
+
+  <li>
+    <a href="https://www.icra.in/Rationale/ShowRationaleReport/?Id=144045" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Rating update
+      <div class="ink-600 smaller">
+        1 Jul from icra
+      </div>
+    </a>
+  </li>
+
+  <li>
+    <a href="https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/BajajFinanceLimited_July 01_ 2026_RR_399216.html" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Rating update
+      <div class="ink-600 smaller">
+        1 Jul from crisil
+      </div>
+    </a>
+  </li>
+
+  <li>
+    <a href="https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/PharaohJune2026Series_June 25_ 2026_RR_398446.html" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Rating update
+      <div class="ink-600 smaller">
+        25 Jun from crisil
+      </div>
+    </a>
+  </li>
+
+  <li>
+    <a href="https://www.icra.in/Rationale/ShowRationaleReport/?Id=143649" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Rating update
+      <div class="ink-600 smaller">
+        18 Jun from icra
+      </div>
+    </a>
+  </li>
+
+  <li>
     <a href="https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/PharaohJune2025SeriesI_May 30_ 2026_RR_396579.html" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
       Rating update
       <div class="ink-600 smaller">
-        1d from crisil
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://www.icra.in/Rationale/ShowRationaleReport/?Id=142954" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Rating update
-      <div class="ink-600 smaller">
-        12 May from icra
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/BajajFinanceLimited_April 28_ 2026_RR_394504.html" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Rating update
-      <div class="ink-600 smaller">
-        28 Apr from crisil
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://www.icra.in/Rationale/ShowRationaleReport/?Id=142210" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Rating update
-      <div class="ink-600 smaller">
-        6 Apr from icra
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://www.careratings.com/upload/CompanyFiles/PR/202604130417_Bajaj_Finance_Limited.pdf" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Rating update
-      <div class="ink-600 smaller">
-        6 Apr from care
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/BajajFinanceLimited_March 24_ 2026_RR_388205.html" class="plausible-event-name=Credit+Rating plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Rating update
-      <div class="ink-600 smaller">
-        24 Mar from crisil
+        30 May from crisil
       </div>
     </a>
   </li>
@@ -7256,11 +7088,47 @@ The company is one of India’s leading and most diversified financial services 
   
     <li class="flex flex-gap-8 flex-wrap-420">
       <div class="ink-600 font-size-15 font-weight-500 nowrap"
+           style="width: 74px">Aug 2026</div>
+
+      
+        <a class="concall-link"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b101e24e-b807-4c74-9025-90009f4b47a5.pdf"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="Raw Transcript">Transcript</a>
+      
+
+      
+        <button class="concall-link plausible-event-name=Concall+Notes plausible-event-user=unregistered plausible-event-source=transcript"
+                type="button"
+                data-url="/concalls/summary/23269724/"
+                onclick="Modal.openInModal(event)"
+                data-title="Concall Summary - Aug 2026"
+                data-is-bottom-modal="true">AI Summary</button>
+      
+
+      
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=12138db5-13e0-4417-a325-d6d8bffa5cb2.pdf"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">PPT</a>
+      
+
+      
+        <a href="https://www.aboutbajajfinserv.com/content/dam/bajajfinserv/web/in/en/global/document/corporate/bfl-new/bfl-investor-relations/investor-presentation/finance-investor-relations-quarterly-earnings-conference-call/quarterly-earnings-call-2026-27/bajaj-finance-q1-fy27-conference-call-audio-playback.mp3"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">REC</a>
+      
+    </li>
+  
+    <li class="flex flex-gap-8 flex-wrap-420">
+      <div class="ink-600 font-size-15 font-weight-500 nowrap"
            style="width: 74px">May 2026</div>
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a448b6b0-edb5-4b99-a122-d602950310af.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a448b6b0-edb5-4b99-a122-d602950310af.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7304,7 +7172,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/be6ffd5d-c69b-4fcf-8214-1a6f302c6794.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=be6ffd5d-c69b-4fcf-8214-1a6f302c6794.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7324,7 +7192,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/6eb34dc2-bde9-4df5-8b93-aad3d461140e.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6eb34dc2-bde9-4df5-8b93-aad3d461140e.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7340,7 +7208,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/d213b0e9-5f1c-48ab-b21f-664f669f3a95.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=d213b0e9-5f1c-48ab-b21f-664f669f3a95.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7360,7 +7228,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/39ea369b-a7b8-42e8-b787-2d1df4efa020.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=39ea369b-a7b8-42e8-b787-2d1df4efa020.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7376,34 +7244,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/bd2470ef-968a-4e49-baac-ccf37743161c.pdf"
-           class="concall-link"
-           target="_blank"
-           rel="noopener noreferrer">PPT</a>
-      
-
-      
-    </li>
-  
-    <li class="flex flex-gap-8 flex-wrap-420">
-      <div class="ink-600 font-size-15 font-weight-500 nowrap"
-           style="width: 74px">Nov 2025</div>
-
-      
-        <div class="concall-link">Transcript</div>
-      
-
-      
-        <button class="concall-link plausible-event-name=Concall+Notes plausible-event-user=unregistered plausible-event-source=recording"
-                type="button"
-                data-url="/concalls/summary/23048092/"
-                onclick="Modal.openInModal(event)"
-                data-title="Concall Summary - Nov 2025"
-                data-is-bottom-modal="true">AI Summary</button>
-      
-
-      
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/fc30b0b8-a3df-4635-9997-5c45cca16f62.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=bd2470ef-968a-4e49-baac-ccf37743161c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7419,11 +7260,33 @@ The company is one of India’s leading and most diversified financial services 
   
     <li class="flex flex-gap-8 flex-wrap-420">
       <div class="ink-600 font-size-15 font-weight-500 nowrap"
+           style="width: 74px">Nov 2025</div>
+
+      
+        <div class="concall-link">Transcript</div>
+      
+
+      
+        <div class="concall-link">AI Summary</div>
+      
+
+      
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=fc30b0b8-a3df-4635-9997-5c45cca16f62.pdf"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">PPT</a>
+      
+
+      
+    </li>
+  
+    <li class="flex flex-gap-8 flex-wrap-420">
+      <div class="ink-600 font-size-15 font-weight-500 nowrap"
            style="width: 74px">Jul 2025</div>
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/6594e53b-4085-487c-bf57-005b291a8237.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6594e53b-4085-487c-bf57-005b291a8237.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7439,7 +7302,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/0d891300-4c34-4576-827c-96690f166a26.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=0d891300-4c34-4576-827c-96690f166a26.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7459,7 +7322,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/b5b2e46c-df69-4427-b981-219268c6c43c.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b5b2e46c-df69-4427-b981-219268c6c43c.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7475,7 +7338,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/8beec986-70dd-415a-8ac3-27fecfef2d68.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=8beec986-70dd-415a-8ac3-27fecfef2d68.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7495,7 +7358,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/69225438-777a-4c06-b91a-37dc58df9c20.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=69225438-777a-4c06-b91a-37dc58df9c20.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7511,7 +7374,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/6bc31c67-fcf4-447f-905f-34671a66a602.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6bc31c67-fcf4-447f-905f-34671a66a602.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7538,7 +7401,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/002ab6ec-4472-4d30-9664-90692c4119f3.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=002ab6ec-4472-4d30-9664-90692c4119f3.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7553,7 +7416,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/868f28ae-7f96-4d37-bfee-eb878fc871f8.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=868f28ae-7f96-4d37-bfee-eb878fc871f8.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7569,7 +7432,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/c3695c36-cf70-4322-90eb-9bb0786e3e14.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=c3695c36-cf70-4322-90eb-9bb0786e3e14.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7589,7 +7452,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/c3d167fe-1bf1-4f86-b448-20b4fa3b22b2.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=c3d167fe-1bf1-4f86-b448-20b4fa3b22b2.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7605,7 +7468,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/96547ee4-64d7-40b0-b5e3-6db029396353.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=96547ee4-64d7-40b0-b5e3-6db029396353.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7625,7 +7488,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/197038f8-bef4-4c03-9020-6cd12fcb3472.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=197038f8-bef4-4c03-9020-6cd12fcb3472.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7641,17 +7504,12 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://cms-assets.bajajfinserv.in/is/content/bajajfinance/bajaj-finance-investor-presentation-q4-fy24-finalpdf?scl=1&amp;fmt=pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BAJFINANCE_25042024175108_InvestorPresentation.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
       
 
-      
-        <a href="https://www.aboutbajajfinserv.com/content/dam/bajajfinserv/web/in/en/global/document/corporate/bfl-new/bfl-investor-relations/investor-presentation/finance-investor-relations-quarterly-earnings-conference-call/quarterly-earnings-call-2023-24/bfl-ip-q4-fy24.mp3"
-           class="concall-link"
-           target="_blank"
-           rel="noopener noreferrer">REC</a>
       
     </li>
   
@@ -7677,12 +7535,17 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e0f1f368-0789-4d62-9fd8-92ac57c452f0.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e0f1f368-0789-4d62-9fd8-92ac57c452f0.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
       
 
+      
+        <a href="https://www.aboutbajajfinserv.com/content/dam/bajajfinserv/web/in/en/global/document/corporate/bfl-new/bfl-investor-relations/investor-presentation/finance-investor-relations-quarterly-earnings-conference-call/quarterly-earnings-call-2023-24/bfl-ip-q4-fy24.mp3"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">REC</a>
       
     </li>
   
@@ -7699,7 +7562,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://nsearchives.nseindia.com/corporate/BAJFINANCE_25042024175108_InvestorPresentation.pdf"
+        <a href="https://cms-assets.bajajfinserv.in/is/content/bajajfinance/bajaj-finance-investor-presentation-q4-fy24-finalpdf?scl=1&amp;fmt=pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7714,7 +7577,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/dc07564c-a89c-4336-bf0a-1b55b14d3f8c.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=dc07564c-a89c-4336-bf0a-1b55b14d3f8c.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7752,7 +7615,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/fcbdcc84-f0da-430d-ab4b-5d6f10545a3c.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=fcbdcc84-f0da-430d-ab4b-5d6f10545a3c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7767,7 +7630,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/01bb9206-59b1-494c-845a-c48f419a6267.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=01bb9206-59b1-494c-845a-c48f419a6267.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7783,7 +7646,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/dc3a9702-eef3-4bd7-be72-428bf48838da.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=dc3a9702-eef3-4bd7-be72-428bf48838da.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7805,7 +7668,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/584569c9-6bd8-4581-861e-863cb81c53f4.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=584569c9-6bd8-4581-861e-863cb81c53f4.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7836,7 +7699,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/3ccbeca8-e67a-4512-947c-6170e61d73ae.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=3ccbeca8-e67a-4512-947c-6170e61d73ae.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7851,7 +7714,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/5d92a755-d1bb-423f-8309-3fdb32a9fa8a.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=5d92a755-d1bb-423f-8309-3fdb32a9fa8a.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7867,7 +7730,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/dc2c9ce5-f0cd-44d5-8d93-da71e8350bd2.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=dc2c9ce5-f0cd-44d5-8d93-da71e8350bd2.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7882,7 +7745,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/6e7ddefe-9c08-4cd0-a639-173cf2f6bc0b.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6e7ddefe-9c08-4cd0-a639-173cf2f6bc0b.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7898,7 +7761,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/94e02df1-2076-4d82-bb72-7d9c359e7171.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=94e02df1-2076-4d82-bb72-7d9c359e7171.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7920,7 +7783,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/97669a4e-7b1a-4cb9-861e-255f34583198.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=97669a4e-7b1a-4cb9-861e-255f34583198.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7942,7 +7805,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/966d6613-d2b4-4066-b68c-4eace44b5a2a.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=966d6613-d2b4-4066-b68c-4eace44b5a2a.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7964,7 +7827,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a22842f2-1744-4d11-bc01-08eb1f938ad4.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a22842f2-1744-4d11-bc01-08eb1f938ad4.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7986,7 +7849,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/b31bd18e-3ad5-4ef9-99c9-6048be9da633.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b31bd18e-3ad5-4ef9-99c9-6048be9da633.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8017,7 +7880,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/be56e514-59ae-4e28-8d45-51336b4ecde3.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=be56e514-59ae-4e28-8d45-51336b4ecde3.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8076,7 +7939,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/90cc4899-b4f7-4d83-8aad-f8c4166f0686.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=90cc4899-b4f7-4d83-8aad-f8c4166f0686.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8107,7 +7970,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/7f30ac7e-3286-4919-9224-3cb4022c3cac.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=7f30ac7e-3286-4919-9224-3cb4022c3cac.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8138,7 +8001,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/12f23c34-c678-4545-ab47-0226eb97bd88.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=12f23c34-c678-4545-ab47-0226eb97bd88.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8169,7 +8032,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e13b928c-c1d4-444d-99e1-a2df82d517f0.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e13b928c-c1d4-444d-99e1-a2df82d517f0.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8200,7 +8063,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/cef787c0-a3e4-425d-8ea5-0b398c3fbac3.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=cef787c0-a3e4-425d-8ea5-0b398c3fbac3.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8231,7 +8094,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/b9158543-a086-4f6e-86c9-c0210e7cdd47.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b9158543-a086-4f6e-86c9-c0210e7cdd47.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8246,7 +8109,7 @@ The company is one of India’s leading and most diversified financial services 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/61616afc-c1b3-4663-910d-9cab7896af84.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=61616afc-c1b3-4663-910d-9cab7896af84.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8290,7 +8153,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/ebde80c1-956f-4660-a340-203288e5159c.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=ebde80c1-956f-4660-a340-203288e5159c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8321,7 +8184,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/faf7891b-1c26-4ec3-a436-2d6e50716a2a.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=faf7891b-1c26-4ec3-a436-2d6e50716a2a.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8352,7 +8215,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/7b7cd902-46b5-4a8d-bff6-1795a08bc19c.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=7b7cd902-46b5-4a8d-bff6-1795a08bc19c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8383,7 +8246,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e10d42a7-2f6a-49db-842d-e09d50547005.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e10d42a7-2f6a-49db-842d-e09d50547005.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8414,7 +8277,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2019/1/ee6f9e88-b94b-41af-95ea-e81a35c65c64.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=ee6f9e88-b94b-41af-95ea-e81a35c65c64.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8445,7 +8308,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/10/906bbfad-6415-4b7e-b272-6e38863f3b08.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=906bbfad-6415-4b7e-b272-6e38863f3b08.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8476,7 +8339,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/5/8486d97e-ab2b-4c8c-98be-b5929ca60a3c.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=8486d97e-ab2b-4c8c-98be-b5929ca60a3c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8498,7 +8361,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/2/95ec0129-8c66-442b-b662-7fd2a6ad1470.PDF"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=95ec0129-8c66-442b-b662-7fd2a6ad1470.PDF"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8520,7 +8383,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/10/e3948d5d-9eee-44c4-861a-49b1c54e358d.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e3948d5d-9eee-44c4-861a-49b1c54e358d.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8579,7 +8442,7 @@ The company is one of India’s leading and most diversified financial services 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/5/4ebe1b5e-fd00-4ed1-a54d-b1a34947cf59.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=4ebe1b5e-fd00-4ed1-a54d-b1a34947cf59.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8753,7 +8616,7 @@ The company is one of India’s leading and most diversified financial services 
         
       </div>
     </section>
-    <!-- cache time 2026-05-31 09:03:35 -->
+    <!-- cache time 2026-09-04 09:15:05 -->
     
   
 
@@ -8779,7 +8642,7 @@ The company is one of India’s leading and most diversified financial services 
            class="logo">
       <p class="font-size-19" style="font-weight: 500;">Stock analysis and screening tool</p>
       <p class="sub">
-        Mittal Analytics Private Ltd &copy; 2009-2025
+        Mittal Analytics Private Ltd &copy; 2009-2026
         <br>
         Made with <i class="icon-heart red"></i> in India.
       </p>
@@ -8857,7 +8720,7 @@ The company is one of India’s leading and most diversified financial services 
 
     <div class="hide-from-tablet">
       <hr>
-      <p class="sub">Mittal Analytics Private Ltd &copy; 2009-2024</p>
+      <p class="sub">Mittal Analytics Private Ltd &copy; 2009-2026</p>
       <p class="sub">Data provided by C-MOTS Internet Technologies Pvt Ltd</p>
       <p class="sub">
         <a href="/guides/terms/" class="underline-link">Terms</a>
@@ -8870,11 +8733,10 @@ The company is one of India’s leading and most diversified financial services 
     
 
     <!-- Important JS (which provide global objects)- check below too -->
-    <script src="https://cdn-static.screener.in/js/dialog-polyfill.min.2b5bf9a032d2.js"></script>
-    <script src="https://cdn-static.screener.in/js/utils.5fa58987fd69.js"></script>
-    <script src="https://cdn-static.screener.in/js/modal.33ac63eb7887.js"></script>
+    <script src="https://cdn-static.screener.in/js/utils.0147599e8f13.js"></script>
+    <script src="https://cdn-static.screener.in/js/modal.ccacae1a5594.js"></script>
     <script src="https://cdn-static.screener.in/js/typeahead.8dcc9ac93685.js"></script>
-    <script src="https://cdn-static.screener.in/js/filter.component.888b0801c31d.js"></script>
+    <script src="https://cdn-static.screener.in/js/filter.component.48935d3ab300.js"></script>
 
     <!-- Independent JS scripts for page interactions -->
     <script src="https://cdn-static.screener.in/js/navbar.3fe7f0f4a630.js"></script>
@@ -8886,6 +8748,7 @@ The company is one of India’s leading and most diversified financial services 
   <script src="https://cdn-static.screener.in/js/chartjs-adapter-date-fns.bundle.min.ebae23730a6e.js"></script>
   <script src="https://cdn-static.screener.in/js/chart.2a4531d22d97.js"></script>
   <script src="https://cdn-static.screener.in/js/segment-result.b6af4191fd6f.js"></script>
+  <script>Utils.startTimeSinceUpdates();</script>
 
 
     <!-- Service worker installer for PWA -->

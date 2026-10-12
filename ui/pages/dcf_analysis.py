@@ -473,11 +473,22 @@ def _get_net_margin(tkr: str, _conn) -> float | None:
             ORDER BY dt DESC LIMIT 3
         """).df()
         if not np_df.empty and not sal_df.empty:
-            np_df  = np_df.set_index("dt")["val"]
-            sal_df = sal_df.set_index("dt")["val"]
+            # Guard against duplicate dt rows (e.g. standalone + consolidated both
+            # tagged with the same date). A non-unique index passed into
+            # pd.concat(axis=1) does a cartesian-style alignment and silently
+            # pairs net-profit rows against the wrong sales rows, which can
+            # produce wildly wrong (even >100%) "margins".
+            np_df  = np_df.groupby("dt")["val"].mean()
+            sal_df = sal_df.groupby("dt")["val"].mean()
             merged = pd.concat([np_df.rename("np"), sal_df.rename("sal")], axis=1).dropna()
             if not merged.empty and (merged["sal"] > 0).all():
-                return float((merged["np"] / merged["sal"]).mean())
+                margin = float((merged["np"] / merged["sal"]).mean())
+                # Sanity-clamp: net margin should realistically fall within
+                # roughly -100% to 100%. Anything outside that indicates a
+                # data issue upstream rather than a genuine margin.
+                if -1.0 <= margin <= 1.0:
+                    return margin
+                return None
     except Exception:
         pass
     return None
@@ -1168,6 +1179,9 @@ def _render_dcf_detail(ticker: str, conn, df_matrix: pd.DataFrame):
         )
     with _ob3:
         _default_margin = round((net_margin or 0.10) * 100, 1)
+        # Belt-and-suspenders: never let an out-of-range default reach the
+        # widget, regardless of what upstream data computed.
+        _default_margin = min(max(_default_margin, 0.0), 50.0)
         ob_margin = st.number_input(
             "Order book margin % (net)",
             min_value=0.0, max_value=50.0, value=_default_margin, step=0.5, key="ob_margin",

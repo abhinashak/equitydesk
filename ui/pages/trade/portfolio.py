@@ -119,6 +119,8 @@ PERIODS = [
     ("45D",  45,   "45 Days"),
     ("2M",  60,   "2 month"),
     ("3M",  90,   "3 months"),
+    ("4M",  120,   "4 months"),
+    ("5M",  150,   "5 months"),
     ("6M",  180,  "6 months"),
     ("1Y",  365,  "1 year"),
     ("2Y",  730,  "2 years"),
@@ -856,7 +858,7 @@ def render():
     st.subheader("Industry Orientation")
 
     # Pre-fetch price history for the fixed period columns (7D, 1M, 3M, 6M, 1Y)
-    _ORIENT_PERIODS = [("7D", 7), ("1M", 30), ("3M", 90), ("6M", 180), ("1Y", 365)]
+    _ORIENT_PERIODS = [("7D", 7), ("1M", 30), ("3M", 90),  ("4M", 120),  ("5M", 150), ("6M", 180), ("1Y", 365)]
 
     def _industry_eq_returns(ph: pd.DataFrame) -> dict[str, float]:
         """Equal-weight return per industry from a long-form price DataFrame."""

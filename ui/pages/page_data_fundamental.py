@@ -19,6 +19,27 @@ from bll.fundamental_service import FundamentalService
 from bll.config_service import ConfigService
 
 
+
+def _run_sql_file(conn, path: str, stop_on_error: bool) -> tuple[int, list[str]]:
+    """Run each ';'-separated statement in *path* on *conn*. Returns (ok_count, errors)."""
+    ok, errors = 0, []
+    for stmt in (s.strip() for s in Path(path).read_text().split(";")):
+        # skip empty chunks and chunks that contain only comments
+        if not any(ln.strip() and not ln.strip().startswith("--") for ln in stmt.splitlines()):
+            continue
+        try:
+            conn.execute(stmt)
+            ok += 1
+        except Exception as exc:
+            code = " ".join(
+                ln.strip() for ln in stmt.splitlines() if not ln.strip().startswith("--")
+            )
+            errors.append(f"{code[:70]}… → {exc}")
+            if stop_on_error:
+                break
+    return ok, errors
+ 
+
 # -- Cached data fetchers ------------------------------------------------------
 # Decoration is deferred to first call so that importing this module outside a
 # live Streamlit session does not trigger "No runtime found" warnings.
@@ -152,51 +173,94 @@ def render():
         tickers_arg = " ".join(selected)
         st.caption("Basic command — paste this in your terminal:")
         js_code = """
-        const fs = require("fs");
-        const path = require("path");
+const fs = require("fs");
+const path = require("path");
+
+const tickers = `
+__TICKERS__
+`.trim().split(/\\s+/);
+
+const MAX_AGE_DAYS = 7;
+const REFRESH_AFTER = new Date(
+    Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000
+);
+
         
-        const tickers = `
-        __TICKERS__
-        `.trim().split(/\\s+/);
-        
-        async function downloadTicker(ticker) {
-            const url = `https://www.screener.in/company/${ticker}/`;
-        
-            try {
-                const response = await fetch(url, {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0"
-                    }
-                });
-        
-                const html = await response.text();
-        
-                fs.writeFileSync(
-                    path.join(__dirname, `${ticker}.html`),
-                    html
-                );
-        
-                console.log(`Saved ${ticker}.html`);
-            } catch (err) {
-                console.error(`Failed ${ticker}`, err.message);
+// Delay between requests (milliseconds)
+const DELAY = 15000;
+
+// --------------------------------------------------------------------
+
+function shouldDownload(ticker) {
+    const file = path.join(__dirname, `${ticker}.html`);
+
+    if (!fs.existsSync(file)) {
+        return true;
+    }
+
+    const stats = fs.statSync(file);
+
+    return stats.mtime < REFRESH_AFTER;
+}
+
+async function downloadTicker(ticker) {
+
+    const url = `https://www.screener.in/company/${encodeURIComponent(ticker)}/`;
+
+    try {
+
+        const response = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0"
             }
+        });
+
+        if (!response.ok) {
+            throw new Error(`${response.status} ${response.statusText}`);
         }
-        
-        (async () => {
-            for (const ticker of tickers) {
-                await downloadTicker(ticker);
-        
-                // avoid hammering server
-                await new Promise(r => setTimeout(r, 15000));
-            }
-        })();        
+
+        const html = await response.text();
+
+        fs.writeFileSync(
+            path.join(__dirname, `${ticker}.html`),
+            html
+        );
+
+        console.log(`Downloaded ${ticker}`);
+
+    } catch (err) {
+        console.error(`Failed ${ticker}: ${err.message}`);
+    }
+}
+
+(async () => {
+
+    const pending = tickers.filter(shouldDownload);
+
+    console.log(`Total tickers : ${tickers.length}`);
+    console.log(`Need download : ${pending.length}`);
+    console.log(`Already fresh : ${tickers.length - pending.length}`);
+    console.log("");
+
+    for (const ticker of pending) {
+
+        await downloadTicker(ticker);
+
+        await new Promise(r => setTimeout(r, DELAY));
+    }
+
+    console.log("Done.");
+
+})();
+
+
         """
 
         js_code = js_code.replace("__TICKERS__", tickers_arg)
 
         st.code(js_code, language="javascript")
         st.info(
-            "HTML files are saved to `data/screener_html/` by default.  "
+            " cd data/screener_html; node download.js . HTML files are saved to `data/screener_html/` by default.  "
             "Upload them below once the script finishes."
         )
 
@@ -271,3 +335,53 @@ def render():
         for msg in loader.run_from_files(ticker_paths):
             lines.append(msg)
             log_area.code("\n".join(lines[-300:]), language="text")
+
+
+
+    # -- Step 5: Rebuild clean data --------------------------------------------
+    st.subheader("Step 5 — Rebuild Clean Data")
+    st.caption(
+        "After Parse & Merge finishes, run this from the project root so "
+        "`data/fundamental_clean/` picks up the new data:"
+    )
+    st.code(
+        "duckdb\n"
+        ".read sqls/init_raw.sql\n"
+        ".read sqls/compact_clean.sql",
+        language="bash",
+    )
+    st.caption("Then reload the app so the DCF and other pages pick up the new tickers.")
+ 
+    st.caption("Or run the same two files from here (uses the app's working directory):")
+    if st.button("Rebuild clean data now", key="run_clean_rebuild"):
+        import duckdb
+        from ui.pages.one_ticker_common import get_pipeline_data
+ 
+        conn = duckdb.connect(":memory:")
+        try:
+            with st.spinner("Running sqls/init_raw.sql …"):
+                n_raw, err_raw = _run_sql_file(conn, "sqls/init_raw.sql", stop_on_error=True)
+            if err_raw:
+                st.error("init_raw.sql failed — clean step skipped.")
+                st.code("\n".join(err_raw), language="text")
+            else:
+                with st.spinner("Running sqls/compact_clean.sql …"):
+                    n_clean, err_clean = _run_sql_file(
+                        conn, "sqls/compact_clean.sql", stop_on_error=False
+                    )
+                if err_clean:
+                    st.warning(
+                        f"compact_clean.sql: {n_clean} statement(s) OK, "
+                        f"{len(err_clean)} failed — those tables were NOT updated."
+                    )
+                    st.code("\n".join(err_clean), language="text")
+                else:
+                    st.success(f"fundamental_clean rebuilt ({n_clean} tables written).")
+                # make other pages re-read the refreshed data
+                get_pipeline_data.clear()
+                st.session_state.pop("df_matrix", None)
+        except FileNotFoundError as exc:
+            st.error(f"SQL file not found: {exc.filename}")
+        finally:
+            conn.close()
+ 

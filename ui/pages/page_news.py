@@ -65,105 +65,158 @@ IPO_DATA = [
     },
 ]
 
+# 9-column headers mapping
+TIMELINE_COLUMNS = [
+    ("IPO / AI Complex", "cell-ipo"),
+    ("Macro / Rates", "cell-macro"),
+    ("401(k) / Contagion", "cell-401k"),
+    ("Gold / Currency", "cell-gold"),
+    ("India Equity Strategy", "cell-india"),
+    ("Food Security", "cell-warn"),
+    ("Monsoon", "cell-silver"),
+    ("Geopolitical / Conflict", "cell-danger"),
+    ("Ganga River Level", "cell-phase"),
+]
+
 TIMELINE_ROWS = [
     {
-        'period': 'Jun 2026\nTODAY', 'alert': True,
+        'period': 'Jun 2026', 'start': '2026-06-01', 'end': '2026-06-30', 'alert': True,
         'cells': [
             ('cell-ipo',   'SpaceX IPO live',       'SPCX lists $1.75T. Largest IPO in history. xAI merged in.'),
             ('cell-macro', 'Iran war inflation',    'CPI 4%+, front-end rates under pressure. Warsh paralysed.'),
             ('cell-401k',  '$141K avg, ↓4%',        'Q1 2026 Fidelity data. First cracks. Loan withdrawals rising.'),
             ('cell-gold',  'Gold $4,139 / INR 95.25','Stress already here. Accumulate SGBs now. Reduce US exposure.'),
             ('cell-india', 'Accumulate phase',      'SGBs aggressively. Exit IT stocks. Build cash dry powder.'),
+            ('cell-warn',  'Food price pressure',   'Fertilizer supply shock from Hormuz disruption.'),
+            ('cell-silver','Monsoon tracking',      'IMD tracking initial onset across Peninsular India.'),
+            ('cell-danger','Middle East escalates', 'Active regional strikes driving energy risk premiums.'),
+            ('cell-phase', 'Ganga baseline',        'Pre-monsoon storage monitored across CWC stations.'),
         ]
     },
     {
-        'period': 'Jul–Sep 2026', 'alert': False,
+        'period': 'Jul–Sep 2026', 'start': '2026-07-01', 'end': '2026-09-30', 'alert': False,
         'cells': [
             ('cell-ipo',   'AI melt-up',        'Anthropic IPO hype lifts Nvidia, MSFT, GOOGL. FOMO max.'),
             ('cell-macro', 'Fed paralysed',     "Won't hike into midterms. Warsh \"disinflationary\" narrative."),
             ('cell-401k',  'Brief recovery',    'AI rally lifts 401(k) briefly. False sense of safety.'),
             ('cell-gold',  'Gold grinds up',    'INR ~92–97. Use the rally to EXIT Indian IT stocks.'),
             ('cell-india', 'EXIT equities',     'Sell US-facing exposure into AI rally. These are gift prices.'),
+            ('cell-warn',  'Agri inputs watch',  'Monitoring Kharif sowing progress amidst input costs.'),
+            ('cell-silver','Monsoon deficit',   'Below LPA rainfall in key agricultural belts.'),
+            ('cell-danger','Multi-front tension', 'South China Sea and proxy friction remains persistent.'),
+            ('cell-phase', 'Peak flow period',   'River levels tracked during primary rainy season.'),
         ]
     },
     {
-        'period': 'Oct 2026\n🚨 RED ALERT', 'alert': True,
+        'period': 'Oct 2026', 'start': '2026-10-01', 'end': '2026-10-31', 'alert': True,
         'cells': [
             ('cell-ipo',   'Anthropic IPO',    '~$1T+ valuation. Peak AI narrative. Maximum global FOMO.'),
             ('cell-macro', 'Midterms Nov 2026','Every policy lever pulled. Political liquidity injections.'),
             ('cell-401k',  'Peak balances',    '40% S&P = 10 AI stocks. Concentration at extremes.'),
             ('cell-gold',  'Gold $4,500+?',    'Max defense. SGBs + physical. IPO = top signal, not opportunity.'),
             ('cell-india', 'MAX DEFENSE',      'Oct 1 = full defensive. Gold 45%, Cash 30%, Equity 20%.'),
+            ('cell-warn',  'Harvest yields',   'Kharif output reports evaluate food inflation risk.'),
+            ('cell-silver','Monsoon withdrawal','Post-monsoon assessment completed across sub-regions.'),
+            ('cell-danger','Electoral risk',   'Heightened geopolitical signaling around US election.'),
+            ('cell-phase', 'Post-monsoon storage','Basin reservoir levels set winter water allocation.'),
         ]
     },
     {
-        'period': 'Nov–Dec 2026', 'alert': False,
+        'period': 'Nov–Dec 2026', 'start': '2026-11-01', 'end': '2026-12-31', 'alert': False,
         'cells': [
             ('cell-ipo',   'OpenAI S-1 public', 'Files ~Aug, lists Sep–Dec. $14–25B loss disclosed. Market shock.'),
             ('cell-macro', 'Midterm results',   'Political cover fades post-election. Bond stress resumes.'),
             ('cell-401k',  'Deceptive calm',    "Lockups not expired. People complacent. False floor."),
             ('cell-gold',  'Hold gold firm',    "This period will feel like you're wrong. You are NOT."),
             ('cell-india', 'Do nothing',        'Hold position. Add gold on any weakness. Watch SPCX closely.'),
+            ('cell-warn',  'Rabi sowing start', 'Winter crop acreage monitored for food price buffer.'),
+            ('cell-silver','NE Monsoon phase', 'Northeast monsoon active over Southern Peninsula.'),
+            ('cell-danger','Post-election shift','Potential global foreign policy alignment shifts.'),
+            ('cell-phase', 'Winter baseline',   'Flow levels stabilise into dry-weather period.'),
         ]
     },
     {
-        'period': 'Jan–Mar 2027', 'alert': False,
+        'period': 'Jan–Mar 2027', 'start': '2027-01-01', 'end': '2027-03-31', 'alert': False,
         'cells': [
             ('cell-ipo',   'Earnings reality',  'SpaceX Q3/Q4 + Anthropic first 2 public quarters. Gap visible.'),
             ('cell-macro', 'Bond stress builds','Debt maturity wall. Japan/Korea EM pricing worsens.'),
             ('cell-401k',  'Volatility rising', '$10–50K swings per week. Anxiety builds among retirees.'),
             ('cell-gold',  'Gold $4,800+?',     'INR ~97–101. Gold INR flat to up. Keep all gold.'),
             ('cell-india', 'Watchlist ready',   'Finalise quality India names. Cash dry powder at maximum.'),
+            ('cell-warn',  'Global EM prices',  'Imported inflation tests low-income sovereign reserves.'),
+            ('cell-silver','Pre-season outlook','Early spring indicators for upcoming monsoon cycle.'),
+            ('cell-danger','Resource friction', 'Geopolitical friction shifts toward critical resources.'),
+            ('cell-phase', 'Glacial melt watch','Himalayan snowpack melt assessment in upper basin.'),
         ]
     },
     {
-        'period': 'Apr 2027\n⚠ THE SIGNAL', 'alert': True,
+        'period': 'Apr 2027', 'start': '2027-04-01', 'end': '2027-04-30', 'alert': True,
         'cells': [
             ('cell-danger','Lockup expiry',    'Anthropic: Google, Amazon, employees ALL can sell. Structural.'),
             ('cell-danger','Cascade begins',   '"If Anthropic can\'t monetise, who can?" Nvidia guidance cut.'),
             ('cell-401k',  'Balances crater',  '40% S&P concentration = brutal 401(k) loss. Forced withdrawals.'),
             ('cell-gold',  'Gold dips briefly',"Margin call selling. INR 99–103. Gold INR flat. HOLD. DON'T SELL."),
             ('cell-india', 'Nifty -20%+',      'FII outflows. INR 99–103. Deploy 1st tranche of equity (10–15%).'),
+            ('cell-warn',  'Supply disruption','Financial cascade strains EM trade settlement channels.'),
+            ('cell-silver','IMD 1st forecast', 'Initial official monsoon forecast for 2027 season.'),
+            ('cell-danger','Cascade spreading', 'Market dislocation spills into geopolitical instability.'),
+            ('cell-phase', 'Pre-summer minimum','Basin storage reaches lowest annual capacity level.'),
         ]
     },
     {
-        'period': 'May–Jun 2027', 'alert': False,
+        'period': 'May–Jun 2027', 'start': '2027-05-01', 'end': '2027-06-30', 'alert': False,
         'cells': [
             ('cell-danger','Bond contagion',  'Treasuries sold not bought. 10Y spikes. Everything liquidated.'),
             ('cell-danger','Fed choice point','Dollar or bonds? Warsh must decide. Extreme volatility.'),
             ('cell-401k',  'Retirement crisis','Boomers near retirement forced to sell at lows. Amplifies crash.'),
             ('cell-gold',  'Gold recovers',   'Fed signals printing. Gold starts explosive move. INR 101–106.'),
             ('cell-india', '2nd tranche',     'Nifty -30–35%. Add domestic: FMCG, pharma, utilities, PSU banks.'),
+            ('cell-warn',  'Food strain peaks','Dollar liquidity crunch pressures food import budgets.'),
+            ('cell-silver','Monsoon arrival', 'Southeastern monsoon onset across main subcontinent.'),
+            ('cell-danger','Crisis policy',   'Global security frameworks tested by currency moves.'),
+            ('cell-phase', 'Monsoon recharge', 'River levels begin seasonal rise from initial rains.'),
         ]
     },
     {
-        'period': 'Jul–Sep 2027\n🖨 FED PRINTS', 'alert': True,
+        'period': 'Jul–Sep 2027', 'start': '2027-07-01', 'end': '2027-09-30', 'alert': True,
         'cells': [
             ('cell-ipo',   'AI reset',           'SpaceX may survive (rockets real). Anthropic/OpenAI 25x→8x rev.'),
             ('cell-macro', 'QE / YCC announced', 'Fed buys bonds. Dollar collapses. New monetary framework talk.'),
             ('cell-401k',  'Permanent damage',   'Early retirees locked in losses. Social Security stress narrative.'),
             ('cell-gold',  'Gold EXPLODES',       '$5,500–$7,000? INR recovering 95→88. Gold INR ₹480K–₹600K. HOLD.'),
             ('cell-india', '3rd tranche',         'Nifty bottoming. Quality mid-cap India. Build silver aggressively.'),
+            ('cell-warn',  'Agri commodity spike','Currency devaluation drives physical food price shocks.'),
+            ('cell-silver','Peak monsoon status','Mid-season rainfall distribution across prime cropland.'),
+            ('cell-danger','Realignment',        'Monetary crisis forces structural diplomatic alliances.'),
+            ('cell-phase', 'Peak discharge',     'Maximum seasonal water volume across river network.'),
         ]
     },
     {
-        'period': 'H2 2027–2028', 'alert': False,
+        'period': 'H2 2027–2028', 'start': '2027-10-01', 'end': '2028-12-31', 'alert': False,
         'cells': [
             ('cell-phase', 'Stabilisation',   'Surviving AI cos trade on actual earnings. Dot-com survivors.'),
             ('cell-macro', 'Dollar rebases 30%','INR strengthens 100→70–75. De-dollarisation accelerates.'),
             ('cell-401k',  'Policy response', '401(k) bailout political pressure. Inflationary. Validates thesis.'),
             ('cell-gold',  'EXIT GOLD NOW',   'INR strong = gold INR falls. Sell before INR hits 75. Rotate.'),
             ('cell-india', 'Full India equity','FII money floods back. INR+Nifty double tailwind. Generational.'),
+            ('cell-warn',  'Agri stabilization','Food supply chains adjust to rebased currency terms.'),
+            ('cell-silver','Multi-year trend','Monsoon reliability patterns evaluated over cycle.'),
+            ('cell-danger','New equilibrium',  'Geopolitical landscape settles into multi-polar order.'),
+            ('cell-phase', 'Long-term basin', 'Decadal river management and reservoir replenishment.'),
         ]
     },
     {
-        'period': '2028+', 'alert': False,
+        'period': '2029+', 'start': '2029-01-01', 'end': '2035-12-31', 'alert': False,
         'cells': [
             ('cell-silver','Silver peaks late', 'Gold/silver ratio 88→45. Silver $130–150. Exits AFTER gold.'),
             ('cell-macro', 'New cycle',          'India structural winner. RBI gold reserves = strong INR backing.'),
             ('cell-401k',  'US consumption shock','Boomers poorer. US recession deepens. India domestic shines.'),
             ('cell-gold',  '5–10% permanent',   'Keep small gold forever (SGBs for 2.5% yield). Rest → India equity.'),
             ('cell-india', 'Compound India',    'Domestic consumption. Pharma. Power infra. 5–10yr holding.'),
+            ('cell-warn',  'Structural security','Long-term food autonomy secured via domestic yields.'),
+            ('cell-silver','Climate baseline',  'Monsoon dynamics integrated into permanent planning.'),
+            ('cell-danger','Stable multi-polar','Post-transition regional geopolitical baseline.'),
+            ('cell-phase', 'Ecological baseline','Ecological trajectory stabilized for upper watershed.'),
         ]
     },
 ]
@@ -338,10 +391,150 @@ def get_live_prices():
     return prices
 
 
+@st.cache_data(ttl=1800)
+def fetch_food_security_snapshot():
+    """Latest global food-security situation update, aggregated from FAO/WFP
+    reporting via ReliefWeb's open API (no key required)."""
+    try:
+        url = ("https://api.reliefweb.int/v1/reports"
+               "?appname=macro-dashboard"
+               "&query[value]=food security AND (FAO OR WFP)"
+               "&query[fields][]=title"
+               "&sort[]=date:desc&limit=1"
+               "&fields[include][]=title&fields[include][]=date"
+               "&fields[include][]=source")
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        item = r.json()['data'][0]['fields']
+        src  = ', '.join(s.get('shortname', s.get('name', ''))
+                         for s in item.get('source', [])) or 'FAO/WFP'
+        return {
+            'headline': item.get('title', 'N/A'),
+            'date':     item.get('date', {}).get('created', '')[:10],
+            'source':   f'ReliefWeb aggregation ({src})',
+            'status':   'live',
+        }
+    except Exception:
+        return {
+            'headline': 'Live feed unavailable',
+            'date': None,
+            'source': 'FAO/WFP via ReliefWeb — request failed, no cached fallback',
+            'status': 'error',
+        }
+
+
+@st.cache_data(ttl=1800)
+def fetch_monsoon_snapshot():
+    """India Meteorological Department seasonal rainfall status, via the
+    data.gov.in open-data API. Requires a free API key (set DATA_GOV_IN_KEY
+    in st.secrets) — IMD does not expose an unauthenticated JSON feed."""
+    api_key = st.secrets.get("DATA_GOV_IN_KEY", "") if hasattr(st, "secrets") else ""
+    if not api_key:
+        return {
+            'headline': 'No API key configured',
+            'date': None,
+            'source': 'IMD rainfall data (via data.gov.in) — add DATA_GOV_IN_KEY '
+                      'to st.secrets to enable this feed',
+            'status': 'error',
+        }
+    try:
+        # data.gov.in "Sub-division wise rainfall" resource
+        url = ("https://api.data.gov.in/resource/"
+               "88a4bf74-2ed3-4c6f-9d3e-e6a4b0a5a5c1"
+               f"?api-key={api_key}&format=json&limit=1&sort[date]=desc")
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        rec = r.json()['records'][0]
+        return {
+            'headline': f"{rec.get('subdivision', 'India')}: rainfall "
+                        f"{rec.get('departure', '?')}% of long-period average",
+            'date':   rec.get('date', ''),
+            'source': 'India Meteorological Department (data.gov.in)',
+            'status': 'live',
+        }
+    except Exception:
+        return {
+            'headline': 'Live feed unavailable',
+            'date': None,
+            'source': 'IMD via data.gov.in — request failed; verify resource ID / key',
+            'status': 'error',
+        }
+
+
+@st.cache_data(ttl=1800)
+def fetch_conflict_snapshot():
+    """Recent conflict-event summary. UCDP's Candidate/GED API is open and
+    key-free and is used as the live source; ACLED offers a finer-grained
+    feed but requires a registered API key (set ACLED_KEY in st.secrets)."""
+    try:
+        url = "https://ucdpapi.pcr.uu.se/api/gedevents/24.1?pagesize=5&sort=-date_end"
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        events = r.json().get('Result', [])
+        if not events:
+            raise ValueError("empty result")
+        latest = events[0]
+        return {
+            'headline': f"{latest.get('country', '?')}: {latest.get('best', 0)} "
+                        f"reported fatalities ({latest.get('type_of_violence', '?')})",
+            'date':   str(latest.get('date_end', ''))[:10],
+            'source': 'UCDP GED (open API). ACLED needs a registered key — '
+                      'add ACLED_KEY in st.secrets for that feed too',
+            'status': 'live',
+        }
+    except Exception:
+        return {
+            'headline': 'Live feed unavailable',
+            'date': None,
+            'source': 'UCDP/ACLED — request failed or endpoint changed; '
+                      'ACLED requires a registered key in st.secrets',
+            'status': 'error',
+        }
+
+
+@st.cache_data(ttl=1800)
+def fetch_ganga_river_level():
+    """Central Water Commission river-level reading for the Ganga, via
+    India-WRIS / data.gov.in. Requires a free API key (set DATA_GOV_IN_KEY
+    in st.secrets) — CWC does not expose an unauthenticated JSON feed."""
+    api_key = st.secrets.get("DATA_GOV_IN_KEY", "") if hasattr(st, "secrets") else ""
+    if not api_key:
+        return {
+            'headline': 'No API key configured',
+            'date': None,
+            'source': 'CWC river-level data (via data.gov.in) — add '
+                      'DATA_GOV_IN_KEY to st.secrets to enable this feed',
+            'status': 'error',
+        }
+    try:
+        url = ("https://api.data.gov.in/resource/"
+               "a6b3a8f6-8b8b-4c1b-9a1a-9b3c8d0e5f2a"
+               f"?api-key={api_key}&format=json&filters[river]=Ganga&limit=1")
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        rec = r.json()['records'][0]
+        level    = rec.get('current_level', '?')
+        danger   = rec.get('danger_level', '?')
+        station  = rec.get('station', 'Ganga')
+        return {
+            'headline': f"{station}: {level} m (danger level {danger} m)",
+            'date':   rec.get('date', ''),
+            'source': 'Central Water Commission (data.gov.in)',
+            'status': 'live',
+        }
+    except Exception:
+        return {
+            'headline': 'Live feed unavailable',
+            'date': None,
+            'source': 'CWC via data.gov.in — request failed; verify resource ID / key',
+            'status': 'error',
+        }
+
+
 @st.cache_data(ttl=600)
 def build_scenario_projections():
-    today  = pd.to_datetime('2026-06-12')
-    end    = pd.to_datetime('2029-01-01')
+    today  = pd.Timestamp.now().normalize()
+    end    = today + pd.DateOffset(years=3)
     months = pd.date_range(today, end, freq='MS')
 
     def sigmoid_interp(x, x0, k=8):
@@ -505,7 +698,7 @@ def render():
       .badge-oct  { background:#EEEDFE;color:#3C3489; }
       .badge-2027 { background:#FAEEDA;color:#633806; }
       .badge-green{ background:#EAF3DE;color:#27500A; }
-      .timeline-row { display:grid;grid-template-columns:90px 1fr 1fr 1fr 1fr 1fr;
+      .timeline-row { display:grid;grid-template-columns:90px repeat(9, 1fr);
                       gap:4px;margin-bottom:3px;align-items:stretch;min-height:44px; }
       .tl-date  { font-size:11px;font-weight:500;color:#888480;display:flex;
                   align-items:center;padding-right:6px;line-height:1.3; }
@@ -542,20 +735,6 @@ def render():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Page header ───────────────────────────────────────────────────────────
-    st.markdown("<h1 style='font-size:22px;font-weight:500;color:#1A1A18;margin-bottom:4px;"
-                "letter-spacing:-0.2px;'>AI IPO Macro Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='font-size:12px;color:#888480;margin-bottom:16px;letter-spacing:0.02em;'>"
-                "AI bubble · sovereign debt · India positioning &nbsp;·&nbsp; Updated Jun 12, 2026"
-                "</p>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class='warn-box'>
-    ⚠ SpaceX (SPCX) began trading today — June 12, 2026 — at $135/share · $1.75T valuation.
-    The AI vacuum phase is no longer theoretical. USD/INR is already at 95.25 — stress rupture
-    scenario is weeks away, not months.
-    </div>""", unsafe_allow_html=True)
-
     # ── Fetch data ────────────────────────────────────────────────────────────
     with st.spinner("Loading market data..."):
         prices     = get_live_prices()
@@ -564,6 +743,12 @@ def render():
         inr_hist   = fetch_inr_historical()
         crude_hist = fetch_crude_historical()
         scenarios  = build_scenario_projections()
+
+    with st.spinner("Loading humanitarian & climate risk feeds..."):
+        food_snap     = fetch_food_security_snapshot()
+        monsoon_snap  = fetch_monsoon_snapshot()
+        conflict_snap = fetch_conflict_snapshot()
+        river_snap    = fetch_ganga_river_level()
 
     # ── Live price metrics ────────────────────────────────────────────────────
     st.markdown("<div class='section-header'>Live market snapshot</div>", unsafe_allow_html=True)
@@ -619,6 +804,53 @@ def render():
                 &nbsp;·&nbsp;{src_text}
               </div>
             </div>""", unsafe_allow_html=True)
+
+    # ── Global risk & humanitarian snapshot ───────────────────────────────────
+    st.markdown("<div class='section-header'>Global risk &amp; humanitarian snapshot</div>",
+                unsafe_allow_html=True)
+
+    def render_snapshot_card(label, data):
+        live = data.get('status') == 'live'
+        dot_color = '#2D6A0F' if live else '#888480'
+        dot_label = 'LIVE' if live else 'NO FEED'
+        headline  = data.get('headline') or '—'
+        date_txt  = f" &nbsp;·&nbsp; {data['date']}" if data.get('date') else ''
+        return f"""
+        <div class='metric-card' style='min-height:92px;'>
+          <div class='metric-label' style='display:flex;justify-content:space-between;'>
+            <span>{label}</span>
+            <span style='color:{dot_color};font-weight:600;'>● {dot_label}</span>
+          </div>
+          <div style='font-size:12px;color:#1A1A18;font-weight:500;line-height:1.4;
+               margin:4px 0 4px;'>{headline}</div>
+          <div class='metric-sub'>{data.get('source', '')}{date_txt}</div>
+        </div>"""
+
+    rc1, rc2, rc3, rc4 = st.columns(4)
+    with rc1:
+        st.markdown(render_snapshot_card("Food security · FAO/WFP", food_snap),
+                    unsafe_allow_html=True)
+    with rc2:
+        st.markdown(render_snapshot_card("Monsoon · IMD", monsoon_snap),
+                    unsafe_allow_html=True)
+    with rc3:
+        st.markdown(render_snapshot_card("Conflict tracker · ACLED/UCDP", conflict_snap),
+                    unsafe_allow_html=True)
+    with rc4:
+        st.markdown(render_snapshot_card("Ganga river level · CWC", river_snap),
+                    unsafe_allow_html=True)
+
+    if any(d.get('status') != 'live' for d in
+           (food_snap, monsoon_snap, conflict_snap, river_snap)):
+        st.markdown("""
+        <div class='note-box'>
+        Some feeds above show "NO FEED" — IMD (monsoon) and CWC (river level) are only
+        available through data.gov.in, which requires a free personal API key. Add it as
+        <code>DATA_GOV_IN_KEY</code> in <code>st.secrets</code> to enable those two.
+        ACLED's fuller conflict feed similarly needs a registered key
+        (<code>ACLED_KEY</code>) — until then this panel falls back to UCDP's open API.
+        FAO/WFP food-security updates are pulled live with no key needed.
+        </div>""", unsafe_allow_html=True)
 
     # ── IPO pipeline cards ────────────────────────────────────────────────────
     st.markdown("<div class='section-header'>IPO pipeline — confirmed &amp; expected</div>",
@@ -896,8 +1128,8 @@ def render():
     else:
         st.info("📂 Place **news.json** in the same folder to activate live news overlays.")
 
-    # ── Month-by-month timeline ───────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Month-by-month timeline</div>",
+    # ── Month-by-month timeline — summary + click-to-expand detail ───────────
+    st.markdown("<div class='section-header'>Month-by-month timeline (All 9 Columns)</div>",
                 unsafe_allow_html=True)
     st.markdown("""
     <div style='margin-bottom:12px;'>
@@ -911,29 +1143,101 @@ def render():
         Phase 4: Reset / deploy (H2 2027 → 2028)</span>
     </div>""", unsafe_allow_html=True)
 
+    # -- Scoring: each cell's news-validation status maps onto a 0-10 scale;
+    #    a period's score is the average of its scored cells across all 9 columns.
+    _STATUS_SCORE = {
+        'Validated 🟢':   10.0,
+        'Partial 🟡':      6.0,
+        'Too Early ⏳':    3.0,
+        'Invalidated 🔴':  0.0,
+    }
+
+    def cell_score(row_idx, col_idx):
+        data = NEWS_OVERLAY.get(cell_key(row_idx, col_idx))
+        return _STATUS_SCORE.get(data.get('status', '')) if data else None
+
+    def period_score(row_idx, row):
+        scored = [s for s in (cell_score(row_idx, i) for i in range(len(row['cells'])))
+                  if s is not None]
+        return round(sum(scored) / len(scored), 1) if scored else None
+
+    def score_badge(score):
+        if score is None:
+            return '#F1EFE8', '#888480', '—/10'
+        if score >= 7.5:
+            return '#EAF3DE', '#27500A', f'{score:g}/10'
+        if score >= 4:
+            return '#FFF8E8', '#854F0B', f'{score:g}/10'
+        return '#FCEBEB', '#791F1F', f'{score:g}/10'
+
     st.markdown("""
-    <div style='display:grid;grid-template-columns:95px 1fr 1fr 1fr 1fr 1fr;
+    <div style='display:grid;grid-template-columns:150px 60px 1fr 60px;
                 gap:5px;margin-bottom:4px;'>
-      <span style='font-size:10px;color:#4b5563;'></span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>IPO events</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>Macro / bonds</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>401(k) impact</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>Gold / INR</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>India action</span>
+      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>Period</span>
+      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>Score</span>
+      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>9-Column Active Signals Overview</span>
+      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'></span>
     </div>""", unsafe_allow_html=True)
 
+    _now = pd.Timestamp.now().normalize()
     for row_idx, row in enumerate(TIMELINE_ROWS):
-        cells_html = ''
-        for col_idx, (cls, title, desc) in enumerate(row['cells']):
-            overlay     = news_overlay_html(row_idx, col_idx)
-            cells_html += (f"<div class='tl-cell {cls}'>"
-                           f"<b>{title}</b><span>{desc}</span>{overlay}</div>")
-        period_display = row['period'].replace('\n', '<br>')
-        st.markdown(f"""
-        <div class='timeline-row'>
-          <div class='tl-date'>{period_display}</div>
-          {cells_html}
-        </div>""", unsafe_allow_html=True)
+        score = period_score(row_idx, row)
+        bg, fg, score_label = score_badge(score)
+        period_display = row['period'].replace('\n', ' · ')
+        
+        is_current = (
+            'start' in row and 'end' in row
+            and pd.to_datetime(row['start']) <= _now <= pd.to_datetime(row['end'])
+        )
+        if is_current:
+            period_display += ' · TODAY'
+
+        head = st.columns([1.7, 0.8, 3.6, 0.9])
+        with head[0]:
+            alert_dot = '🔴' if (row['alert'] or is_current) else '⚪'
+            st.markdown(f"<div style='font-size:12px;font-weight:500;color:#1A1A18;"
+                        f"padding-top:6px;'>{alert_dot} {period_display}</div>",
+                        unsafe_allow_html=True)
+        with head[1]:
+            st.markdown(f"<div style='display:inline-block;padding:3px 9px;border-radius:5px;"
+                        f"background:{bg};color:{fg};font-size:11px;font-weight:600;"
+                        f"margin-top:4px;'>{score_label}</div>", unsafe_allow_html=True)
+        with head[2]:
+            chips = ''.join(
+                f"<span class='tl-cell {cls}' style='display:inline-block;padding:3px 8px;"
+                f"margin-right:4px;margin-top:2px;'><b style='font-size:10px;'>{title}</b></span>"
+                for cls, title, desc in row['cells']
+            )
+            st.markdown(f"<div>{chips}</div>", unsafe_allow_html=True)
+        with head[3]:
+            show_detail = st.checkbox("Detail", key=f"tl_detail_{row_idx}")
+
+        if show_detail:
+            # 9-Column Detail View Rendering
+            col_headers_html = ''.join(
+                f"<div style='font-size:9.5px;font-weight:600;color:#6b7280;text-transform:uppercase;padding:2px 4px;'>"
+                f"{col_name}</div>"
+                for col_name, _ in TIMELINE_COLUMNS
+            )
+            
+            cells_html = ''
+            for col_idx, (cls, title, desc) in enumerate(row['cells']):
+                overlay     = news_overlay_html(row_idx, col_idx)
+                cells_html += (f"<div class='tl-cell {cls}'>"
+                               f"<b>{title}</b><span>{desc}</span>{overlay}</div>")
+
+            st.markdown(f"""
+            <div style='margin:8px 0 12px;overflow-x:auto;'>
+              <div style='display:grid;grid-template-columns:repeat(9, minmax(130px, 1fr));gap:4px;margin-bottom:4px;'>
+                {col_headers_html}
+              </div>
+              <div style='display:grid;grid-template-columns:repeat(9, minmax(130px, 1fr));gap:4px;'>
+                {cells_html}
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style='border-bottom:0.5px solid #ECEAE4;margin:2px 0 10px;'></div>",
+                    unsafe_allow_html=True)
 
     # ── 401k destruction ──────────────────────────────────────────────────────
     st.markdown("<div class='section-header'>401(k) destruction mechanism — why it amplifies everything</div>",
@@ -980,9 +1284,15 @@ def render():
     # ── Footer ────────────────────────────────────────────────────────────────
     st.markdown("""
     <div class='note-box' style='margin-top:20px;'>
-    <b>Data sources:</b> Gold historical: datasets/gold-prices (GitHub/LBMA). S&P 500: vega-datasets.
-    Crude oil, INR, equities: estimated from known anchor points. IPO data: Reuters, Investing.com (Jun 2026).
-    401(k) data: Fidelity Q1 2026. All projections are analytical scenario estimates, not investment advice.
+    <b>Data sources:</b> Gold historical: datasets/gold-prices (GitHub/LBMA). S&amp;P 500: vega-datasets.
+    Crude oil, INR, equities: estimated from known anchor points, updated live where a feed exists.
+    Food security: FAO/WFP reporting via ReliefWeb (live, no key). Monsoon: India Meteorological
+    Department via data.gov.in (needs a key). Conflict tracking: UCDP GED (live, open) and ACLED
+    (needs a key). River levels: Central Water Commission via data.gov.in (needs a key).
+    IPO and 401(k) figures reflect the most recent disclosures available and age out of date over time —
+    treat older-looking entries as historical context rather than current fact. All projections are
+    analytical scenario estimates, not investment advice. <br />
+    <p style='color:red'>news.llmprompt upload to claude for collecting news and then write the output to outputs/news.json file.</a>
     </div>""", unsafe_allow_html=True)
 
     st.markdown(

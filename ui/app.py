@@ -77,6 +77,8 @@ elif page == "quality_gates":
     one_ticker_gates.render()
 elif page == "fundamental_analysis":
     one_ticker_charts.render()
+elif page == "sql_analyst":
+    from ui.pages.page_sql_analyst import render; render()
 
 # ── MACRO / NEWS SCREENS (new) ────────────────────────────────────────────────
 elif page == "us_economy_pipeline":

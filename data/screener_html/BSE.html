@@ -23,13 +23,13 @@
             defer></script>
 
     <!-- FONT -->
-    <link rel="stylesheet" href="https://cdn-static.screener.in/inter/inter.bccd7465af74.css?v=2" />
-    <link rel="stylesheet" href="https://cdn-static.screener.in/fontello/css/fontello.835ae8880a8b.css?v=2" />
+    <link rel="stylesheet" href="https://cdn-static.screener.in/inter/inter.c622a5e75782.css" />
+    <link rel="stylesheet" href="https://cdn-static.screener.in/fontello/css/fontello.1d1b3a0a264b.css?v=3" />
 
     <!-- CSS -->
     <link rel="stylesheet" href="https://cdn-static.screener.in/css/normalize.a2444750a947.css" media="all">
-    <link rel="stylesheet" href="https://cdn-static.screener.in/css/skeleton.e1c50fcb2cfe.css" media="all">
-    <link rel="stylesheet" href="https://cdn-static.screener.in/css/custom.face9eb25802.css" media="all">
+    <link rel="stylesheet" href="https://cdn-static.screener.in/css/skeleton.c6872bc14f71.css" media="all">
+    <link rel="stylesheet" href="https://cdn-static.screener.in/css/custom.8037f7bd4ff9.css" media="all">
 
     
     
@@ -39,7 +39,7 @@
   
 
   
-  <meta name="description" content="BSE · Mkt Cap: 1,68,870 Crore (up 55.0% in 1 year) · Revenue: 4,470 Cr · Profit: 2,334 Cr · Stock is trading at 29.3 times its book value · Working capital days have increased from -116 days to 94.8 days">
+  <meta name="description" content="BSE · Mkt Cap: 1,34,851 Crore (up 49.0% in 1 year) · Revenue: 5,070 Cr · Profit: 2,667 Cr · Stock is trading at 23.4 times its book value">
   
 
   <style>
@@ -147,7 +147,7 @@
   <li>
     <button type="button"
             onclick="MobileMenu.toggleSearch(this)"
-            class="search-button"
+            class="round height-48 button-primary"
             title="Search">
       <i class="icon-search" style="font-size: 18px"></i>
     </button>
@@ -208,7 +208,7 @@
             <li>
               <a href="/screen/new/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/screens.e960a5daedf9.svg" alt="Create a stock screen">
                 </div>
                 <div>
@@ -230,7 +230,7 @@
               <li>
                 <a href="/ai/"
                    class="flex flex-align-center flex-gap-16">
-                  <div class="bg-stripes square-56">
+                  <div class="bg-stripes square height-56">
                     <img src="https://cdn-static.screener.in/icons/ai.970ef1d1cabb.svg" alt="Screener AI">
                   </div>
                   <div>
@@ -242,7 +242,7 @@
             
             <li>
               <a href="/hs/" class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/export.d623f0029933.svg" alt="Commodity Prices">
                 </div>
                 <div>
@@ -254,7 +254,7 @@
             <li>
               <a href="/people/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/shares.10acc20cb936.svg"
                        alt="Search shareholders by name">
                 </div>
@@ -267,7 +267,7 @@
             <li>
               <a href="/announcements/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/loudspeaker.88769927f6eb.svg" alt="Loudspeaker">
                 </div>
                 <div>
@@ -348,15 +348,16 @@
         
           
 
-<button type="button"
-        data-open-screener-ai="true"
-        class="bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
-        onclick="Modal.openInModal(event)"
-        data-url="/company/chat/1273635/"
-        data-title="BSE"
-        data-is-bottom-modal="true">
+<a href="/ai/company/1273635/"
+   data-open-screener-ai="true"
+   data-url="/ai/company/1273635/"
+   data-modal-group="stock-chat-1273635"
+   class="button bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
+   onclick="event.preventDefault(); Modal.openInModal(event)"
+   data-title="BSE"
+   data-is-bottom-modal="true">
   <i class="icon-chat-ai"></i> AI
-</button>
+</a>
 
         
       </div>
@@ -397,15 +398,16 @@
           
             
 
-<button type="button"
-        data-open-screener-ai="true"
-        class="bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
-        onclick="Modal.openInModal(event)"
-        data-url="/company/chat/1273635/"
-        data-title="BSE"
-        data-is-bottom-modal="true">
+<a href="/ai/company/1273635/"
+   data-open-screener-ai="true"
+   data-url="/ai/company/1273635/"
+   data-modal-group="stock-chat-1273635"
+   class="button bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
+   onclick="event.preventDefault(); Modal.openInModal(event)"
+   data-title="BSE"
+   data-is-bottom-modal="true">
   <i class="icon-chat-ai"></i> AI
-</button>
+</a>
 
           
         </div>
@@ -447,19 +449,19 @@
         </div>
         <div class="font-size-18 strong line-height-14">
           <div class="flex flex-align-center">
-            <span>₹ 4,146</span>
+            <span>₹ 3,400</span>
             
-              <span class="font-size-12 down margin-left-4">
-                <i class="icon-circle-down"></i>
-                -2.41%
+              <span class="font-size-12 up margin-left-4">
+                <i class="icon-circle-up"></i>
+                2.84%
               </span>
             
           </div>
           <div class="ink-600 font-size-11 font-weight-500">
             
-              29 May
+              04 Sep
               
-                - close price
+                9:07 a.m.
               
             
           </div>
@@ -467,7 +469,7 @@
       </div>
 
       <form method="post" class="flex margin-0" style="align-items: center">
-        <input type="hidden" name="csrfmiddlewaretoken" value="5eI4HPwKNh7xR0r27dL6W4U27jz89OWkR2flTA3UIB3ZjNmjdnny0cB9EJk9FMaJ">
+        <input type="hidden" name="csrfmiddlewaretoken" value="G3lfyT6QjUqwhQyIaZghAF0MvWzFYnVOpvHqz7DDSumlEPojzJkqC0j5Nc6RCkHr">
         <input type="hidden" name="next" value="/company/BSE/">
 
         
@@ -493,7 +495,7 @@
     </div>
 
     
-    <div class="company-links show-from-tablet-landscape"
+    <div class="show-from-tablet-landscape flex-row flex-nowrap flex-align-center gap-32"
          style="font-weight: 500;
                 margin-top: 8px">
       
@@ -516,6 +518,13 @@
           </span>
         </a>
       
+
+      
+        <a href="https://www.nseindia.com/get-quotes/derivatives?symbol=BSE" target="_blank" rel="noopener noreferrer">
+          <i class="icon-link-ext"></i>
+          <span class="ink-700 upper">F&amp;O</span>
+        </a>
+      
     </div>
     
 
@@ -529,12 +538,13 @@
           
             <div class="title">Key Points</div>
             <div class="sub commentary always-show-more-box">
-              <p><strong>History</strong><br>
-BSE, the first-ever stock exchange in Asia, was established in 1875. It is also the first in the country to be granted permanent recognition under the Securities Contract Regulation Act, 1956. It is the Fastest Stock Exchange in the world with a speed of 6 microseconds and is one of India's leading exchange groups. <strong>In 1986, the Co-developed the S&amp;P BSE SENSEX index, giving the Co. a means to measure the overall performance of the exchange. In 2017, it became the first listed stock exchange in India.</strong> <sup><a href="https://www.bseindia.com/static/about/History_Milestones.html" target="_blank" rel="noopener noreferrer">[1]</a></sup></p>
+              <p><strong>History:</strong><br>
+BSE, the first-ever stock exchange in Asia, was established in 1875. It is also <br>
+the first in the country to be granted permanent recognition under the Securities Contract Regulation Act, 1956. It is the Fastest Stock Exchange in the world with a speed of 6 microseconds and is one of India's leading exchange groups. <strong>In 1986, the Co-developed the S&amp;P BSE SENSEX index, giving the Co. a means to measure the overall performance of the exchange. In 2017, it became the first listed stock exchange in India.</strong> <sup><a href="https://www.bseindia.com/static/about/History_Milestones.html" target="_blank" rel="noopener noreferrer">[1]</a></sup></p>
               <div class="show-more-button" style="height: 20px"></div>
             </div>
 
-            <button class="a upper font-weight-500 letter-spacing plausible-event-name=Key+Insight plausible-event-user=free"
+            <button class="a upper font-weight-500 letter-spacing plausible-event-name=Key+Insight plausible-event-user=unregistered"
                     style="font-size: 1.4rem"
                     type="button"
                     onclick="Modal.openInModal(event)"
@@ -546,7 +556,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
           
         </div>
 
-        <div class="company-links hide-from-tablet-landscape margin-top-20"
+        <div class="hide-from-tablet-landscape margin-top-20 flex-row flex-align-center gap-12-22 nowrap"
              style="font-weight: 500">
           
             <a href="https://www.bseindia.com"
@@ -568,6 +578,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </span>
             </a>
           
+
+          
+            <a href="https://www.nseindia.com/get-quotes/derivatives?symbol=BSE" target="_blank" rel="noopener noreferrer">
+              <i class="icon-link-ext"></i>
+              <span class="ink-700 upper">F&amp;O</span>
+            </a>
+          
         </div>
       </div>
       
@@ -587,7 +604,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         ₹
-        <span class="number">1,68,870</span>
+        <span class="number">1,38,681</span>
         
           Cr.
         
@@ -605,7 +622,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         ₹
-        <span class="number">4,146</span>
+        <span class="number">3,400</span>
         
       </span>
     
@@ -633,7 +650,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         
-        <span class="number">72.7</span>
+        <span class="number">52.0</span>
         
       </span>
     
@@ -649,7 +666,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         ₹
-        <span class="number">142</span>
+        <span class="number">141</span>
         
       </span>
     
@@ -665,7 +682,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         
-        <span class="number">0.24</span>
+        <span class="number">0.29</span>
         
           %
         
@@ -683,7 +700,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         
-        <span class="number">64.6</span>
+        <span class="number">66.2</span>
         
           %
         
@@ -701,7 +718,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
       <span class="nowrap value">
         
-        <span class="number">48.8</span>
+        <span class="number">50.0</span>
         
           %
         
@@ -957,13 +974,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <div class="pros" style="flex-basis: 50%;">
           <p class="title">Pros</p>
           <ul>
-            <li>Company is almost debt free.</li><li>Company is expected to give good quarter</li><li>Company has delivered good profit growth of 84.4% CAGR over last 5 years</li><li>Company has a good return on equity (ROE) track record: 3 Years ROE 36.2%</li><li>Company has been maintaining a healthy dividend payout of 24.1%</li>
+            <li>Company is almost debt free.</li><li>Company is expected to give good quarter</li><li>Company has delivered good profit growth of 85.4% CAGR over last 5 years</li><li>Company has a good return on equity (ROE) track record: 3 Years ROE 36.8%</li><li>Company has been maintaining a healthy dividend payout of 24.1%</li>
           </ul>
         </div>
         <div class="cons" style="flex-basis: 50%;">
           <p class="title">Cons</p>
           <ul>
-            <li>Stock is trading at 29.3 times its book value</li><li>Working capital days have increased from -116 days to 94.8 days</li>
+            
+              <li>Stock is trading at 23.4 times its book value</li>
+            
           </ul>
         </div>
       </div>
@@ -972,7 +991,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <span class="font-weight-500">The pros and cons are machine generated.</span>
         <span class="has-tooltip">
           <i class="icon-info"></i>
-          <span class="tooltip arrow-down" style="width: 300px; left: -100px;">
+          <span class="tooltip position-area-top-center" style="width: 300px">
             Pros / cons are based on a checklist to highlight important points. Please exercise caution and do your own analysis.
           </span>
         </span>
@@ -1013,77 +1032,29 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                id="benchmarks">
               Part of
               
-                <a href="/company/CNX500/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500"
-                   target="_blank">Nifty 500</a>
-              
-                <a href="/company/CNXMIDCAP/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+100"
-                   target="_blank">Nifty Midcap 100</a>
-              
-                <a href="/company/NIFTYMID50/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+50"
-                   target="_blank">Nifty Midcap 50</a>
-              
-                <a href="/company/CNXSERVICE/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Services+Sector"
-                   target="_blank">Nifty Services Sector</a>
-              
-                <a href="/company/CNX200INDE/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+200"
-                   target="_blank">Nifty 200</a>
-              
-                <a href="/company/CNXFINANCE/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Financial+Services"
-                   target="_blank">Nifty Financial Services</a>
-              
-                <a href="/company/CNXHIGHBET/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+High+Beta+50"
-                   target="_blank">Nifty High Beta 50</a>
-              
-                <a href="/company/NFTALPHA50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Alpha+50"
-                   target="_blank">Nifty Alpha 50</a>
-              
                 <a href="/company/NIFMIDLQ15/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+Liquid+15"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+Liquid+15"
                    target="_blank">Nifty Midcap Liquid 15</a>
               
-                <a href="/company/LMIDCAP250/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+LargeMidcap+250"
-                   target="_blank">Nifty LargeMidcap 250</a>
-              
-                <a href="/company/NMIDCAP150/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+150"
-                   target="_blank">Nifty Midcap 150</a>
-              
-                <a href="/company/MIDSMAL400/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmallcap+400"
-                   target="_blank">Nifty MidSmallcap 400</a>
+                <a href="/company/NFMIDQLT50/"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap150+Quality+50"
+                   target="_blank">Nifty Midcap150 Quality 50</a>
               
                 <a href="/company/NFINSERV25/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Financial+Services+25/50"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Financial+Services+25/50"
                    target="_blank">Nifty Financial Services 25/50</a>
               
                 <a href="/company/NI200MOM30/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty200+Momentum+30"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty200+Momentum+30"
                    target="_blank">Nifty200 Momentum 30</a>
               
-                <a href="/company/NFT500MULT/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500+Multicap+50:25:25"
-                   target="_blank">Nifty 500 Multicap 50:25:25</a>
-              
                 <a href="/company/NFTMIDSELE/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+Select"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+Select"
                    target="_blank">Nifty Midcap Select</a>
               
                 <a href="/company/NFTYTOTMKT/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Total+Market"
                    target="_blank">Nifty Total Market</a>
-              
-                <a href="/company/NIFTYFSEXB/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Financial+Services+Ex-Bank"
-                   target="_blank">Nifty Financial Services Ex-Bank</a>
               
                 <a href="/company/NFTY200A30/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty200+Alpha30"
@@ -1093,45 +1064,105 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap150+Momentum+50"
                    target="_blank">Nifty Midcap150 Momentum 50</a>
               
-                <a href="/company/NIFTYMSFNS/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmall+Financial+Services"
-                   target="_blank">Nifty MidSmall Financial Services</a>
+                <a href="/company/CNXHIGHBET/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+High+Beta+50"
+                   target="_blank">Nifty High Beta 50</a>
               
                 <a href="/company/NIFCAPMARK/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Capital+Markets"
                    target="_blank">Nifty Capital Markets</a>
               
-                <a href="/company/NIF500MO50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Momentum+50"
-                   target="_blank">Nifty500 Momentum 50</a>
-              
                 <a href="/company/NMS400MQ10/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midsmallcap400+Momentum+Quality+100"
                    target="_blank">Nifty Midsmallcap400 Momentum Quality 100</a>
-              
-                <a href="/company/NFTY500EQW/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Equal+Weight"
-                   target="_blank">Nifty500 Equal Weight</a>
-              
-                <a href="/company/NY500MMQ50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Multicap+Momentum+Quality+50"
-                   target="_blank">Nifty500 Multicap Momentum Quality 50</a>
               
                 <a href="/company/NY500LMSEW/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+LargeMidSmall+Equal-Cap+Weighted"
                    target="_blank">Nifty500 LargeMidSmall Equal-Cap Weighted</a>
               
-                <a href="/company/NFTY500Q50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Quality+50"
-                   target="_blank">Nifty500 Quality 50</a>
+                <a href="/company/NIFTYFSEXB/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Financial+Services+Ex-Bank"
+                   target="_blank">Nifty Financial Services Ex-Bank</a>
               
                 <a href="/company/NFTIFPI150/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+India+FPI+150"
                    target="_blank">Nifty India FPI 150</a>
               
+                <a href="/company/NIFTYMSFNS/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmall+Financial+Services"
+                   target="_blank">Nifty MidSmall Financial Services</a>
+              
                 <a href="/company/NFTTMMQ50/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Total+Market+Momentum+Quality+50"
                    target="_blank">Nifty Total Market Momentum Quality 50</a>
+              
+                <a href="/company/NFT500FQ30/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Flexicap+Quality+30"
+                   target="_blank">Nifty500 Flexicap Quality 30</a>
+              
+                <a href="/company/NMS4005050/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmallcap400+50:50"
+                   target="_blank">Nifty MidSmallcap400 50:50</a>
+              
+                <a href="/company/NIFTYMID50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+50"
+                   target="_blank">Nifty Midcap 50</a>
+              
+                <a href="/company/CNXSERVICE/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Services+Sector"
+                   target="_blank">Nifty Services Sector</a>
+              
+                <a href="/company/CNX200INDE/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+200"
+                   target="_blank">Nifty 200</a>
+              
+                <a href="/company/CNXFINANCE/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Financial+Services"
+                   target="_blank">Nifty Financial Services</a>
+              
+                <a href="/company/NFTALPHA50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Alpha+50"
+                   target="_blank">Nifty Alpha 50</a>
+              
+                <a href="/company/NMIDCAP150/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+150"
+                   target="_blank">Nifty Midcap 150</a>
+              
+                <a href="/company/NFT500MULT/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500+Multicap+50:25:25"
+                   target="_blank">Nifty 500 Multicap 50:25:25</a>
+              
+                <a href="/company/CNXMIDCAP/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midcap+100"
+                   target="_blank">Nifty Midcap 100</a>
+              
+                <a href="/company/NFTY500EQW/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Equal+Weight"
+                   target="_blank">Nifty500 Equal Weight</a>
+              
+                <a href="/company/CNX500/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500"
+                   target="_blank">Nifty 500</a>
+              
+                <a href="/company/LMIDCAP250/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+LargeMidcap+250"
+                   target="_blank">Nifty LargeMidcap 250</a>
+              
+                <a href="/company/MIDSMAL400/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmallcap+400"
+                   target="_blank">Nifty MidSmallcap 400</a>
+              
+                <a href="/company/NIF500MO50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Momentum+50"
+                   target="_blank">Nifty500 Momentum 50</a>
+              
+                <a href="/company/NY500MMQ50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Multicap+Momentum+Quality+50"
+                   target="_blank">Nifty500 Multicap Momentum Quality 50</a>
+              
+                <a href="/company/NFTY500Q50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Quality+50"
+                   target="_blank">Nifty500 Quality 50</a>
               
               
                 <button type="button"
@@ -1219,13 +1250,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <th class="text"></th>
         
           <th class="highlight-cell"
-              data-date-key="2023-03-31">
-            Mar 2023
-            
-            
-          </th>
-        
-          <th class=""
               data-date-key="2023-06-30">
             Jun 2023
             
@@ -1246,14 +1270,14 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2024-03-31">
             Mar 2024
             
             
           </th>
         
-          <th class=""
+          <th class="highlight-cell"
               data-date-key="2024-06-30">
             Jun 2024
             
@@ -1274,14 +1298,14 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2025-03-31">
             Mar 2025
             
             
           </th>
         
-          <th class=""
+          <th class="highlight-cell"
               data-date-key="2025-06-30">
             Jun 2025
             
@@ -1302,9 +1326,16 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2026-03-31">
             Mar 2026
+            
+            
+          </th>
+        
+          <th class="highlight-cell"
+              data-date-key="2026-06-30">
+            Jun 2026
             
             
           </th>
@@ -1326,12 +1357,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="highlight-cell">
                 
-                  179
-                
-              </td>
-            
-              <td class="">
-                
                   191
                 
               </td>
@@ -1348,13 +1373,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   479
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   545
                 
@@ -1372,13 +1397,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   763
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   873
                 
@@ -1396,9 +1421,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   1,468
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  1,474
                 
               </td>
             
@@ -1418,12 +1449,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="highlight-cell">
                 
-                  93
-                
-              </td>
-            
-              <td class="">
-                
                   118
                 
               </td>
@@ -1440,13 +1465,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   367
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   301
                 
@@ -1464,13 +1489,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   323
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   316
                 
@@ -1488,9 +1513,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   487
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  492
                 
               </td>
             
@@ -1506,12 +1537,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
             
               <td class="highlight-cell">
-                
-                  85
-                
-              </td>
-            
-              <td class="">
                 
                   72
                 
@@ -1529,13 +1554,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   112
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   245
                 
@@ -1553,13 +1578,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   440
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   557
                 
@@ -1577,9 +1602,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   981
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  982
                 
               </td>
             
@@ -1595,12 +1626,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
             
               <td class="highlight-cell">
-                
-                  48%
-                
-              </td>
-            
-              <td class="">
                 
                   38%
                 
@@ -1618,13 +1643,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   23%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   45%
                 
@@ -1642,13 +1667,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   58%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   64%
                 
@@ -1663,6 +1688,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td class="">
                 
                   61%
+                
+              </td>
+            
+              <td class="">
+                
+                  67%
                 
               </td>
             
@@ -1688,12 +1719,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="highlight-cell">
                 
-                  14
-                
-              </td>
-            
-              <td class="">
-                
                   518
                 
               </td>
@@ -1710,13 +1735,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   6
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   6
                 
@@ -1734,13 +1759,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   104
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   91
                 
@@ -1758,9 +1783,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   115
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  127
                 
               </td>
             
@@ -1866,12 +1897,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="highlight-cell">
                 
-                  16
-                
-              </td>
-            
-              <td class="">
-                
                   17
                 
               </td>
@@ -1888,13 +1913,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   21
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   19
                 
@@ -1912,13 +1937,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   24
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   22
                 
@@ -1936,9 +1961,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   47
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  36
                 
               </td>
             
@@ -1954,12 +1985,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
             
               <td class="highlight-cell">
-                
-                  83
-                
-              </td>
-            
-              <td class="">
                 
                   573
                 
@@ -1977,13 +2002,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   97
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   232
                 
@@ -2001,13 +2026,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   520
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   626
                 
@@ -2025,9 +2050,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   1,049
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  1,073
                 
               </td>
             
@@ -2043,12 +2074,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
             
               <td class="highlight-cell">
-                
-                  30%
-                
-              </td>
-            
-              <td class="">
                 
                   12%
                 
@@ -2066,13 +2091,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   18%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   25%
                 
@@ -2087,17 +2112,17 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td class="">
                 
                   25%
+                
+              </td>
+            
+              <td class="">
+                
+                  24%
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  24%
-                
-              </td>
-            
-              <td class="">
-                
                   25%
                 
               </td>
@@ -2111,12 +2136,18 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td class="">
                 
                   25%
+                
+              </td>
+            
+              <td class="">
+                
+                  24%
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  24%
+                  25%
                 
               </td>
             
@@ -2136,12 +2167,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="highlight-cell">
                 
-                  59
-                
-              </td>
-            
-              <td class="">
-                
                   507
                 
               </td>
@@ -2158,13 +2183,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   79
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   173
                 
@@ -2182,13 +2207,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   397
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   468
                 
@@ -2206,9 +2231,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   799
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  801
                 
               </td>
             
@@ -2224,12 +2255,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
             
               <td class="highlight-cell">
-                
-                  1.44
-                
-              </td>
-            
-              <td class="">
                 
                   12.48
                 
@@ -2247,13 +2272,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   1.95
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   4.27
                 
@@ -2271,13 +2296,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   9.78
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   11.53
                 
@@ -2285,19 +2310,25 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  12.65
+                  12.67
                 
               </td>
             
               <td class="">
                 
-                  13.56
+                  13.60
+                
+              </td>
+            
+              <td class="">
+                
+                  19.59
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  19.62
+                  19.64
                 
               </td>
             
@@ -2310,16 +2341,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
           <td class="text ink-600">Raw PDF</td>
           
             <td class="hover-link highlight-cell">
-              <a href="/company/source/quarter/1273635/3/2023/"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 aria-label="Raw PDF"
-                 class="plausible-event-name=Quarterly+PDF plausible-event-user=unregistered">
-                <i class="icon-file-pdf ink-600-link"></i>
-              </a>
-            </td>
-          
-            <td class="hover-link ">
               <a href="/company/source/quarter/1273635/6/2023/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2349,7 +2370,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/1273635/3/2024/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2359,7 +2380,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </a>
             </td>
           
-            <td class="hover-link ">
+            <td class="hover-link highlight-cell">
               <a href="/company/source/quarter/1273635/6/2024/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2389,7 +2410,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/1273635/3/2025/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2399,7 +2420,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </a>
             </td>
           
-            <td class="hover-link ">
+            <td class="hover-link highlight-cell">
               <a href="/company/source/quarter/1273635/6/2025/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2429,8 +2450,18 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/1273635/3/2026/"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 aria-label="Raw PDF"
+                 class="plausible-event-name=Quarterly+PDF plausible-event-user=unregistered">
+                <i class="icon-file-pdf ink-600-link"></i>
+              </a>
+            </td>
+          
+            <td class="hover-link highlight-cell">
+              <a href="/company/source/quarter/1273635/6/2026/"
                  target="_blank"
                  rel="noopener noreferrer"
                  aria-label="Raw PDF"
@@ -2595,6 +2626,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
           </th>
         
+          <th class=""
+              data-date-key="TTM">
+            TTM
+            
+            
+          </th>
+        
       </tr>
     </thead>
     <tbody>
@@ -2680,7 +2718,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  4,470
+                  4,801
+                
+              </td>
+            
+              <td class="">
+                
+                  5,070
                 
               </td>
             
@@ -2766,7 +2810,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  1,630
+                  1,553
+                
+              </td>
+            
+              <td class="">
+                
+                  1,806
                 
               </td>
             
@@ -2849,7 +2899,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  2,840
+                  3,248
+                
+              </td>
+            
+              <td class="">
+                
+                  3,265
                 
               </td>
             
@@ -2927,6 +2983,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td class="">
                 
                   56%
+                
+              </td>
+            
+              <td class="">
+                
+                  68%
                 
               </td>
             
@@ -3018,7 +3080,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  383
+                  -25
+                
+              </td>
+            
+              <td class="">
+                
+                  419
                 
               </td>
             
@@ -3032,6 +3100,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 Interest
               
             </td>
+            
+              <td class="">
+                
+                  0
+                
+              </td>
             
               <td class="">
                 
@@ -3188,6 +3262,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
+              <td class="">
+                
+                  149
+                
+              </td>
+            
           </tr>
         
       
@@ -3271,6 +3351,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
+              <td class="">
+                
+                  3,534
+                
+              </td>
+            
           </tr>
         
       
@@ -3351,6 +3437,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td class="">
                 
                   24%
+                
+              </td>
+            
+              <td class="">
+                
+                  
                 
               </td>
             
@@ -3440,6 +3532,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
+              <td class="">
+                
+                  2,667
+                
+              </td>
+            
           </tr>
         
       
@@ -3519,7 +3617,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  57.31
+                  57.23
+                
+              </td>
+            
+              <td class="">
+                
+                  65.50
                 
               </td>
             
@@ -3606,6 +3710,12 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 
               </td>
             
+              <td class="">
+                
+                  
+                
+              </td>
+            
           </tr>
         
       
@@ -3626,19 +3736,19 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
           </tr>
           <tr>
             <td>10 Years:</td>
-            <td>25%</td>
+            <td>26%</td>
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>53%</td>
+            <td>55%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>85%</td>
+            <td>89%</td>
           </tr>
           <tr>
             <td>TTM:</td>
-            <td>55%</td>
+            <td>70%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3647,19 +3757,19 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
           </tr>
           <tr>
             <td>10 Years:</td>
-            <td>27%</td>
+            <td>28%</td>
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>84%</td>
+            <td>85%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>141%</td>
+            <td>143%</td>
           </tr>
           <tr>
             <td>TTM:</td>
-            <td>97%</td>
+            <td>91%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3672,15 +3782,15 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>109%</td>
+            <td>91%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>179%</td>
+            <td>103%</td>
           </tr>
           <tr>
             <td>1 Year:</td>
-            <td>55%</td>
+            <td>49%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3697,11 +3807,11 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>36%</td>
+            <td>37%</td>
           </tr>
           <tr>
             <td>Last Year:</td>
-            <td>49%</td>
+            <td>50%</td>
           </tr>
         </table>
       </div>
@@ -4337,7 +4447,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  567
+                  527
                 
               </td>
             
@@ -4420,7 +4530,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  32
+                  72
                 
               </td>
             
@@ -5312,7 +5422,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  114%
+                  100%
                 
               </td>
             
@@ -5522,13 +5632,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  30
+                  27
                 
               </td>
             
               <td class="">
                 
-                  41
+                  38
                 
               </td>
             
@@ -5771,13 +5881,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  30
+                  27
                 
               </td>
             
               <td class="">
                 
-                  41
+                  38
                 
               </td>
             
@@ -5860,7 +5970,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  95
+                  -85
                 
               </td>
             
@@ -5943,7 +6053,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td class="">
                 
-                  65%
+                  66%
                 
               </td>
             
@@ -6011,11 +6121,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <th class="text"></th>
         
           <th>
-            Mar 2015
-            
-          </th>
-        
-          <th>
             Mar 2016
             
           </th>
@@ -6065,15 +6170,20 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
           </th>
         
+          <th>
+            Mar 2026
+            
+          </th>
+        
       </tr>
     </thead>
     <tbody>
       
         <tr class="stripe">
-          <td class="text border-right">BSE StAR Mutual Fund - Number of Orders<br><span class="font-weight-500 font-size-12 sub">Million</span></td>
+          <td class="text border-right">Equity Cash Average Daily Turnover<br><span class="font-weight-500 font-size-12 sub">₹ million</span></td>
           
             <td class="position-relative"
-                rowspan="4"
+                rowspan="6"
                 colspan="11">
               
 
@@ -6087,15 +6197,115 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <tr class="stripe">
           
             <td style="padding-left: var(--cell-padding)">
-              x.xx
+              xx,xxx
             </td>
           
             <td >
-              x.xx
+              xx,xxx
             </td>
           
             <td >
-              x.xx
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+            <td >
+              xx,xxx
+            </td>
+          
+        </tr>
+      
+        <tr class="">
+          
+            <td style="padding-left: var(--cell-padding)">
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              xx
+            </td>
+          
+            <td >
+              xx
+            </td>
+          
+            <td >
+              xx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+        </tr>
+      
+        <tr class="stripe">
+          
+            <td style="padding-left: var(--cell-padding)">
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
             </td>
           
             <td >
@@ -6103,7 +6313,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
           
             <td >
-              xx.xx
+              
             </td>
           
             <td >
@@ -6111,11 +6321,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
           
             <td >
-              xx.xx
-            </td>
-          
-            <td >
-              xxx.xx
+              
             </td>
           
             <td >
@@ -6135,7 +6341,19 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <tr class="">
           
             <td style="padding-left: var(--cell-padding)">
-              xx,xxx
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
             </td>
           
             <td >
@@ -6143,7 +6361,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
           
             <td >
-              xx,xxx
+              
             </td>
           
             <td >
@@ -6151,19 +6369,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
           
             <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
+              
             </td>
           
             <td >
@@ -6183,47 +6389,47 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         <tr class="stripe">
           
             <td style="padding-left: var(--cell-padding)">
-              xx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              
             </td>
           
             <td >
-              xxx
+              xx.xx
             </td>
           
             <td >
-              xxx
+              xx.xx
             </td>
           
             <td >
-              xxx
+              xx.xx
             </td>
           
         </tr>
@@ -6267,11 +6473,11 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             </td>
           
             <td >
-              xx
+              xx,xxx
             </td>
           
             <td >
-              xx
+              xxx,xxx
             </td>
           
         </tr>
@@ -6294,17 +6500,27 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         </tr>
       
         <tr class="">
-          <td class="text border-right">Equity Cash - Average Daily Turnover (ADTV)<br><span class="font-weight-500 font-size-12 sub">Rs. Million</span></td>
+          <td class="text border-right">StAR MF Number of Orders<br><span class="font-weight-500 font-size-12 sub">million</span></td>
           
         </tr>
       
         <tr class="stripe">
-          <td class="text border-right">SME Platform - Cumulative Number of Companies Listed<br><span class="font-weight-500 font-size-12 sub">Number</span></td>
+          <td class="text border-right">Registered Investors<br><span class="font-weight-500 font-size-12 sub">million</span></td>
           
         </tr>
       
         <tr class="">
-          <td class="text border-right">Mutual Fund Platform - Market Share (Transactions)<br><span class="font-weight-500 font-size-12 sub">Percentage</span></td>
+          <td class="text border-right">StAR MF Number of Distributors<br><span class="font-weight-500 font-size-12 sub">distributors</span></td>
+          
+        </tr>
+      
+        <tr class="stripe">
+          <td class="text border-right">Funds Mobilized on BSE Platforms<br><span class="font-weight-500 font-size-12 sub">₹ trillion</span></td>
+          
+        </tr>
+      
+        <tr class="">
+          <td class="text border-right">Equity Derivatives AD Premium Turnover<br><span class="font-weight-500 font-size-12 sub">₹ million</span></td>
           
         </tr>
       
@@ -6364,7 +6580,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
       <thead>
         <tr>
           <th class="text"></th>
-          <th>Jun 2023</th><th>Sep 2023</th><th>Dec 2023</th><th>Mar 2024</th><th>Jun 2024</th><th>Sep 2024</th><th>Dec 2024</th><th>Mar 2025</th><th>Jun 2025</th><th>Sep 2025</th><th>Dec 2025</th><th>Mar 2026</th>
+          <th>Sep 2023</th><th>Dec 2023</th><th>Mar 2024</th><th>Jun 2024</th><th>Sep 2024</th><th>Dec 2024</th><th>Mar 2025</th><th>Jun 2025</th><th>Sep 2025</th><th>Dec 2025</th><th>Mar 2026</th><th>Jun 2026</th>
         </tr>
       </thead>
       <tbody>
@@ -6376,8 +6592,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 FIIs&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>8.77%</td>
             
               <td>7.90%</td>
             
@@ -6401,6 +6615,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>19.42%</td>
             
+              <td>21.32%</td>
+            
           </tr>
         
           <tr class="">
@@ -6410,8 +6626,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 DIIs&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>0.54%</td>
             
               <td>8.09%</td>
             
@@ -6434,6 +6648,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td>23.74%</td>
             
               <td>25.09%</td>
+            
+              <td>24.15%</td>
             
           </tr>
         
@@ -6461,7 +6677,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>0.00%</td>
             
-              <td>0.00%</td>
+              <td>0.09%</td>
             
               <td>0.09%</td>
             
@@ -6478,8 +6694,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 Public&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>64.83%</td>
             
               <td>58.90%</td>
             
@@ -6503,6 +6717,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>55.40%</td>
             
+              <td>54.45%</td>
+            
           </tr>
         
           <tr class="stripe">
@@ -6512,8 +6728,6 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
                 Others&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>25.85%</td>
             
               <td>25.10%</td>
             
@@ -6537,11 +6751,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>0.00%</td>
             
+              <td>0.00%</td>
+            
           </tr>
         
         <tr class="sub">
           <td class="text">No. of Shareholders</td>
-          <td>4,58,410</td><td>4,05,722</td><td>4,42,114</td><td>4,40,058</td><td>5,49,758</td><td>5,43,812</td><td>5,89,552</td><td>6,68,174</td><td>9,49,953</td><td>12,91,812</td><td>10,58,144</td><td>9,75,435</td>
+          <td>4,05,722</td><td>4,42,114</td><td>4,40,058</td><td>5,49,758</td><td>5,43,812</td><td>5,89,552</td><td>6,68,174</td><td>9,49,953</td><td>12,91,812</td><td>10,58,144</td><td>9,75,435</td><td>9,99,275</td>
         </tr>
       </tbody>
     </table>
@@ -6558,7 +6774,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
       <thead>
         <tr>
           <th class="text"></th>
-          <th>Mar 2017</th><th>Mar 2018</th><th>Mar 2019</th><th>Mar 2020</th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>Mar 2025</th><th>Mar 2026</th>
+          <th>Mar 2017</th><th>Mar 2018</th><th>Mar 2019</th><th>Mar 2020</th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>Mar 2025</th><th>Mar 2026</th><th>Jun 2026</th>
         </tr>
       </thead>
       <tbody>
@@ -6591,6 +6807,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>19.42%</td>
             
+              <td>21.32%</td>
+            
           </tr>
         
           <tr class="">
@@ -6621,6 +6839,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>25.09%</td>
             
+              <td>24.15%</td>
+            
           </tr>
         
           <tr class="stripe">
@@ -6648,6 +6868,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               <td>0.00%</td>
             
               <td>0.00%</td>
+            
+              <td>0.09%</td>
             
               <td>0.09%</td>
             
@@ -6681,6 +6903,8 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>55.40%</td>
             
+              <td>54.45%</td>
+            
           </tr>
         
           <tr class="stripe">
@@ -6711,11 +6935,13 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
             
               <td>0.00%</td>
             
+              <td>0.00%</td>
+            
           </tr>
         
         <tr class="sub">
           <td class="text">No. of Shareholders</td>
-          <td>1,85,699</td><td>1,75,091</td><td>1,74,239</td><td>1,76,696</td><td>2,02,670</td><td>3,78,655</td><td>4,74,080</td><td>4,40,058</td><td>6,68,174</td><td>9,75,435</td>
+          <td>1,85,699</td><td>1,75,091</td><td>1,74,239</td><td>1,76,696</td><td>2,02,670</td><td>3,78,655</td><td>4,74,080</td><td>4,40,058</td><td>6,68,174</td><td>9,75,435</td><td>9,99,275</td>
         </tr>
       </tbody>
     </table>
@@ -6729,7 +6955,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     * The classifications might have changed from Sep'2022 onwards.
     <span class="has-tooltip">
       <i class="icon-info"></i>
-      <span class="tooltip arrow-down" style="width: 300px">
+      <span class="tooltip position-area-top-center" style="width: 300px">
         The new XBRL format added more details from Sep'22 onwards.
         <br>
         <br>
@@ -6797,61 +7023,61 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
   <ul class="list-links">
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_27052026130554_NSEIntimation.pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_03092026105909_NSEIntimation.pdf"
            target="_blank"
            rel="noopener noreferrer">
           Analysts/Institutional Investor Meet/Con. Call Updates
 
           
-            <div class="ink-600 smaller">27 May 2026 - BSE schedules one-on-one investor meeting with Wasatch Global on June 3, 2026 in Mumbai.</div>
+            <div class="ink-600 smaller"><time datetime="2026-09-03T11:00:14+05:30" data-time-since>3 Sep</time> - BSE will host a one-to-one physical investor meeting with Polar Capital LLP on September 7, 2026, in Mumbai.</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_26052026163411_NSEIntimation.pdf"
-           target="_blank"
-           rel="noopener noreferrer">
-          Analysts/Institutional Investor Meet/Con. Call Updates
-
-          
-            <div class="ink-600 smaller">26 May 2026 - BSE schedules one-to-one investor meetings with Baillie Gifford and Daiwa Asset Management on June 1, 2026.</div>
-          
-        </a>
-      </li>
-    
-      <li class="overflow-wrap-anywhere">
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_25052026132746_NSEintimation.pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_01092026182136_NSEIntimation.pdf"
            target="_blank"
            rel="noopener noreferrer">
           General Updates
 
           
-            <div class="ink-600 smaller">25 May 2026 - SEBI approved appointments of Saurabh Shukla and Gopalan S. Raghavan as Executive Directors, effective on joining.</div>
+            <div class="ink-600 smaller"><time datetime="2026-09-01T18:21:50+05:30" data-time-since>1 Sep</time> - CRISIL ESG assigned BSE ESG rating 69 and Core ESG 72 for FY2025-26.</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_21052026145709_NSEIntimation.pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_26082026181526_NSEIntimation.pdf"
            target="_blank"
            rel="noopener noreferrer">
           Analysts/Institutional Investor Meet/Con. Call Updates
 
           
-            <div class="ink-600 smaller">21 May 2026 - BSE schedules investor meeting with 360 ONE Capital on May 29, 2026 in Mumbai.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-26T18:18:24+05:30">26 Aug</time> - BSE to attend Elara India Dialogue 2026 investor conference on September 2, 2026 in Mumbai.</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_20052026150019_NSEIntimation_20052026.pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_24082026120617_NSEINtimation.pdf"
            target="_blank"
            rel="noopener noreferrer">
-          Copy of Newspaper Publication
+          Analysts/Institutional Investor Meet/Con. Call Updates
 
           
-            <div class="ink-600 smaller">20 May 2026 - BSE published AGM newspaper ads; 21st AGM on August 19, 2026 via VC/OAVM.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-24T12:07:03+05:30">24 Aug</time> - BSE rescheduled its Macquarie one-on-one virtual investor meeting from August 24 to August 25, 2026.</div>
+          
+        </a>
+      </li>
+    
+      <li class="overflow-wrap-anywhere">
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_19082026214058_NSEintimation.pdf"
+           target="_blank"
+           rel="noopener noreferrer">
+          Analysts/Institutional Investor Meet/Con. Call Updates
+
+          
+            <div class="ink-600 smaller"><time datetime="2026-08-19T21:41:07+05:30">19 Aug</time> - BSE Limited scheduled one-to-one investor meetings with Macquarie and Shreya Capital on August 24, 2026.</div>
           
         </a>
       </li>
@@ -6875,8 +7101,17 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 <ul class="list-links">
 
   <li>
+    <a href="https://archives.nseindia.com/annual_reports/AR_29957_BSE_2025_2026_A_15352240_23072026103201.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Annual Report 2026
+      <div class="ink-600 smaller">
+        from nse
+      </div>
+    </a>
+  </li>
+
+  <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_27090_BSE_2024_2025_A_24072025103555.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2025
+      Annual Report 2025
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6885,7 +7120,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_24153_BSE_2023_2024_2006202415751.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2024
+      Annual Report 2024
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6894,7 +7129,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_22678_BSE_2022_2023_07082023155715_08072023160000.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2023
+      Annual Report 2023
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6903,7 +7138,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_20066_BSE_2021_2022_17062022161215.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2022
+      Annual Report 2022
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6912,7 +7147,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_18547_BSE_2020_2021_29072021094315_29072021100004.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2021
+      Annual Report 2021
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6921,7 +7156,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_16402_BSE_2019_2020_07072020233441_08072020070004.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2020
+      Annual Report 2020
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6930,7 +7165,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_14547_BSE_2018_2019_17062019183003_17062019190003.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2019
+      Annual Report 2019
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6939,7 +7174,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_12816_BSE_2017_2018_02082018204541.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2018
+      Annual Report 2018
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6948,7 +7183,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
   <li>
     <a href="https://archives.nseindia.com/annual_reports/AR_11291_BSE_2016_2017_05092017161500.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2017
+      Annual Report 2017
       <div class="ink-600 smaller">
         from nse
       </div>
@@ -6989,6 +7224,42 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
               </button>
             </div>
             <div class="show-more-box"><ul class="list-links">
+  
+    <li class="flex flex-gap-8 flex-wrap-420">
+      <div class="ink-600 font-size-15 font-weight-500 nowrap"
+           style="width: 74px">Aug 2026</div>
+
+      
+        <a class="concall-link"
+           href="https://nsearchives.nseindia.com/corporate/BSE1_10082026115817_NSEIntimation.pdf"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="Raw Transcript">Transcript</a>
+      
+
+      
+        <button class="concall-link plausible-event-name=Concall+Notes plausible-event-user=unregistered plausible-event-source=transcript"
+                type="button"
+                data-url="/concalls/summary/23283058/"
+                onclick="Modal.openInModal(event)"
+                data-title="Concall Summary - Aug 2026"
+                data-is-bottom-modal="true">AI Summary</button>
+      
+
+      
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_04082026185534_NSEintimation.pdf"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">PPT</a>
+      
+
+      
+        <a href="https://www.bseindia.com/downloads1/c0b30615-8f4d-4a7c-b8be-0859a6711235.mp3"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">REC</a>
+      
+    </li>
   
     <li class="flex flex-gap-8 flex-wrap-420">
       <div class="ink-600 font-size-15 font-weight-500 nowrap"
@@ -7084,7 +7355,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
       
 
       
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_11112025201829_Coveringletterinvestorpresentationrevised.pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_11112025180623_Coveringletterinvestorpresentation.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7111,7 +7382,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
       
 
       
-        <a href="https://nsearchives.nseindia.com/corporate/BSE1_11112025180623_Coveringletterinvestorpresentation.pdf"
+        <a href="https://nsearchives.nseindia.com/corporate/BSE1_11112025201829_Coveringletterinvestorpresentationrevised.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7250,7 +7521,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/5f184c59-c862-4e62-87fd-4ac4e62e233d.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=5f184c59-c862-4e62-87fd-4ac4e62e233d.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7373,7 +7644,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/d58ed099-db0f-46df-bbae-73f5e0f35369.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=d58ed099-db0f-46df-bbae-73f5e0f35369.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7511,7 +7782,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/2ee75eea-1814-4eb0-ab17-af143461d1cd.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=2ee75eea-1814-4eb0-ab17-af143461d1cd.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7526,7 +7797,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/75ad5f94-6766-41f5-9628-da92d3be88e1.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=75ad5f94-6766-41f5-9628-da92d3be88e1.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8070,7 +8341,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
         
       </div>
     </section>
-    <!-- cache time 2026-05-31 11:18:10 -->
+    <!-- cache time 2026-09-04 03:09:53 -->
     
   
 
@@ -8096,7 +8367,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
            class="logo">
       <p class="font-size-19" style="font-weight: 500;">Stock analysis and screening tool</p>
       <p class="sub">
-        Mittal Analytics Private Ltd &copy; 2009-2025
+        Mittal Analytics Private Ltd &copy; 2009-2026
         <br>
         Made with <i class="icon-heart red"></i> in India.
       </p>
@@ -8174,7 +8445,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
 
     <div class="hide-from-tablet">
       <hr>
-      <p class="sub">Mittal Analytics Private Ltd &copy; 2009-2024</p>
+      <p class="sub">Mittal Analytics Private Ltd &copy; 2009-2026</p>
       <p class="sub">Data provided by C-MOTS Internet Technologies Pvt Ltd</p>
       <p class="sub">
         <a href="/guides/terms/" class="underline-link">Terms</a>
@@ -8187,11 +8458,10 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
     
 
     <!-- Important JS (which provide global objects)- check below too -->
-    <script src="https://cdn-static.screener.in/js/dialog-polyfill.min.2b5bf9a032d2.js"></script>
-    <script src="https://cdn-static.screener.in/js/utils.5fa58987fd69.js"></script>
-    <script src="https://cdn-static.screener.in/js/modal.33ac63eb7887.js"></script>
+    <script src="https://cdn-static.screener.in/js/utils.0147599e8f13.js"></script>
+    <script src="https://cdn-static.screener.in/js/modal.ccacae1a5594.js"></script>
     <script src="https://cdn-static.screener.in/js/typeahead.8dcc9ac93685.js"></script>
-    <script src="https://cdn-static.screener.in/js/filter.component.888b0801c31d.js"></script>
+    <script src="https://cdn-static.screener.in/js/filter.component.48935d3ab300.js"></script>
 
     <!-- Independent JS scripts for page interactions -->
     <script src="https://cdn-static.screener.in/js/navbar.3fe7f0f4a630.js"></script>
@@ -8203,6 +8473,7 @@ BSE, the first-ever stock exchange in Asia, was established in 1875. It is also 
   <script src="https://cdn-static.screener.in/js/chartjs-adapter-date-fns.bundle.min.ebae23730a6e.js"></script>
   <script src="https://cdn-static.screener.in/js/chart.2a4531d22d97.js"></script>
   <script src="https://cdn-static.screener.in/js/segment-result.b6af4191fd6f.js"></script>
+  <script>Utils.startTimeSinceUpdates();</script>
 
 
     <!-- Service worker installer for PWA -->

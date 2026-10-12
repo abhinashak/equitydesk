@@ -23,13 +23,13 @@
             defer></script>
 
     <!-- FONT -->
-    <link rel="stylesheet" href="https://cdn-static.screener.in/inter/inter.bccd7465af74.css?v=2" />
-    <link rel="stylesheet" href="https://cdn-static.screener.in/fontello/css/fontello.835ae8880a8b.css?v=2" />
+    <link rel="stylesheet" href="https://cdn-static.screener.in/inter/inter.c622a5e75782.css" />
+    <link rel="stylesheet" href="https://cdn-static.screener.in/fontello/css/fontello.1d1b3a0a264b.css?v=3" />
 
     <!-- CSS -->
     <link rel="stylesheet" href="https://cdn-static.screener.in/css/normalize.a2444750a947.css" media="all">
-    <link rel="stylesheet" href="https://cdn-static.screener.in/css/skeleton.e1c50fcb2cfe.css" media="all">
-    <link rel="stylesheet" href="https://cdn-static.screener.in/css/custom.face9eb25802.css" media="all">
+    <link rel="stylesheet" href="https://cdn-static.screener.in/css/skeleton.c6872bc14f71.css" media="all">
+    <link rel="stylesheet" href="https://cdn-static.screener.in/css/custom.8037f7bd4ff9.css" media="all">
 
     
     
@@ -147,7 +147,7 @@
   <li>
     <button type="button"
             onclick="MobileMenu.toggleSearch(this)"
-            class="search-button"
+            class="round height-48 button-primary"
             title="Search">
       <i class="icon-search" style="font-size: 18px"></i>
     </button>
@@ -208,7 +208,7 @@
             <li>
               <a href="/screen/new/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/screens.e960a5daedf9.svg" alt="Create a stock screen">
                 </div>
                 <div>
@@ -230,7 +230,7 @@
               <li>
                 <a href="/ai/"
                    class="flex flex-align-center flex-gap-16">
-                  <div class="bg-stripes square-56">
+                  <div class="bg-stripes square height-56">
                     <img src="https://cdn-static.screener.in/icons/ai.970ef1d1cabb.svg" alt="Screener AI">
                   </div>
                   <div>
@@ -242,7 +242,7 @@
             
             <li>
               <a href="/hs/" class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/export.d623f0029933.svg" alt="Commodity Prices">
                 </div>
                 <div>
@@ -254,7 +254,7 @@
             <li>
               <a href="/people/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/shares.10acc20cb936.svg"
                        alt="Search shareholders by name">
                 </div>
@@ -267,7 +267,7 @@
             <li>
               <a href="/announcements/"
                  class="flex flex-align-center flex-gap-16">
-                <div class="bg-stripes square-56">
+                <div class="bg-stripes square height-56">
                   <img src="https://cdn-static.screener.in/icons/loudspeaker.88769927f6eb.svg" alt="Loudspeaker">
                 </div>
                 <div>
@@ -348,15 +348,16 @@
         
           
 
-<button type="button"
-        data-open-screener-ai="true"
-        class="bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
-        onclick="Modal.openInModal(event)"
-        data-url="/company/chat/2708/"
-        data-title="Redington"
-        data-is-bottom-modal="true">
+<a href="/ai/company/2708/"
+   data-open-screener-ai="true"
+   data-url="/ai/company/2708/"
+   data-modal-group="stock-chat-2708"
+   class="button bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
+   onclick="event.preventDefault(); Modal.openInModal(event)"
+   data-title="Redington"
+   data-is-bottom-modal="true">
   <i class="icon-chat-ai"></i> AI
-</button>
+</a>
 
         
       </div>
@@ -397,15 +398,16 @@
           
             
 
-<button type="button"
-        data-open-screener-ai="true"
-        class="bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
-        onclick="Modal.openInModal(event)"
-        data-url="/company/chat/2708/"
-        data-title="Redington"
-        data-is-bottom-modal="true">
+<a href="/ai/company/2708/"
+   data-open-screener-ai="true"
+   data-url="/ai/company/2708/"
+   data-modal-group="stock-chat-2708"
+   class="button bg-ai padding-4-8 rounded-40 font-size-12 font-weight-500 plausible-event-name=Stock+Chat"
+   onclick="event.preventDefault(); Modal.openInModal(event)"
+   data-title="Redington"
+   data-is-bottom-modal="true">
   <i class="icon-chat-ai"></i> AI
-</button>
+</a>
 
           
         </div>
@@ -447,17 +449,17 @@
         </div>
         <div class="font-size-18 strong line-height-14">
           <div class="flex flex-align-center">
-            <span>₹ 224</span>
+            <span>₹ 372</span>
             
               <span class="font-size-12 up margin-left-4">
                 <i class="icon-circle-up"></i>
-                0.69%
+                2.55%
               </span>
             
           </div>
           <div class="ink-600 font-size-11 font-weight-500">
             
-              29 May
+              03 Sep
               
                 - close price
               
@@ -467,7 +469,7 @@
       </div>
 
       <form method="post" class="flex margin-0" style="align-items: center">
-        <input type="hidden" name="csrfmiddlewaretoken" value="ozL864vRFODgJIMJS8sIArOdpj1csjcxH42wTmsAtpF9Hojsa1YdjvxIeuKht101">
+        <input type="hidden" name="csrfmiddlewaretoken" value="o1UGxZcSyPWkSfCJN84ypn4krfvw4gPueL0lCBJClbKomIMUhRi5EzGaSyhePkkt">
         <input type="hidden" name="next" value="/company/REDINGTON/">
 
         
@@ -493,7 +495,7 @@
     </div>
 
     
-    <div class="company-links show-from-tablet-landscape"
+    <div class="show-from-tablet-landscape flex-row flex-nowrap flex-align-center gap-32"
          style="font-weight: 500;
                 margin-top: 8px">
       
@@ -524,6 +526,8 @@
           </span>
         </a>
       
+
+      
     </div>
     
 
@@ -537,12 +541,14 @@
           
             <div class="title">Key Points</div>
             <div class="sub commentary always-show-more-box">
-              <p><strong>Leading distributor of technology</strong><sup><a href="https://www.icra.in/Rationale/ShowRationaleReport/?Id=122060#page=3" target="_blank" rel="noopener noreferrer">[1]</a></sup><br>
-Company procures IT and mobility products from vendors, handles distribution logistics, sells them to resellers and dealers. The company has periodically added new products to its portfolio and continues to provide ancillary services like after-sales, third-party logistics through the subsidiary companies. Currently, Company has three automated distribution centres (ADCs)—in Chennai, and Kolkata in India, and Dubai.</p>
+              <p><strong>Leading distributor of technology:</strong><sup><a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/820039fb-4e56-47ca-9a12-8223749dcb99.pdf#page=34" target="_blank" rel="noopener noreferrer">[1]</a></sup><br>
+Company procures IT and mobility products from vendors, handles distribution logistics, sells them to resellers and dealers. The company has periodically added new products to its portfolio and continues to provide ancillary services like after-sales, third-party logistics through subsidiary companies. </p>
+<p>Currently, the company has presence across <br>
+<strong>32 countries serving 40 markets</strong>, with ~5,100 employees, ~<strong>70,000+ channel partners,</strong>163 warehouses, 62 sales offices, and ~440 brands. It is a $13.5bn+ company with a strong double-digit CAGR for 19 years, amongst the Top 10 IT distribution companies in the world. The company has three automated distribution centres (ADCs)—in Chennai and Kolkata in India, and Dubai.<sup><a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/820039fb-4e56-47ca-9a12-8223749dcb99.pdf#page=34" target="_blank" rel="noopener noreferrer">[1]</a></sup><sup><a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/820039fb-4e56-47ca-9a12-8223749dcb99.pdf#page=35" target="_blank" rel="noopener noreferrer">[2]</a></sup></p>
               <div class="show-more-button" style="height: 20px"></div>
             </div>
 
-            <button class="a upper font-weight-500 letter-spacing plausible-event-name=Key+Insight plausible-event-user=unregistered"
+            <button class="a upper font-weight-500 letter-spacing plausible-event-name=Key+Insight plausible-event-user=free"
                     style="font-size: 1.4rem"
                     type="button"
                     onclick="Modal.openInModal(event)"
@@ -554,7 +560,7 @@ Company procures IT and mobility products from vendors, handles distribution log
           
         </div>
 
-        <div class="company-links hide-from-tablet-landscape margin-top-20"
+        <div class="hide-from-tablet-landscape margin-top-20 flex-row flex-align-center gap-12-22 nowrap"
              style="font-weight: 500">
           
             <a href="https://redingtongroup.com"
@@ -581,6 +587,8 @@ Company procures IT and mobility products from vendors, handles distribution log
               </span>
             </a>
           
+
+          
         </div>
       </div>
       
@@ -600,7 +608,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     
       <span class="nowrap value">
         ₹
-        <span class="number">17,538</span>
+        <span class="number">29,117</span>
         
           Cr.
         
@@ -618,7 +626,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     
       <span class="nowrap value">
         ₹
-        <span class="number">224</span>
+        <span class="number">372</span>
         
       </span>
     
@@ -632,7 +640,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     </span>
 
     
-      <span class="nowrap value">₹ <span class="number">335</span> / <span class="number">191</span></span>
+      <span class="nowrap value">₹ <span class="number">379</span> / <span class="number">191</span></span>
     
   </li>
 
@@ -646,7 +654,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     
       <span class="nowrap value">
         
-        <span class="number">14.1</span>
+        <span class="number">21.3</span>
         
       </span>
     
@@ -678,7 +686,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     
       <span class="nowrap value">
         
-        <span class="number">3.03</span>
+        <span class="number">1.61</span>
         
           %
         
@@ -714,7 +722,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     
       <span class="nowrap value">
         
-        <span class="number">25.2</span>
+        <span class="number">25.0</span>
         
           %
         
@@ -970,7 +978,7 @@ Company procures IT and mobility products from vendors, handles distribution log
         <div class="pros" style="flex-basis: 50%;">
           <p class="title">Pros</p>
           <ul>
-            <li>Company is expected to give good quarter</li><li>Company has a good return on equity (ROE) track record: 3 Years ROE 30.0%</li><li>Company has been maintaining a healthy dividend payout of 39.8%</li>
+            <li>Company is expected to give good quarter</li><li>Company has a good return on equity (ROE) track record: 3 Years ROE 29.9%</li><li>Company has been maintaining a healthy dividend payout of 39.8%</li>
           </ul>
         </div>
         <div class="cons" style="flex-basis: 50%;">
@@ -985,7 +993,7 @@ Company procures IT and mobility products from vendors, handles distribution log
         <span class="font-weight-500">The pros and cons are machine generated.</span>
         <span class="has-tooltip">
           <i class="icon-info"></i>
-          <span class="tooltip arrow-down" style="width: 300px; left: -100px;">
+          <span class="tooltip position-area-top-center" style="width: 300px">
             Pros / cons are based on a checklist to highlight important points. Please exercise caution and do your own analysis.
           </span>
         </span>
@@ -1026,81 +1034,25 @@ Company procures IT and mobility products from vendors, handles distribution log
                id="benchmarks">
               Part of
               
-                <a href="/company/1005/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+500"
-                   target="_blank">BSE 500</a>
-              
-                <a href="/company/CNX500/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500"
-                   target="_blank">Nifty 500</a>
-              
-                <a href="/company/NIFTY500SH/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Shariah"
-                   target="_blank">Nifty500 Shariah</a>
-              
-                <a href="/company/CNXSMALLCA/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+100"
-                   target="_blank">Nifty Smallcap 100</a>
-              
-                <a href="/company/CNXDIVIDEN/"
-                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Dividend+Opportunities+50"
-                   target="_blank">Nifty Dividend Opportunities 50</a>
-              
-                <a href="/company/NFTALPHA50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Alpha+50"
-                   target="_blank">Nifty Alpha 50</a>
-              
                 <a href="/company/1133/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+SmallCap+Select+Index"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+SmallCap+Select+Index"
                    target="_blank">BSE SmallCap Select Index</a>
               
-                <a href="/company/1180/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+250+SmallCap+Index"
-                   target="_blank">BSE 250 SmallCap Index</a>
-              
                 <a href="/company/1182/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+400+MidSmallCap+Index"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+400+MidSmallCap+Index"
                    target="_blank">BSE 400 MidSmallCap Index</a>
               
-                <a href="/company/NIFVALUE50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Value+50"
-                   target="_blank">Nifty500 Value 50</a>
-              
-                <a href="/company/MIDSMAL400/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmallcap+400"
-                   target="_blank">Nifty MidSmallcap 400</a>
-              
-                <a href="/company/SMALLCAP50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+50"
-                   target="_blank">Nifty Smallcap 50</a>
-              
                 <a href="/company/SMALLCA250/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+250"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+250"
                    target="_blank">Nifty Smallcap 250</a>
               
-                <a href="/company/NFT500MULT/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500+Multicap+50:25:25"
-                   target="_blank">Nifty 500 Multicap 50:25:25</a>
-              
-                <a href="/company/NFTYTOTMKT/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Total+Market"
-                   target="_blank">Nifty Total Market</a>
-              
                 <a href="/company/1167/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+Services"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+Services"
                    target="_blank">BSE Services</a>
               
                 <a href="/company/NMS400MQ10/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midsmallcap400+Momentum+Quality+100"
+                   class="tag plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Midsmallcap400+Momentum+Quality+100"
                    target="_blank">Nifty Midsmallcap400 Momentum Quality 100</a>
-              
-                <a href="/company/NS250MQ100/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap250+Momentum+Quality+100"
-                   target="_blank">Nifty Smallcap250 Momentum Quality 100</a>
-              
-                <a href="/company/NFTY500EQW/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Equal+Weight"
-                   target="_blank">Nifty500 Equal Weight</a>
               
                 <a href="/company/NY500LMSEW/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+LargeMidSmall+Equal-Cap+Weighted"
@@ -1110,17 +1062,73 @@ Company procures IT and mobility products from vendors, handles distribution log
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+1000"
                    target="_blank">BSE 1000</a>
               
-                <a href="/company/N500MQVL50/"
-                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Multifactor+MQVLv50"
-                   target="_blank">Nifty500 Multifactor MQVLv50</a>
-              
                 <a href="/company/1208/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+500+Dividend+Leaders+50"
                    target="_blank">BSE 500 Dividend Leaders 50</a>
               
+                <a href="/company/NIFTY500SH/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Shariah"
+                   target="_blank">Nifty500 Shariah</a>
+              
                 <a href="/company/NIFTYSC500/"
                    class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+500"
                    target="_blank">Nifty Smallcap 500</a>
+              
+                <a href="/company/NMS4005050/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmallcap400+50:50"
+                   target="_blank">Nifty MidSmallcap400 50:50</a>
+              
+                <a href="/company/CNXSMALLCA/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+100"
+                   target="_blank">Nifty Smallcap 100</a>
+              
+                <a href="/company/CNXDIVIDEN/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Dividend+Opportunities+50"
+                   target="_blank">Nifty Dividend Opportunities 50</a>
+              
+                <a href="/company/1180/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+250+SmallCap+Index"
+                   target="_blank">BSE 250 SmallCap Index</a>
+              
+                <a href="/company/MIDSMAL400/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+MidSmallcap+400"
+                   target="_blank">Nifty MidSmallcap 400</a>
+              
+                <a href="/company/NFT500MULT/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500+Multicap+50:25:25"
+                   target="_blank">Nifty 500 Multicap 50:25:25</a>
+              
+                <a href="/company/NFTYTOTMKT/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Total+Market"
+                   target="_blank">Nifty Total Market</a>
+              
+                <a href="/company/CNX500/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+500"
+                   target="_blank">Nifty 500</a>
+              
+                <a href="/company/NS250MQ100/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap250+Momentum+Quality+100"
+                   target="_blank">Nifty Smallcap250 Momentum Quality 100</a>
+              
+                <a href="/company/NFTY500EQW/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Equal+Weight"
+                   target="_blank">Nifty500 Equal Weight</a>
+              
+                <a href="/company/SMALLCAP50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty+Smallcap+50"
+                   target="_blank">Nifty Smallcap 50</a>
+              
+                <a href="/company/N500MQVL50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Multifactor+MQVLv50"
+                   target="_blank">Nifty500 Multifactor MQVLv50</a>
+              
+                <a href="/company/NIFVALUE50/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=Nifty500+Value+50"
+                   target="_blank">Nifty500 Value 50</a>
+              
+                <a href="/company/1005/"
+                   class="tag hidden plausible-event-name=Click+Benchmark plausible-event-benchmark=BSE+500"
+                   target="_blank">BSE 500</a>
               
               
                 <button type="button"
@@ -1192,13 +1200,6 @@ Company procures IT and mobility products from vendors, handles distribution log
         <th class="text"></th>
         
           <th class="highlight-cell"
-              data-date-key="2023-03-31">
-            Mar 2023
-            
-            
-          </th>
-        
-          <th class=""
               data-date-key="2023-06-30">
             Jun 2023
             
@@ -1219,14 +1220,14 @@ Company procures IT and mobility products from vendors, handles distribution log
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2024-03-31">
             Mar 2024
             
             
           </th>
         
-          <th class=""
+          <th class="highlight-cell"
               data-date-key="2024-06-30">
             Jun 2024
             
@@ -1247,14 +1248,14 @@ Company procures IT and mobility products from vendors, handles distribution log
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2025-03-31">
             Mar 2025
             
             
           </th>
         
-          <th class=""
+          <th class="highlight-cell"
               data-date-key="2025-06-30">
             Jun 2025
             
@@ -1275,9 +1276,16 @@ Company procures IT and mobility products from vendors, handles distribution log
             
           </th>
         
-          <th class="highlight-cell"
+          <th class=""
               data-date-key="2026-03-31">
             Mar 2026
+            
+            
+          </th>
+        
+          <th class="highlight-cell"
+              data-date-key="2026-06-30">
+            Jun 2026
             
             
           </th>
@@ -1299,12 +1307,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="highlight-cell">
                 
-                  9,712
-                
-              </td>
-            
-              <td class="">
-                
                   9,705
                 
               </td>
@@ -1321,13 +1323,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   10,490
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   10,302
                 
@@ -1345,13 +1347,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   13,121
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   12,757
                 
@@ -1369,9 +1371,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   19,587
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  20,753
                 
               </td>
             
@@ -1391,12 +1399,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="highlight-cell">
                 
-                  9,502
-                
-              </td>
-            
-              <td class="">
-                
                   9,465
                 
               </td>
@@ -1413,13 +1415,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   10,237
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   10,050
                 
@@ -1437,13 +1439,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   12,816
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   12,465
                 
@@ -1461,9 +1463,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   19,188
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  20,296
                 
               </td>
             
@@ -1479,12 +1487,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td class="highlight-cell">
-                
-                  210
-                
-              </td>
-            
-              <td class="">
                 
                   240
                 
@@ -1502,13 +1504,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   254
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   252
                 
@@ -1526,13 +1528,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   305
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   292
                 
@@ -1550,9 +1552,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   400
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  457
                 
               </td>
             
@@ -1569,79 +1577,79 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="highlight-cell">
                 
-                  2%
+                  2.5%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.6%
                 
               </td>
             
               <td class="">
                 
-                  3%
+                  2.2%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.4%
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  2%
+                  2.5%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.2%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.3%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.3%
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  2%
+                  2.3%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.2%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.0%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.0%
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  2%
+                  2.2%
                 
               </td>
             
@@ -1661,12 +1669,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="highlight-cell">
                 
-                  7
-                
-              </td>
-            
-              <td class="">
-                
                   54
                 
               </td>
@@ -1683,13 +1685,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   21
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   8
                 
@@ -1707,13 +1709,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   16
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   20
                 
@@ -1731,9 +1733,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   26
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  25
                 
               </td>
             
@@ -1749,12 +1757,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td class="highlight-cell">
-                
-                  38
-                
-              </td>
-            
-              <td class="">
                 
                   40
                 
@@ -1772,13 +1774,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   48
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   40
                 
@@ -1796,13 +1798,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   29
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   33
                 
@@ -1820,9 +1822,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   27
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  38
                 
               </td>
             
@@ -1838,12 +1846,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td class="highlight-cell">
-                
-                  7
-                
-              </td>
-            
-              <td class="">
                 
                   8
                 
@@ -1861,13 +1863,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   10
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   10
                 
@@ -1885,13 +1887,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   15
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   10
                 
@@ -1906,12 +1908,18 @@ Company procures IT and mobility products from vendors, handles distribution log
               <td class="">
                 
                   10
+                
+              </td>
+            
+              <td class="">
+                
+                  11
                 
               </td>
             
               <td class="highlight-cell">
                 
-                  11
+                  10
                 
               </td>
             
@@ -1927,12 +1935,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td class="highlight-cell">
-                
-                  172
-                
-              </td>
-            
-              <td class="">
                 
                   245
                 
@@ -1950,13 +1952,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   217
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   210
                 
@@ -1974,13 +1976,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   276
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   269
                 
@@ -1998,9 +2000,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   389
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  434
                 
               </td>
             
@@ -2016,12 +2024,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td class="highlight-cell">
-                
-                  27%
-                
-              </td>
-            
-              <td class="">
                 
                   21%
                 
@@ -2039,13 +2041,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   26%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   26%
                 
@@ -2063,13 +2065,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   24%
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   26%
                 
@@ -2084,6 +2086,12 @@ Company procures IT and mobility products from vendors, handles distribution log
               <td class="">
                 
                   27%
+                
+              </td>
+            
+              <td class="">
+                
+                  26%
                 
               </td>
             
@@ -2109,12 +2117,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="highlight-cell">
                 
-                  125
-                
-              </td>
-            
-              <td class="">
-                
                   194
                 
               </td>
@@ -2131,13 +2133,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   161
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   156
                 
@@ -2155,13 +2157,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   209
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   200
                 
@@ -2179,9 +2181,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   289
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  321
                 
               </td>
             
@@ -2197,12 +2205,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td class="highlight-cell">
-                
-                  1.60
-                
-              </td>
-            
-              <td class="">
                 
                   2.48
                 
@@ -2220,13 +2222,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   2.05
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   1.99
                 
@@ -2244,13 +2246,13 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   2.68
                 
               </td>
             
-              <td class="">
+              <td class="highlight-cell">
                 
                   2.56
                 
@@ -2268,9 +2270,15 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
-              <td class="highlight-cell">
+              <td class="">
                 
                   3.69
+                
+              </td>
+            
+              <td class="highlight-cell">
+                
+                  4.11
                 
               </td>
             
@@ -2283,16 +2291,6 @@ Company procures IT and mobility products from vendors, handles distribution log
           <td class="text ink-600">Raw PDF</td>
           
             <td class="hover-link highlight-cell">
-              <a href="/company/source/quarter/2708/3/2023/"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 aria-label="Raw PDF"
-                 class="plausible-event-name=Quarterly+PDF plausible-event-user=unregistered">
-                <i class="icon-file-pdf ink-600-link"></i>
-              </a>
-            </td>
-          
-            <td class="hover-link ">
               <a href="/company/source/quarter/2708/6/2023/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2322,7 +2320,7 @@ Company procures IT and mobility products from vendors, handles distribution log
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/2708/3/2024/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2332,7 +2330,7 @@ Company procures IT and mobility products from vendors, handles distribution log
               </a>
             </td>
           
-            <td class="hover-link ">
+            <td class="hover-link highlight-cell">
               <a href="/company/source/quarter/2708/6/2024/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2362,7 +2360,7 @@ Company procures IT and mobility products from vendors, handles distribution log
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/2708/3/2025/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2372,7 +2370,7 @@ Company procures IT and mobility products from vendors, handles distribution log
               </a>
             </td>
           
-            <td class="hover-link ">
+            <td class="hover-link highlight-cell">
               <a href="/company/source/quarter/2708/6/2025/"
                  target="_blank"
                  rel="noopener noreferrer"
@@ -2402,8 +2400,18 @@ Company procures IT and mobility products from vendors, handles distribution log
               </a>
             </td>
           
-            <td class="hover-link highlight-cell">
+            <td class="hover-link ">
               <a href="/company/source/quarter/2708/3/2026/"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 aria-label="Raw PDF"
+                 class="plausible-event-name=Quarterly+PDF plausible-event-user=unregistered">
+                <i class="icon-file-pdf ink-600-link"></i>
+              </a>
+            </td>
+          
+            <td class="hover-link highlight-cell">
+              <a href="/company/source/quarter/2708/6/2026/"
                  target="_blank"
                  rel="noopener noreferrer"
                  aria-label="Raw PDF"
@@ -2552,6 +2560,13 @@ Company procures IT and mobility products from vendors, handles distribution log
             
           </th>
         
+          <th class=""
+              data-date-key="TTM">
+            TTM
+            
+            
+          </th>
+        
       </tr>
     </thead>
     <tbody>
@@ -2641,6 +2656,12 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
+              <td class="">
+                
+                  71,797
+                
+              </td>
+            
           </tr>
         
       
@@ -2723,7 +2744,13 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="">
                 
-                  62,458
+                  62,452
+                
+              </td>
+            
+              <td class="">
+                
+                  70,289
                 
               </td>
             
@@ -2806,7 +2833,13 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="">
                 
-                  1,343
+                  1,349
+                
+              </td>
+            
+              <td class="">
+                
+                  1,509
                 
               </td>
             
@@ -2823,73 +2856,79 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="">
                 
-                  3%
+                  2.5%
                 
               </td>
             
               <td class="">
                 
-                  3%
+                  2.7%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.3%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.3%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  1.9%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.1%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.1%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.4%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.5%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.5%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.3%
                 
               </td>
             
               <td class="">
                 
-                  2%
+                  2.1%
+                
+              </td>
+            
+              <td class="">
+                
+                  2.1%
                 
               </td>
             
@@ -2979,6 +3018,12 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
+              <td class="">
+                
+                  388
+                
+              </td>
+            
           </tr>
         
       
@@ -3058,7 +3103,13 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td class="">
                 
-                  115
+                  121
+                
+              </td>
+            
+              <td class="">
+                
+                  120
                 
               </td>
             
@@ -3145,6 +3196,12 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
+              <td class="">
+                
+                  41
+                
+              </td>
+            
           </tr>
         
       
@@ -3228,6 +3285,12 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
+              <td class="">
+                
+                  1,736
+                
+              </td>
+            
           </tr>
         
       
@@ -3308,6 +3371,12 @@ Company procures IT and mobility products from vendors, handles distribution log
               <td class="">
                 
                   21%
+                
+              </td>
+            
+              <td class="">
+                
+                  
                 
               </td>
             
@@ -3397,6 +3466,12 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
+              <td class="">
+                
+                  1,365
+                
+              </td>
+            
           </tr>
         
       
@@ -3477,6 +3552,12 @@ Company procures IT and mobility products from vendors, handles distribution log
               <td class="">
                 
                   15.91
+                
+              </td>
+            
+              <td class="">
+                
+                  17.46
                 
               </td>
             
@@ -3563,6 +3644,12 @@ Company procures IT and mobility products from vendors, handles distribution log
                 
               </td>
             
+              <td class="">
+                
+                  
+                
+              </td>
+            
           </tr>
         
       
@@ -3595,7 +3682,7 @@ Company procures IT and mobility products from vendors, handles distribution log
           </tr>
           <tr>
             <td>TTM:</td>
-            <td>30%</td>
+            <td>40%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3608,7 +3695,7 @@ Company procures IT and mobility products from vendors, handles distribution log
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>37%</td>
+            <td>36%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
@@ -3616,7 +3703,7 @@ Company procures IT and mobility products from vendors, handles distribution log
           </tr>
           <tr>
             <td>TTM:</td>
-            <td>-14%</td>
+            <td>-8%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -3625,19 +3712,19 @@ Company procures IT and mobility products from vendors, handles distribution log
           </tr>
           <tr>
             <td>10 Years:</td>
-            <td>15%</td>
+            <td>21%</td>
           </tr>
           <tr>
             <td>5 Years:</td>
-            <td>13%</td>
+            <td>21%</td>
           </tr>
           <tr>
             <td>3 Years:</td>
-            <td>7%</td>
+            <td>32%</td>
           </tr>
           <tr>
             <td>1 Year:</td>
-            <td>-13%</td>
+            <td>54%</td>
           </tr>
         </table>
         <table class="ranges-table">
@@ -5968,22 +6055,32 @@ Company procures IT and mobility products from vendors, handles distribution log
         <th class="text"></th>
         
           <th>
-            Mar 2020
+            Mar 2016
             
           </th>
         
           <th>
-            Mar 2021
+            Dec 2017
             
           </th>
         
           <th>
-            Mar 2022
+            Dec 2018
             
           </th>
         
           <th>
-            Mar 2023
+            Dec 2019
+            
+          </th>
+        
+          <th>
+            Dec 2020
+            
+          </th>
+        
+          <th>
+            Sep 2022
             
           </th>
         
@@ -5997,16 +6094,21 @@ Company procures IT and mobility products from vendors, handles distribution log
             
           </th>
         
+          <th>
+            Mar 2026
+            
+          </th>
+        
       </tr>
     </thead>
     <tbody>
       
         <tr class="stripe">
-          <td class="text border-right">Number of Brands Distributed<br><span class="font-weight-500 font-size-12 sub">Count</span></td>
+          <td class="text border-right">Channel Partners<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
             <td class="position-relative"
                 rowspan="7"
-                colspan="6">
+                colspan="9">
               
 
 <div class="position-absolute inset-0">
@@ -6019,34 +6121,6 @@ Company procures IT and mobility products from vendors, handles distribution log
         <tr class="stripe">
           
             <td style="padding-left: var(--cell-padding)">
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-            <td >
-              xxx
-            </td>
-          
-        </tr>
-      
-        <tr class="">
-          
-            <td style="padding-left: var(--cell-padding)">
               xx,xxx
             </td>
           
@@ -6059,22 +6133,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
           
             <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-            <td >
-              xx,xxx
-            </td>
-          
-        </tr>
-      
-        <tr class="stripe">
-          
-            <td style="padding-left: var(--cell-padding)">
               
             </td>
           
@@ -6083,19 +6141,19 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
           
             <td >
-              -x.xx
+              xx,xxx
             </td>
           
             <td >
-              x.xx
+              xx,xxx
             </td>
           
             <td >
-              -x.xx
+              xx,xxx
             </td>
           
             <td >
-              -x.xx
+              xx,xxx
             </td>
           
         </tr>
@@ -6107,11 +6165,23 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
           
             <td >
-              
+              xxx
             </td>
           
             <td >
               
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              xxx
             </td>
           
             <td >
@@ -6135,6 +6205,14 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
           
             <td >
+              xx
+            </td>
+          
+            <td >
+              xx
+            </td>
+          
+            <td >
               
             </td>
           
@@ -6152,6 +6230,10 @@ Company procures IT and mobility products from vendors, handles distribution log
           
             <td >
               xx
+            </td>
+          
+            <td >
+              
             </td>
           
         </tr>
@@ -6159,6 +6241,26 @@ Company procures IT and mobility products from vendors, handles distribution log
         <tr class="">
           
             <td style="padding-left: var(--cell-padding)">
+              x
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
               
             </td>
           
@@ -6167,19 +6269,11 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
           
             <td >
-              x.xx
+              xxx
             </td>
           
             <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
-            </td>
-          
-            <td >
-              x.xx
+              xxx
             </td>
           
         </tr>
@@ -6187,6 +6281,98 @@ Company procures IT and mobility products from vendors, handles distribution log
         <tr class="stripe">
           
             <td style="padding-left: var(--cell-padding)">
+              xx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              xxx
+            </td>
+          
+            <td >
+              
+            </td>
+          
+        </tr>
+      
+        <tr class="">
+          
+            <td style="padding-left: var(--cell-padding)">
+              x
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              x,xxx
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              x,xxx
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              x,xxx
+            </td>
+          
+        </tr>
+      
+        <tr class="stripe">
+          
+            <td style="padding-left: var(--cell-padding)">
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
+              
+            </td>
+          
+            <td >
               
             </td>
           
@@ -6230,32 +6416,32 @@ Company procures IT and mobility products from vendors, handles distribution log
         </tr>
       
         <tr class="">
-          <td class="text border-right">Number of Channel Partners<br><span class="font-weight-500 font-size-12 sub">Count</span></td>
+          <td class="text border-right">Number of Brands Distributed<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
         </tr>
       
         <tr class="stripe">
-          <td class="text border-right">Inventory Provisioning (% of sale)<br><span class="font-weight-500 font-size-12 sub">%</span></td>
+          <td class="text border-right">Number of Markets Served<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
         </tr>
       
         <tr class="">
-          <td class="text border-right">Number of Global Warehouses<br><span class="font-weight-500 font-size-12 sub">Count</span></td>
+          <td class="text border-right">AWS Transacting Partners<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
         </tr>
       
         <tr class="stripe">
-          <td class="text border-right">Number of Sales Offices<br><span class="font-weight-500 font-size-12 sub">Count</span></td>
+          <td class="text border-right">Number of Warehouses<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
         </tr>
       
         <tr class="">
-          <td class="text border-right">Receivables (AR) Provisioning (% of sale)<br><span class="font-weight-500 font-size-12 sub">%</span></td>
+          <td class="text border-right">AWS Customers<br><span class="font-weight-500 font-size-12 sub">count</span></td>
           
         </tr>
       
         <tr class="stripe">
-          <td class="text border-right">Global Working Capital Days<br><span class="font-weight-500 font-size-12 sub">Days</span></td>
+          <td class="text border-right">Software Solutions Group (SSG) Revenue Share<br><span class="font-weight-500 font-size-12 sub">% of total revenue</span></td>
           
         </tr>
       
@@ -6302,6 +6488,10 @@ Company procures IT and mobility products from vendors, handles distribution log
                 data-title="Redington trades"
                 data-url="/trades/company-2708/">Trades</button>
         
+          <div class="ink-700 font-size-12"
+               style="position: absolute;
+                      padding-left: 15px">2 Recently</div>
+        
       </div>
     
   </div>
@@ -6315,7 +6505,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       <thead>
         <tr>
           <th class="text"></th>
-          <th>Jun 2023</th><th>Sep 2023</th><th>Dec 2023</th><th>Mar 2024</th><th>Jun 2024</th><th>Sep 2024</th><th>Dec 2024</th><th>Mar 2025</th><th>Jun 2025</th><th>Sep 2025</th><th>Dec 2025</th><th>Mar 2026</th>
+          <th>Sep 2023</th><th>Dec 2023</th><th>Mar 2024</th><th>Jun 2024</th><th>Sep 2024</th><th>Dec 2024</th><th>Mar 2025</th><th>Jun 2025</th><th>Sep 2025</th><th>Dec 2025</th><th>Mar 2026</th><th>Jun 2026</th>
         </tr>
       </thead>
       <tbody>
@@ -6327,8 +6517,6 @@ Company procures IT and mobility products from vendors, handles distribution log
                 FIIs&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>59.22%</td>
             
               <td>56.26%</td>
             
@@ -6352,6 +6540,8 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>61.49%</td>
             
+              <td>61.96%</td>
+            
           </tr>
         
           <tr class="">
@@ -6361,8 +6551,6 @@ Company procures IT and mobility products from vendors, handles distribution log
                 DIIs&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>17.40%</td>
             
               <td>17.38%</td>
             
@@ -6386,6 +6574,8 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>17.12%</td>
             
+              <td>16.37%</td>
+            
           </tr>
         
           <tr class="stripe">
@@ -6402,8 +6592,6 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>0.03%</td>
             
-              <td>0.03%</td>
-            
               <td>0.00%</td>
             
               <td>0.00%</td>
@@ -6417,6 +6605,8 @@ Company procures IT and mobility products from vendors, handles distribution log
               <td>0.05%</td>
             
               <td>0.05%</td>
+            
+              <td>0.06%</td>
             
               <td>0.06%</td>
             
@@ -6429,8 +6619,6 @@ Company procures IT and mobility products from vendors, handles distribution log
                 Public&nbsp;<span class="blue-icon">+</span>
               </button>
             </td>
-            
-              <td>23.36%</td>
             
               <td>26.34%</td>
             
@@ -6454,11 +6642,13 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>21.33%</td>
             
+              <td>21.61%</td>
+            
           </tr>
         
         <tr class="sub">
           <td class="text">No. of Shareholders</td>
-          <td>2,41,885</td><td>2,59,172</td><td>2,38,806</td><td>2,27,423</td><td>2,18,658</td><td>2,21,761</td><td>2,18,928</td><td>2,23,938</td><td>2,19,740</td><td>2,50,955</td><td>2,42,936</td><td>2,53,694</td>
+          <td>2,59,172</td><td>2,38,806</td><td>2,27,423</td><td>2,18,658</td><td>2,21,761</td><td>2,18,928</td><td>2,23,938</td><td>2,19,740</td><td>2,50,955</td><td>2,42,936</td><td>2,53,694</td><td>2,41,094</td>
         </tr>
       </tbody>
     </table>
@@ -6475,7 +6665,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       <thead>
         <tr>
           <th class="text"></th>
-          <th>Mar 2017</th><th>Mar 2018</th><th>Mar 2019</th><th>Mar 2020</th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>Mar 2025</th><th>Mar 2026</th>
+          <th>Mar 2017</th><th>Mar 2018</th><th>Mar 2019</th><th>Mar 2020</th><th>Mar 2021</th><th>Mar 2022</th><th>Mar 2023</th><th>Mar 2024</th><th>Mar 2025</th><th>Mar 2026</th><th>Jun 2026</th>
         </tr>
       </thead>
       <tbody>
@@ -6489,6 +6679,8 @@ Company procures IT and mobility products from vendors, handles distribution log
             </td>
             
               <td>8.20%</td>
+            
+              <td>0.00%</td>
             
               <td>0.00%</td>
             
@@ -6538,6 +6730,8 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>61.49%</td>
             
+              <td>61.96%</td>
+            
           </tr>
         
           <tr class="stripe">
@@ -6568,6 +6762,8 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>17.12%</td>
             
+              <td>16.37%</td>
+            
           </tr>
         
           <tr class="">
@@ -6595,6 +6791,8 @@ Company procures IT and mobility products from vendors, handles distribution log
               <td>0.03%</td>
             
               <td>0.05%</td>
+            
+              <td>0.06%</td>
             
               <td>0.06%</td>
             
@@ -6628,11 +6826,13 @@ Company procures IT and mobility products from vendors, handles distribution log
             
               <td>21.33%</td>
             
+              <td>21.61%</td>
+            
           </tr>
         
         <tr class="sub">
           <td class="text">No. of Shareholders</td>
-          <td>23,751</td><td>20,375</td><td>26,206</td><td>25,580</td><td>38,119</td><td>2,42,615</td><td>2,52,336</td><td>2,27,423</td><td>2,23,938</td><td>2,53,694</td>
+          <td>23,751</td><td>20,375</td><td>26,206</td><td>25,580</td><td>38,119</td><td>2,42,615</td><td>2,52,336</td><td>2,27,423</td><td>2,23,938</td><td>2,53,694</td><td>2,41,094</td>
         </tr>
       </tbody>
     </table>
@@ -6646,7 +6846,7 @@ Company procures IT and mobility products from vendors, handles distribution log
     * The classifications might have changed from Sep'2022 onwards.
     <span class="has-tooltip">
       <i class="icon-info"></i>
-      <span class="tooltip arrow-down" style="width: 300px">
+      <span class="tooltip position-area-top-center" style="width: 300px">
         The new XBRL format added more details from Sep'22 onwards.
         <br>
         <br>
@@ -6714,61 +6914,61 @@ Company procures IT and mobility products from vendors, handles distribution log
   <ul class="list-links">
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=cb44ae8e-d5d9-4548-8a04-659b80d840ec.pdf"
-           target="_blank"
-           rel="noopener noreferrer">
-          Compliances-Reg.24(A)-Annual Secretarial Compliance
-
-          
-            <div class="ink-600 smaller">27 May - Redington filed its Annual Secretarial Compliance Report for year ended March 31, 2026, reporting compliance.</div>
-          
-        </a>
-      </li>
-    
-      <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=8cc023b4-37e7-4e6e-86b0-c9d08c8f0aa8.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e799097a-303d-4a6c-8ba5-152913dbae6b.pdf"
            target="_blank"
            rel="noopener noreferrer">
           Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation
 
           
-            <div class="ink-600 smaller">22 May - Redington will attend an investor conference with 1x1/group meetings on 29 May 2026 in Mumbai.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-14T17:40:10+05:30">14 Aug</time> - Non-Deal Roadshow (NDR) organized by IIFL Capital</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a738f9c3-d084-4bee-add2-b00d358d1d66.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=3a5f331b-9312-4474-bf4c-2177b77a6169.pdf"
+           target="_blank"
+           rel="noopener noreferrer">
+          Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation
+
+          
+            <div class="ink-600 smaller"><time datetime="2026-08-12T17:27:38+05:30">12 Aug</time> - Redington to attend Ambit Capital investor meetings in Singapore on 17 August 2026.</div>
+          
+        </a>
+      </li>
+    
+      <li class="overflow-wrap-anywhere">
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e76ca167-9d88-4558-a90e-d09a2018f039.pdf"
+           target="_blank"
+           rel="noopener noreferrer">
+          Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Intimation
+
+          
+            <div class="ink-600 smaller"><time datetime="2026-08-07T11:44:05+05:30">7 Aug</time> - Redington will attend an Avendus Spark investor conference on 12 August 2026 in Hong Kong.</div>
+          
+        </a>
+      </li>
+    
+      <li class="overflow-wrap-anywhere">
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=f6e22e14-f609-4a68-a335-762cdab0b85f.pdf"
            target="_blank"
            rel="noopener noreferrer">
           Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome
 
           
-            <div class="ink-600 smaller">20 May - Redington released Q4 FY26 earnings call transcript, highlighting 25% revenue growth, INR6 dividend, and FY26 results.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-05T15:50:13+05:30">5 Aug</time> - Redington released Q1 FY27 earnings call transcript; revenue rose 34% to Rs 34,966 crore, PAT up 77%.</div>
           
         </a>
       </li>
     
       <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a58a1995-77cc-4c7f-b8fb-c64435d8c21b.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=83DE3E2E_F86C_48ED_9C6C_BB58A99815F8_172658.pdf"
            target="_blank"
            rel="noopener noreferrer">
-          Announcement under Regulation 30 (LODR)-Newspaper Publication
+          Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011
 
           
-            <span class="ink-600 smaller">15 May</span>
-          
-        </a>
-      </li>
-    
-      <li class="overflow-wrap-anywhere">
-        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=8c2a3f7d-11e4-49dd-8347-484566293b5e.pdf"
-           target="_blank"
-           rel="noopener noreferrer">
-          Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome
-
-          
-            <div class="ink-600 smaller">14 May - Q4 FY2026 earnings conference call audio recording uploaded on May 14, 2026.</div>
+            <div class="ink-600 smaller"><time datetime="2026-08-03T17:27:02+05:30">3 Aug</time> - FMR/FIL reported open-market acquisition of 16.36 million Redington shares, raising holding to 8.46%.</div>
           
         </a>
       </li>
@@ -6792,8 +6992,17 @@ Company procures IT and mobility products from vendors, handles distribution log
 <ul class="list-links">
 
   <li>
+    <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/69a36e2b-0310-4efe-b608-e5b8a56e07a3.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
+      Annual Report 2026
+      <div class="ink-600 smaller">
+        from bse
+      </div>
+    </a>
+  </li>
+
+  <li>
     <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/3b79a4f9-aa67-4bf2-bdb1-d26f1821be00.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2025
+      Annual Report 2025
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6802,7 +7011,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/2937051f-7c56-4a37-8d0d-d19a7960ef4a.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2024
+      Annual Report 2024
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6811,7 +7020,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a02f5df4-5a85-49d0-bd50-c0d544679658.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2023
+      Annual Report 2023
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6820,7 +7029,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/73475532805.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2022
+      Annual Report 2022
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6829,7 +7038,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/69043532805.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2021
+      Annual Report 2021
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6838,7 +7047,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050320.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2020
+      Annual Report 2020
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6847,7 +7056,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050319.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2019
+      Annual Report 2019
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6856,7 +7065,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050318.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2018
+      Annual Report 2018
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6865,7 +7074,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050317.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2017
+      Annual Report 2017
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6874,7 +7083,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050316.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2016
+      Annual Report 2016
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6883,7 +7092,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050315.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2015
+      Annual Report 2015
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6892,7 +7101,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050314.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2014
+      Annual Report 2014
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6901,7 +7110,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050313.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2013
+      Annual Report 2013
       <div class="ink-600 smaller">
         from bse
       </div>
@@ -6910,18 +7119,9 @@ Company procures IT and mobility products from vendors, handles distribution log
 
   <li>
     <a href="https://www.bseindia.com/bseplus/AnnualReport/532805/5328050312.pdf" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2012
+      Annual Report 2012
       <div class="ink-600 smaller">
         from bse
-      </div>
-    </a>
-  </li>
-
-  <li>
-    <a href="https://archives.nseindia.com/annual_reports/AR_REDINGTON_2010_2011_21072011045556.zip" class="plausible-event-name=Annual+Report plausible-event-user=unregistered" target="_blank" rel="noopener noreferrer">
-      Financial Year 2011
-      <div class="ink-600 smaller">
-        from nse
       </div>
     </a>
   </li>
@@ -7031,11 +7231,83 @@ Company procures IT and mobility products from vendors, handles distribution log
   
     <li class="flex flex-gap-8 flex-wrap-420">
       <div class="ink-600 font-size-15 font-weight-500 nowrap"
+           style="width: 74px">Aug 2026</div>
+
+      
+        <a class="concall-link"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=f6e22e14-f609-4a68-a335-762cdab0b85f.pdf"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="Raw Transcript">Transcript</a>
+      
+
+      
+        <button class="concall-link plausible-event-name=Concall+Notes plausible-event-user=unregistered plausible-event-source=transcript"
+                type="button"
+                data-url="/concalls/summary/23271386/"
+                onclick="Modal.openInModal(event)"
+                data-title="Concall Summary - Aug 2026"
+                data-is-bottom-modal="true">AI Summary</button>
+      
+
+      
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=87ad78d7-62a9-4415-8416-5875b67dd057.pdf"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">PPT</a>
+      
+
+      
+        <a href="https://redingtongroup.com/wp-content/uploads/2026/07/10045555.mp3"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">REC</a>
+      
+    </li>
+  
+    <li class="flex flex-gap-8 flex-wrap-420">
+      <div class="ink-600 font-size-15 font-weight-500 nowrap"
+           style="width: 74px">Jun 2026</div>
+
+      
+        <a class="concall-link"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=7ec72caa-d0ba-4fe6-abc2-38b7c92e0518.pdf"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="Raw Transcript">Transcript</a>
+      
+
+      
+        <button class="concall-link plausible-event-name=Concall+Notes plausible-event-user=unregistered plausible-event-source=transcript"
+                type="button"
+                data-url="/concalls/summary/23242692/"
+                onclick="Modal.openInModal(event)"
+                data-title="Concall Summary - Jun 2026"
+                data-is-bottom-modal="true">AI Summary</button>
+      
+
+      
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=05cfa011-ebe7-4cc0-ae50-81e94d55e510.pdf"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">PPT</a>
+      
+
+      
+        <a href="https://redingtongroup.com/wp-content/themes/redington/assets/Redington_17062026_Audio.mp3"
+           class="concall-link"
+           target="_blank"
+           rel="noopener noreferrer">REC</a>
+      
+    </li>
+  
+    <li class="flex flex-gap-8 flex-wrap-420">
+      <div class="ink-600 font-size-15 font-weight-500 nowrap"
            style="width: 74px">May 2026</div>
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a738f9c3-d084-4bee-add2-b00d358d1d66.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a738f9c3-d084-4bee-add2-b00d358d1d66.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7051,7 +7323,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/820039fb-4e56-47ca-9a12-8223749dcb99.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=820039fb-4e56-47ca-9a12-8223749dcb99.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7066,7 +7338,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/842e5cae-8b56-4bee-8b6d-590e077a8fe1.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=842e5cae-8b56-4bee-8b6d-590e077a8fe1.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7082,7 +7354,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/1af5086b-16fa-493e-994e-c8f28feba8d9.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=1af5086b-16fa-493e-994e-c8f28feba8d9.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7097,7 +7369,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a4ad920c-4801-4620-9c75-d90bdaaa1307.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a4ad920c-4801-4620-9c75-d90bdaaa1307.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7113,7 +7385,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/df9507f9-3d9e-4dad-adf7-43b7845c942a.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=df9507f9-3d9e-4dad-adf7-43b7845c942a.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7133,7 +7405,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/74fc384d-f870-46d6-a05d-7da1a958a5ad.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=74fc384d-f870-46d6-a05d-7da1a958a5ad.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7149,7 +7421,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/cffe7e37-09e6-43b9-a7f2-af23d4b18f29.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=cffe7e37-09e6-43b9-a7f2-af23d4b18f29.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7169,7 +7441,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a88e6f75-b0b7-4648-b791-10855f907028.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a88e6f75-b0b7-4648-b791-10855f907028.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7185,7 +7457,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/96c880d7-8272-47da-9508-7dda6fbd8498.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=96c880d7-8272-47da-9508-7dda6fbd8498.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7200,7 +7472,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/8b801f00-49d9-4c36-9a8c-922cf8c173e7.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=8b801f00-49d9-4c36-9a8c-922cf8c173e7.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7216,7 +7488,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/fb11649b-0f1d-4f53-b544-29cd53bb2a76.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=fb11649b-0f1d-4f53-b544-29cd53bb2a76.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7231,7 +7503,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/31207edb-9ee1-4f3e-abe5-be49244a9be6.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=31207edb-9ee1-4f3e-abe5-be49244a9be6.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7247,7 +7519,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/576f14ab-2515-46f3-a898-aaa5850b4f50.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=576f14ab-2515-46f3-a898-aaa5850b4f50.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7267,7 +7539,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/215c3cef-ec2a-40ed-8982-f98eacc67631.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=215c3cef-ec2a-40ed-8982-f98eacc67631.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7283,7 +7555,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/52f49546-c620-4862-ad34-6a71ec763124.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=52f49546-c620-4862-ad34-6a71ec763124.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7298,7 +7570,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e0883057-82bd-4685-a762-9c41b1113b24.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e0883057-82bd-4685-a762-9c41b1113b24.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7314,7 +7586,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/839bc72b-6df4-433f-b6d1-63d235a825f9.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=839bc72b-6df4-433f-b6d1-63d235a825f9.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7329,7 +7601,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/df108167-f1b0-4bb9-a3c1-cad5ec672aaf.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=df108167-f1b0-4bb9-a3c1-cad5ec672aaf.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7345,7 +7617,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/cfc05968-1a04-4ef9-b57c-09292ee10f58.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=cfc05968-1a04-4ef9-b57c-09292ee10f58.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7360,7 +7632,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/15cbb16a-eeb0-47b9-8507-aa4002c6969e.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=15cbb16a-eeb0-47b9-8507-aa4002c6969e.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7376,7 +7648,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/d2fa3930-8d5d-477e-bc87-e216b7ad726b.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=d2fa3930-8d5d-477e-bc87-e216b7ad726b.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7391,7 +7663,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/3d23c10a-cbbc-4b9b-8288-51dfdcefb176.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=3d23c10a-cbbc-4b9b-8288-51dfdcefb176.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7407,7 +7679,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/351bc03c-9324-4159-b685-04069f8d4b6b.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=351bc03c-9324-4159-b685-04069f8d4b6b.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7429,7 +7701,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/64b9bb27-e6b3-4a83-b3ee-671770b73f87.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=64b9bb27-e6b3-4a83-b3ee-671770b73f87.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7444,7 +7716,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/08f1d744-1694-4827-b7d1-f3f1bef0213c.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=08f1d744-1694-4827-b7d1-f3f1bef0213c.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7460,7 +7732,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e7d0cdac-3780-4b4c-9bb4-a2deffcb9a1c.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e7d0cdac-3780-4b4c-9bb4-a2deffcb9a1c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7475,7 +7747,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/53968da0-e805-4174-abc4-2828ed7fc4d7.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=53968da0-e805-4174-abc4-2828ed7fc4d7.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7491,7 +7763,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/c5459779-a1c3-42c2-87dd-44fc40358b63.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=c5459779-a1c3-42c2-87dd-44fc40358b63.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7522,7 +7794,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e9f6e677-7162-4c7c-98ec-e0399164ed93.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e9f6e677-7162-4c7c-98ec-e0399164ed93.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7537,7 +7809,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/65f27761-7bf3-4479-bc5d-4ea9afbf2383.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=65f27761-7bf3-4479-bc5d-4ea9afbf2383.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7553,7 +7825,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/21e46c8a-bca2-4a9e-be61-5d91df187f5e.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=21e46c8a-bca2-4a9e-be61-5d91df187f5e.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7568,7 +7840,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/16f785c1-99cd-4bb7-a3c9-7a1d9bf35b24.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=16f785c1-99cd-4bb7-a3c9-7a1d9bf35b24.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7584,7 +7856,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/b117f793-303d-4117-bb71-716120417f6d.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b117f793-303d-4117-bb71-716120417f6d.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7599,7 +7871,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/f8ee4b58-6cdd-4335-b88c-c9b3660d36db.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=f8ee4b58-6cdd-4335-b88c-c9b3660d36db.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7615,7 +7887,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/285eb62b-7216-4a85-9bf6-8d4e70c18fea.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=285eb62b-7216-4a85-9bf6-8d4e70c18fea.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7637,7 +7909,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/0c8de74c-e6b1-4b9f-85ee-81b74a1ee4d1.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=0c8de74c-e6b1-4b9f-85ee-81b74a1ee4d1.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7652,7 +7924,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/824b9d9d-940e-4fcd-8ba0-2d48123c56dc.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=824b9d9d-940e-4fcd-8ba0-2d48123c56dc.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7668,7 +7940,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/f8a746f8-88b2-4f55-800b-ce13a2935733.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=f8a746f8-88b2-4f55-800b-ce13a2935733.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7690,7 +7962,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/56b0c55b-aaac-4567-8c1a-810b64dae529.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=56b0c55b-aaac-4567-8c1a-810b64dae529.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7705,7 +7977,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/58d4fac9-d707-406c-853e-d912a8ba8c3e.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=58d4fac9-d707-406c-853e-d912a8ba8c3e.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7721,7 +7993,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/d54c491b-ba7f-4e91-a627-92418d93442c.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=d54c491b-ba7f-4e91-a627-92418d93442c.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7736,7 +8008,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/0478e63c-8be8-4077-8b69-f4e7ae1c1bde.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=0478e63c-8be8-4077-8b69-f4e7ae1c1bde.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7752,7 +8024,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/27864acb-8d4c-434d-897a-ec3c9a6345a5.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=27864acb-8d4c-434d-897a-ec3c9a6345a5.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7767,7 +8039,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/3b176862-db5c-426a-ab8d-d5703615c510.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=3b176862-db5c-426a-ab8d-d5703615c510.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7783,7 +8055,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/d6d570d4-cdaa-4a2b-ad82-74dd424f27c2.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=d6d570d4-cdaa-4a2b-ad82-74dd424f27c2.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7805,7 +8077,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/a86ce4d8-964a-4862-bc6d-21bb15f0310b.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=a86ce4d8-964a-4862-bc6d-21bb15f0310b.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7820,7 +8092,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/917f3a76-edd5-4f4c-835a-b92170d294bc.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=917f3a76-edd5-4f4c-835a-b92170d294bc.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7836,7 +8108,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/1f58aec6-ed0d-49b5-a891-16a4cf06b618.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=1f58aec6-ed0d-49b5-a891-16a4cf06b618.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7879,7 +8151,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/b8ad49a5-90c3-476c-9260-3c3396399c17.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b8ad49a5-90c3-476c-9260-3c3396399c17.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7895,7 +8167,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/f3d7412c-e07c-4a80-9213-7b40f1635de1.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=f3d7412c-e07c-4a80-9213-7b40f1635de1.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7938,7 +8210,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/dc5c11a0-4941-41dd-9e18-78cdbfe962ce.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=dc5c11a0-4941-41dd-9e18-78cdbfe962ce.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7954,7 +8226,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/97c31b5a-5ca9-42f7-8e2a-7c1e53e5bd91.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=97c31b5a-5ca9-42f7-8e2a-7c1e53e5bd91.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -7969,7 +8241,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/5a8be993-2036-4d5e-b005-29f09c2fbd5f.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=5a8be993-2036-4d5e-b005-29f09c2fbd5f.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -7985,7 +8257,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/67bdb1c7-79a7-4419-8dd2-af366afce468.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=67bdb1c7-79a7-4419-8dd2-af366afce468.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8000,7 +8272,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/35d8a880-5398-4236-9f2a-7b82201a66c5.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=35d8a880-5398-4236-9f2a-7b82201a66c5.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8016,7 +8288,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/843a43f7-9217-4013-a3d0-57426bf7c692.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=843a43f7-9217-4013-a3d0-57426bf7c692.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8031,7 +8303,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/f2abc7a0-7130-4ebf-8150-d18b154aada3.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=f2abc7a0-7130-4ebf-8150-d18b154aada3.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8087,7 +8359,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/336c070f-e73e-4e5f-9044-710da1269435.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=336c070f-e73e-4e5f-9044-710da1269435.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8103,7 +8375,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/081fd8ba-a801-4a5e-809c-b7249791e0df.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=081fd8ba-a801-4a5e-809c-b7249791e0df.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8118,7 +8390,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/9a2aa834-8730-4de1-b75c-b856b0b8b73f.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=9a2aa834-8730-4de1-b75c-b856b0b8b73f.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8134,7 +8406,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/cd3fbda6-4147-46a6-8938-b5a8727c3a67.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=cd3fbda6-4147-46a6-8938-b5a8727c3a67.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8177,7 +8449,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/b5a93075-f61c-4e6f-bbdf-cecc361b3dd6.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=b5a93075-f61c-4e6f-bbdf-cecc361b3dd6.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8193,7 +8465,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/dc3fb5e1-d473-4156-815d-36a4d0377aa2.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=dc3fb5e1-d473-4156-815d-36a4d0377aa2.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8215,7 +8487,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/da2a5d82-b144-4c06-b349-c9f69a2b9abc.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=da2a5d82-b144-4c06-b349-c9f69a2b9abc.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8230,7 +8502,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/e8e37b86-4a20-4ad3-bcee-26507d79a50e.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=e8e37b86-4a20-4ad3-bcee-26507d79a50e.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8246,7 +8518,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/7243b5db-9cd8-48d9-b8ae-b2b1ddb1252e.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=7243b5db-9cd8-48d9-b8ae-b2b1ddb1252e.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8305,7 +8577,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/715e43a1-a104-4a2b-aadf-b85b0691104e.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=715e43a1-a104-4a2b-aadf-b85b0691104e.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8320,7 +8592,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/AttachHis/26ce784b-303e-460e-baa8-32b538f254bc.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=26ce784b-303e-460e-baa8-32b538f254bc.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8336,7 +8608,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2019/2/da9bab80-c5ec-4a19-89ea-2f259082a08a.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=da9bab80-c5ec-4a19-89ea-2f259082a08a.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8379,7 +8651,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/11/67a3e842-3213-4b04-975b-e31627b53348.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=67a3e842-3213-4b04-975b-e31627b53348.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8395,7 +8667,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/10/353a8878-34f2-4997-85fc-700968b7cfc8.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=353a8878-34f2-4997-85fc-700968b7cfc8.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8410,7 +8682,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/8/c6d1ecea-a62a-4b45-a828-837c34885077.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=c6d1ecea-a62a-4b45-a828-837c34885077.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8438,7 +8710,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/8/1fb29553-6810-4919-ab24-5ea04a3beeb5.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=1fb29553-6810-4919-ab24-5ea04a3beeb5.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8454,7 +8726,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/7/d16d1088-474c-4727-9b01-87f21e282e30.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=d16d1088-474c-4727-9b01-87f21e282e30.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8485,7 +8757,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/5/696b4d25-57c8-4737-afa6-92444a10309b.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=696b4d25-57c8-4737-afa6-92444a10309b.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8500,7 +8772,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/2/2d54fe6d-04bf-425c-a722-6daaa16baeb1.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=2d54fe6d-04bf-425c-a722-6daaa16baeb1.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8516,7 +8788,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2018/2/2dea2207-9195-407e-8bcf-fea4fb1a0ecf.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=2dea2207-9195-407e-8bcf-fea4fb1a0ecf.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8531,7 +8803,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/11/da6c336e-afe4-4a91-be1c-d85baef02182.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=da6c336e-afe4-4a91-be1c-d85baef02182.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8547,7 +8819,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/11/6fefdab6-7a9e-451e-b4d9-d9d4ef4bfb9d.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6fefdab6-7a9e-451e-b4d9-d9d4ef4bfb9d.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8569,7 +8841,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/10/c4741a3e-402c-476a-854e-0f7ff890f53f.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=c4741a3e-402c-476a-854e-0f7ff890f53f.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8584,7 +8856,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
       
         <a class="concall-link"
-           href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/8/48d62a0c-1001-4f35-aa0a-ae20ca4047a2.pdf"
+           href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=48d62a0c-1001-4f35-aa0a-ae20ca4047a2.pdf"
            target="_blank"
            rel="noopener noreferrer"
            title="Raw Transcript">Transcript</a>
@@ -8600,7 +8872,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/7/58074bbd-95d6-49d3-9f7f-089b38cf3a49.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=58074bbd-95d6-49d3-9f7f-089b38cf3a49.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8622,7 +8894,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/5/33184527-8888-42e1-b251-1be962b456e4.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=33184527-8888-42e1-b251-1be962b456e4.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8644,7 +8916,7 @@ Company procures IT and mobility products from vendors, handles distribution log
       
 
       
-        <a href="https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2017/5/41f91fc3-aa21-4d0a-9c02-ae1254145bff.pdf"
+        <a href="https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=41f91fc3-aa21-4d0a-9c02-ae1254145bff.pdf"
            class="concall-link"
            target="_blank"
            rel="noopener noreferrer">PPT</a>
@@ -8833,7 +9105,7 @@ Company procures IT and mobility products from vendors, handles distribution log
         
       </div>
     </section>
-    <!-- cache time 2026-05-31 09:00:08 -->
+    <!-- cache time 2026-09-04 03:09:41 -->
     
   
 
@@ -8859,7 +9131,7 @@ Company procures IT and mobility products from vendors, handles distribution log
            class="logo">
       <p class="font-size-19" style="font-weight: 500;">Stock analysis and screening tool</p>
       <p class="sub">
-        Mittal Analytics Private Ltd &copy; 2009-2025
+        Mittal Analytics Private Ltd &copy; 2009-2026
         <br>
         Made with <i class="icon-heart red"></i> in India.
       </p>
@@ -8937,7 +9209,7 @@ Company procures IT and mobility products from vendors, handles distribution log
 
     <div class="hide-from-tablet">
       <hr>
-      <p class="sub">Mittal Analytics Private Ltd &copy; 2009-2024</p>
+      <p class="sub">Mittal Analytics Private Ltd &copy; 2009-2026</p>
       <p class="sub">Data provided by C-MOTS Internet Technologies Pvt Ltd</p>
       <p class="sub">
         <a href="/guides/terms/" class="underline-link">Terms</a>
@@ -8950,11 +9222,10 @@ Company procures IT and mobility products from vendors, handles distribution log
     
 
     <!-- Important JS (which provide global objects)- check below too -->
-    <script src="https://cdn-static.screener.in/js/dialog-polyfill.min.2b5bf9a032d2.js"></script>
-    <script src="https://cdn-static.screener.in/js/utils.5fa58987fd69.js"></script>
-    <script src="https://cdn-static.screener.in/js/modal.33ac63eb7887.js"></script>
+    <script src="https://cdn-static.screener.in/js/utils.0147599e8f13.js"></script>
+    <script src="https://cdn-static.screener.in/js/modal.ccacae1a5594.js"></script>
     <script src="https://cdn-static.screener.in/js/typeahead.8dcc9ac93685.js"></script>
-    <script src="https://cdn-static.screener.in/js/filter.component.888b0801c31d.js"></script>
+    <script src="https://cdn-static.screener.in/js/filter.component.48935d3ab300.js"></script>
 
     <!-- Independent JS scripts for page interactions -->
     <script src="https://cdn-static.screener.in/js/navbar.3fe7f0f4a630.js"></script>
@@ -8966,6 +9237,7 @@ Company procures IT and mobility products from vendors, handles distribution log
   <script src="https://cdn-static.screener.in/js/chartjs-adapter-date-fns.bundle.min.ebae23730a6e.js"></script>
   <script src="https://cdn-static.screener.in/js/chart.2a4531d22d97.js"></script>
   <script src="https://cdn-static.screener.in/js/segment-result.b6af4191fd6f.js"></script>
+  <script>Utils.startTimeSinceUpdates();</script>
 
 
     <!-- Service worker installer for PWA -->

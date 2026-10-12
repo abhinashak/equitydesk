@@ -31,6 +31,7 @@ NAV: dict[str, dict[str, str]] = {
         "📈 Market Data":            "data_ticker",
         "📊 Fundamental":            "data_fundamental",
         "📡 Signals":                "signals",
+        "🤖 Financial Analyst":            "sql_analyst",  
     },
     "CONFIG": {
         "🗂 Tickers":                "config_tickers",

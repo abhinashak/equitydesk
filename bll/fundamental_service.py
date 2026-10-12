@@ -78,8 +78,8 @@ class FundamentalService:
             stats = self._dal.incremental_merge(ticker, staging_dir)
 
             for table, (inserted, skipped) in stats.items():
-                if inserted > 0:
-                    yield f"    ✅ {table}: +{inserted} new rows ({skipped} already existed)"
+                icon = "✅" if inserted > 0 else "⚠️"
+                yield f"    {icon} {table}: +{inserted} new rows ({skipped} already existed)"
 
             yield f"  ✅ {ticker} done."
 
