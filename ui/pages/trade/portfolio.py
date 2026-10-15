@@ -130,14 +130,14 @@ PERIODS = [
 ]
 
 # Benchmark index ticker used for comparison (must exist in price_history)
-INDEX_TICKER = "^NSEI"
+INDEX_TICKER = "NIFTYBEES"
 
 
 # ==============================================================================
 # HISTORICAL DATA HELPERS
 # ==============================================================================
 
-def get_price_history(nse_symbols: list[str], days: int) -> pd.DataFrame:
+def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = False) -> pd.DataFrame:
     """
     Pull close prices from DuckDB `ticker_prices` using nse_symbol column.
     Returns DataFrame with columns: date, ticker (=nse_symbol), close.
@@ -151,11 +151,12 @@ def get_price_history(nse_symbols: list[str], days: int) -> pd.DataFrame:
         initialize_views_or_mock(conn)
 
         sym_list = ", ".join(f"'{s}'" for s in nse_symbols)
+        table_name = "benchmark_prices" if is_benchmark else "ticker_prices"
         query = f"""
             SELECT Date       AS date,
                    nse_symbol AS ticker,
                    Close      AS close
-            FROM ticker_prices
+            FROM {table_name}
             WHERE nse_symbol IN ({sym_list})
               AND Date >= CURRENT_DATE - INTERVAL '{days} days'
             ORDER BY nse_symbol, Date
@@ -163,7 +164,9 @@ def get_price_history(nse_symbols: list[str], days: int) -> pd.DataFrame:
         df = conn.execute(query).df()
         df["date"] = pd.to_datetime(df["date"])
         return df
-    except Exception:
+    except Exception as exc:
+        # Keep the dashboard resilient, but log the underlying query/schema issue.
+        print(f"[Portfolio] Price history query failed ({table_name}): {exc}")
         return pd.DataFrame()
 
 
@@ -468,7 +471,8 @@ def render():
     # ── Holdings qty map for history ──────────────────────────────────────────
     holdings_qty   = dict(zip(df["Symbol"], df["Total Qty"]))
     current_prices = dict(zip(df["Symbol"], df["Last Price"]))
-    tickers_all    = list(holdings_qty.keys())
+    #tickers_all    = list(holdings_qty.keys())
+    tickers_all    = [s for s in df["Symbol"].tolist() if s != INDEX_TICKER]
 
 
 
@@ -559,8 +563,16 @@ def render():
     days = next(p[1] for p in PERIODS if p[0] == sel_period)
 
     with st.spinner("Loading price history…"):
-        # Fetch all tickers + index together in one call
-        ph_df = get_price_history(tickers_all + [INDEX_TICKER], days)
+        # Fetch holdings and benchmark separately: the index history lives in
+        # benchmark_prices, while individual holdings live in ticker_prices.
+        # Previously NIFTYBEES was requested from ticker_prices, so the index
+        # trace was silently missing whenever that table did not contain it.
+        _holdings_ph = get_price_history(tickers_all, days)
+        _benchmark_ph = get_price_history([INDEX_TICKER], days, is_benchmark=True)
+        _frames = [frame for frame in (_holdings_ph, _benchmark_ph) if not frame.empty]
+        ph_df = pd.concat(_frames, ignore_index=True) if _frames else pd.DataFrame(
+            columns=["date", "ticker", "close"]
+        )
 
         # Fix 3: Drop newly listed tickers that have insufficient history
         # (fewer than 5 trading days of data in the selected window)
@@ -590,15 +602,17 @@ def render():
         # Split index series out BEFORE passing to portfolio value computation
         if not ph_df.empty and INDEX_TICKER in ph_df["ticker"].values:
             idx_raw   = ph_df[ph_df["ticker"] == INDEX_TICKER].set_index("date")["close"]
-            idx_pivot = idx_raw[~idx_raw.index.duplicated(keep="last")].sort_index()
+            #idx_pivot = idx_raw[~idx_raw.index.duplicated(keep="last")].sort_index()
+            idx_pivot = idx_raw[~idx_raw.index.duplicated(keep="last")].sort_index().ffill().bfill()
         else:
             idx_pivot = pd.Series(dtype=float)
 
-        # ── SMA50 for ^NSEI ───────────────────────────────────────────────────
+        # ── SMA50 for INDEX_TICKER (NIFTYBEES) ────────────────────────────────
         # Always fetch at least 200 days so SMA50 is well-seeded, regardless of
         # the period the user chose for the portfolio movement chart.
         _sma_days = max(days, 200)
-        _sma_ph   = get_price_history([INDEX_TICKER], _sma_days)
+        YAHOO_SYMBOL = INDEX_TICKER + ".NS"
+        _sma_ph   = get_price_history([INDEX_TICKER], _sma_days, True)
         if not _sma_ph.empty:
             _idx_full = (_sma_ph[_sma_ph["ticker"] == INDEX_TICKER]
                          .set_index("date")["close"]
@@ -607,12 +621,14 @@ def render():
             _sma50_full = _idx_full.rolling(window=50, min_periods=50).mean()
             # Slice to the same date window as the chart
             _sma50_chart = _sma50_full[_sma50_full.index >= idx_pivot.index[0]] if not idx_pivot.empty else _sma50_full
-            _nsei_last   = _idx_full.iloc[-1]  if not _idx_full.empty  else None
+            _idx_last   = _idx_full.iloc[-1]  if not _idx_full.empty  else None
             _sma50_last  = _sma50_full.iloc[-1] if not _sma50_full.empty else None
         else:
             _sma50_chart = pd.Series(dtype=float)
-            _nsei_last   = None
+            _idx_last   = None
             _sma50_last  = None
+        
+        print ( _sma50_last ) 
 
         # Only pass holding tickers to portfolio value (exclude index)
         ph_holdings = ph_df[ph_df["ticker"] != INDEX_TICKER] if not ph_df.empty else ph_df
@@ -622,10 +638,14 @@ def render():
         if not port_ser.empty:
             port_ser = port_ser[~port_ser.index.duplicated(keep="last")].sort_index()
 
+        # Align index pivot to port_ser dates to guarantee clean % returns
+        if not idx_pivot.empty and not port_ser.empty:
+            idx_pivot = idx_pivot.reindex(port_ser.index).ffill().bfill()
+
     # ── EXIT PANIC BANNER ─────────────────────────────────────────────────────
-    if _nsei_last is not None and _sma50_last is not None:
-        _below_sma50 = _nsei_last < _sma50_last
-        _gap_pct     = (_nsei_last - _sma50_last) / _sma50_last * 100
+    if _idx_last is not None and _sma50_last is not None:
+        _below_sma50 = _idx_last < _sma50_last
+        _gap_pct     = (_idx_last - _sma50_last) / _sma50_last * 100
         if _below_sma50:
             st.markdown(
                 f"""
@@ -646,11 +666,11 @@ def render():
                             Market Risk Alert
                         </div>
                         <div style="color: #fff; font-size: 1.25rem; font-weight: 800; margin: 2px 0;">
-                            EXIT PANIC — ^NSEI is below its SMA50
+                            EXIT PANIC — {INDEX_TICKER} is below its SMA50
                         </div>
                         <div style="color: #fca5a5; font-size: 0.9rem;">
-                            NSEI: <strong style="color:#fff">{_nsei_last:,.0f}</strong>
-                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">{_sma50_last:,.0f}</strong>
+                            {INDEX_TICKER}: <strong style="color:#fff">₹{_idx_last:,.2f}</strong>
+                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">₹{_sma50_last:,.2f}</strong>
                             &nbsp;·&nbsp; Gap: <strong style="color:#fca5a5">{_gap_pct:+.2f}%</strong>
                         </div>
                     </div>
@@ -678,11 +698,11 @@ def render():
                             Market Trend
                         </div>
                         <div style="color: #fff; font-size: 1.1rem; font-weight: 700;">
-                            ^NSEI is above its SMA50 — trend intact
+                            {INDEX_TICKER} is above its SMA50 — trend intact
                         </div>
                         <div style="color: #86efac; font-size: 0.85rem;">
-                            NSEI: <strong style="color:#fff">{_nsei_last:,.0f}</strong>
-                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">{_sma50_last:,.0f}</strong>
+                            {INDEX_TICKER}: <strong style="color:#fff">₹{_idx_last:,.2f}</strong>
+                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">₹{_sma50_last:,.2f}</strong>
                             &nbsp;·&nbsp; Gap: <strong style="color:#86efac">{_gap_pct:+.2f}%</strong>
                         </div>
                     </div>
@@ -698,14 +718,14 @@ def render():
 
         mc1, mc2, mc3, mc4 = st.columns(4)
         mc1.metric(f"Portfolio ({sel_period})", f"{port_ret:+.2f}%")
-        mc2.metric(f"NSEI ({sel_period})",  f"{idx_ret:+.2f}%")
+        mc2.metric(f"{INDEX_TICKER} ({sel_period})",  f"{idx_ret:+.2f}%")
         mc3.metric("Alpha", f"{alpha:+.2f}%",
                    delta_color="normal" if alpha >= 0 else "inverse")
         if _sma50_last is not None:
-            mc4.metric("^NSEI SMA50",
-                       f"{_sma50_last:,.0f}",
-                       f"{(_nsei_last - _sma50_last) / _sma50_last * 100:+.2f}% vs price",
-                       delta_color="normal" if _nsei_last >= _sma50_last else "inverse")
+            mc4.metric(f"{INDEX_TICKER} SMA50",
+                       f"₹{_sma50_last:,.2f}",
+                       f"{(_idx_last - _sma50_last) / _sma50_last * 100:+.2f}% vs price",
+                       delta_color="normal" if _idx_last >= _sma50_last else "inverse")
 
         # Normalised line chart
         fig_trend = go.Figure()
@@ -716,23 +736,29 @@ def render():
             #fill="tonexty", fillcolor="rgba(37,99,235,0.07)"
             fill = None
         ))
+        idx_norm = pd.Series(dtype=float)
+        idx_aligned = pd.Series(dtype=float)
         if not idx_pivot.empty:
-            idx_aligned = idx_pivot.reindex(port_ser.index, method="ffill")
-            idx_norm    = idx_aligned / idx_aligned.iloc[0] * 100 if idx_aligned.iloc[0] else idx_aligned
-            fig_trend.add_trace(go.Scatter(
-                x=idx_norm.index, y=idx_norm.values,
-                name=INDEX_TICKER,
-                line=dict(color=COLORS[1], width=1.5, dash="dash")
-            ))
-        # SMA50 line — normalise to the same base as idx_norm
-        if not _sma50_chart.empty and not idx_pivot.empty:
-            _sma50_aligned = _sma50_chart.reindex(port_ser.index, method="ffill").dropna()
-            _idx_base      = idx_aligned.iloc[0] if not idx_aligned.empty and idx_aligned.iloc[0] else None
+            # Align only after both series are loaded and ensure a valid base.
+            _idx_for_chart = idx_pivot.reindex(port_ser.index).ffill().bfill()
+            if not _idx_for_chart.empty and pd.notna(_idx_for_chart.iloc[0]) and _idx_for_chart.iloc[0] != 0:
+                idx_aligned = _idx_for_chart
+                idx_norm = idx_aligned / idx_aligned.iloc[0] * 100
+                fig_trend.add_trace(go.Scatter(
+                    x=idx_norm.index, y=idx_norm.values,
+                    name=INDEX_TICKER,
+                    line=dict(color=COLORS[1], width=1.5, dash="dash")
+                ))
+        # SMA50 line — normalise to the same base as the benchmark index.
+        _sma50_norm = pd.Series(dtype=float)
+        if not _sma50_chart.empty and not idx_norm.empty:
+            _sma50_aligned = _sma50_chart.reindex(port_ser.index).ffill().dropna()
+            _idx_base      = idx_aligned.iloc[0] if not idx_aligned.empty and pd.notna(idx_aligned.iloc[0]) and idx_aligned.iloc[0] != 0 else None
             if _idx_base:
                 _sma50_norm = _sma50_aligned / _idx_base * 100
                 fig_trend.add_trace(go.Scatter(
                     x=_sma50_norm.index, y=_sma50_norm.values,
-                    name="NSEI SMA50",
+                    name=f"{INDEX_TICKER} SMA50",
                     line=dict(color="#f59e0b", width=1.5, dash="dot"),
                     opacity=0.85,
                 ))
@@ -743,7 +769,7 @@ def render():
             _y_mins.append(port_norm.min())
         if not idx_pivot.empty:
             _y_mins.append(idx_norm.min())
-        if not _sma50_chart.empty and not idx_pivot.empty and '_sma50_norm' in dir():
+        if not _sma50_norm.empty:
             _y_mins.append(_sma50_norm.min())
         _y_floor = min(_y_mins) * 0.995 if _y_mins else 0   # small padding below
 
@@ -1108,3 +1134,4 @@ def render():
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)"
     )
     st.plotly_chart(fig_bar, use_container_width=True)
+

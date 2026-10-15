@@ -19,6 +19,12 @@ from ui.pages.one_ticker_common import (
     load_matrix,
 )
 
+# Extend the shared 4-colour palette so up to 10 lines stay distinguishable.
+COLORS      = list(COLORS)      + ["#7c3aed", "#0891b2", "#db2777", "#65a30d", "#ea580c", "#475569"]
+COLORS_PALE = list(COLORS_PALE) + ["#c4b5fd", "#67e8f9", "#f9a8d4", "#bef264", "#fdba74", "#cbd5e1"]
+
+MAX_COMPARE = 8   # tickers that can be overlaid on the selected one
+
 # ==============================================================================
 # 1. PAGE CONFIG & STYLING
 # ==============================================================================
@@ -367,7 +373,7 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} Ret%",
-                            line=dict(color=palette[i % 4],
+                            line=dict(color=palette[i % len(palette)],
                                       width=2.5 if i == 0 else 1.8,
                                       dash="dot" if secondary else ("solid" if i == 0 else "dot")),
                             hovertemplate="%{x|%d %b %Y}<br>%{y:+.2f}%<extra>" + tk + "</extra>",
@@ -573,7 +579,7 @@ def render():
         compare_options = [t for t in ticker_list_display if t != selected]
         compare_tickers = st.multiselect(
             "Compare with:", compare_options, default=[],
-            max_selections=3, placeholder="Overlay up to 3 tickers…",
+            max_selections=MAX_COMPARE, placeholder=f"Overlay up to {MAX_COMPARE} tickers…",
             key="compare_tickers"
         )
 
