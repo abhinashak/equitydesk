@@ -20,6 +20,7 @@ NAV: dict[str, dict[str, str]] = {
         "⚛️ Fundamental Analysis":   "fundamental_analysis",
         "🔬 DCF Analysis":           "dcf_analysis",
         "🔬 Quality Gates":          "quality_gates",
+        "🎯 Buy Candidates":         "buy_candidates",
         "⚖️ Portfolio Evaluator":    "portfolio_evaluator",
     },
     "ALGOS": {

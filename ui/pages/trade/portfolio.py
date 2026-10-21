@@ -4,7 +4,7 @@ portfolio.py
 Full-featured portfolio view.
 
 Features:
-  - Portfolio movement across 1D / 7D / 1M / 3M / 6M / 1Y / 2Y / 3Y / 4Y / 5Y
+  - Portfolio movement across 1D / 7D / 1M / 3M / 6M / 1Y / 2Y / 3Y / 4Y / 5Y / 10Y
   - Portfolio weight % alongside each ticker
   - Full-width Sector Distribution + Index comparison charts
   - Today's gain % per holding
@@ -127,6 +127,7 @@ PERIODS = [
     ("3Y",  1095, "3 years"),
     ("4Y",  1460, "4 years"),
     ("5Y",  1825, "5 years"),
+    ("10Y",  3650, "10 years"),
 ]
 
 # Benchmark index ticker used for comparison (must exist in price_history)

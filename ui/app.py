@@ -69,6 +69,8 @@ elif page == "sql_lab":
     page_sql_lab.render()
 elif page == "portfolio_evaluator":
     page_portfolio_evaluator.render()
+elif page == "buy_candidates":
+    from ui.pages.page_buy_candidates import render; render()
 elif page == "algo_ga":
     page_algo_ga.render()
 elif page == "algo_momentum":

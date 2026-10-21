@@ -25,6 +25,23 @@ COLORS_PALE = list(COLORS_PALE) + ["#c4b5fd", "#67e8f9", "#f9a8d4", "#bef264", "
 
 MAX_COMPARE = 8   # tickers that can be overlaid on the selected one
 
+# Keep metric colour consistent across the chart; distinguish tickers by dash style.
+METRIC_COLORS = [
+    "#2563eb",  # Blue
+    "#7c3aed",  # Purple
+    "#0d9488",  # Teal
+    "#ea580c",  # Orange
+    "#db2777",  # Pink
+    "#65a30d",  # Green
+    "#0891b2",  # Cyan
+    "#475569",  # Slate
+]
+METRIC_COLORS_PALE = [
+    "#93c5fd", "#c4b5fd", "#5eead4", "#fdba74",
+    "#f9a8d4", "#bef264", "#67e8f9", "#cbd5e1",
+]
+TICKER_DASHES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"]
+
 # ==============================================================================
 # 1. PAGE CONFIG & STYLING
 # ==============================================================================
@@ -242,17 +259,21 @@ def render():
         Build and return a Plotly figure.
         all_tickers : (selected, *compare_tickers)
         primary     : the first ticker (for snapshot ordering)
-        metrics     : 1 or 2 metric strings
+        metrics     : up to 4 metric strings; all selected metrics are rendered
         days        : lookback window in days
         Returns None if no data.
         """
+        metrics = list(dict.fromkeys(metrics))[:4]
+        if not metrics:
+            return None
+        # A single X-axis cannot combine dated time-series with ticker snapshots.
+        # Apply the same rule to saved panels as to the interactive selector.
+        first_type = _is_ts(metrics[0])
+        metrics = [m for m in metrics if _is_ts(m) == first_type]
         m1 = metrics[0]
-        m2 = metrics[1] if len(metrics) > 1 else None
-        m1_is_ts = _is_ts(m1)
-        m2_is_ts = _is_ts(m2) if m2 else False
 
-        # ── TIME-SERIES PATH ─────────────────────────────────────────────────────
-        if m1_is_ts and (m2 is None or m2_is_ts):
+        # ── TIME-SERIES PATH: render every selected time-series metric ────────────
+        if all(_is_ts(m) for m in metrics):
             price_df = get_price_history(all_tickers)
             if price_df.empty:
                 return None
@@ -264,24 +285,26 @@ def render():
             pivot = sliced.pivot_table(index='Date', columns='Ticker', values='Close').ffill()
             ticker_order = [t for t in list(all_tickers) if t in pivot.columns]
 
-            dual = (
-                    (m2 is not None and m1 != m2)
-                    or m1.startswith('[F] ')
-                    or (m2 is not None and m2.startswith('[F] '))
-            )
+            # Plot fundamental series on the right axis and other series on the
+            # left. Multiple selected metrics are all added to this same figure.
+            has_fundamental = any(m.startswith('[F] ') for m in metrics)
+            has_non_fundamental = any(not m.startswith('[F] ') for m in metrics)
+            dual = has_fundamental and has_non_fundamental
             fig = make_subplots(specs=[[{"secondary_y": True}]]) if dual else go.Figure()
 
-            def _add_ts(metric, secondary=False):
-                palette = COLORS_PALE if secondary else COLORS
+            def _add_ts(metric, metric_idx=0, secondary=False):
+                # Colour by metric so multiple metrics for one ticker are distinguishable.
+                metric_color = METRIC_COLORS[metric_idx % len(METRIC_COLORS)]
+                metric_pale = METRIC_COLORS_PALE[metric_idx % len(METRIC_COLORS_PALE)]
                 if metric == "Price (Close)":
                     for i, tk in enumerate(ticker_order):
                         s = pivot[tk].dropna()
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} Price",
-                            line=dict(color=COLORS[i % len(COLORS)],
-                                      width=2.5 if i == 0 else 1.8,
-                                      dash="solid" if i == 0 else "dot"),
+                            line=dict(color=metric_color,
+                                      width=2.8 if i == 0 else 2.0,
+                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
                             hovertemplate="%{x|%d %b %Y}<br>₹%{y:,.2f}<extra>" + tk + "</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -305,9 +328,9 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} {col_raw}",
-                            line=dict(color=palette[i % len(palette)],
-                                      width=2.5 if i == 0 else 1.8,
-                                      dash="dot" if secondary else ("solid" if i == 0 else "dot")),
+                            line=dict(color=metric_color,
+                                      width=2.8 if i == 0 else 2.0,
+                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
                             hovertemplate=f"%{{x|%d %b %Y}}<br>%{{y:,.2f}}{sfx}<extra>{tk}</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -329,13 +352,15 @@ def render():
                         trace = go.Bar(
                             x=tk_data['dt'], y=tk_data['val'],
                             name=f"{tk} {fund_metric}",
-                            marker_color=COLORS_PALE[i % len(COLORS_PALE)],
-                            marker_line=dict(color=COLORS[i % len(COLORS)], width=1),
+                            marker_color=metric_pale,
+                            marker_line=dict(color=metric_color, width=1),
                             opacity=0.75, width=bw,
                             hovertemplate=f"%{{x|%b %Y}}<br>%{{y:,.2f}}{sfx}<extra>{tk} {fund_metric}</extra>",
                         )
-                        if dual: fig.add_trace(trace, secondary_y=True)
-                        else:    fig.add_trace(trace, secondary_y=True)
+                        if dual:
+                            fig.add_trace(trace, secondary_y=secondary)
+                        else:
+                            fig.add_trace(trace)
                     return fund_metric, sfx
 
                 elif metric == REBASED_METRIC:
@@ -355,9 +380,9 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} (100)",
-                            line=dict(color=palette[i % len(palette)],
-                                      width=2.5 if i == 0 else 1.8,
-                                      dash="dot" if secondary else "solid"),
+                            line=dict(color=metric_color,
+                                      width=2.8 if i == 0 else 2.0,
+                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
                             hovertemplate="%{x|%d %b %Y}<br>%{y:,.1f}<extra>" + tk + "</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -373,9 +398,9 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} Ret%",
-                            line=dict(color=palette[i % len(palette)],
-                                      width=2.5 if i == 0 else 1.8,
-                                      dash="dot" if secondary else ("solid" if i == 0 else "dot")),
+                            line=dict(color=metric_color,
+                                      width=2.8 if i == 0 else 2.0,
+                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
                             hovertemplate="%{x|%d %b %Y}<br>%{y:+.2f}%<extra>" + tk + "</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -383,13 +408,21 @@ def render():
                         else:    fig.add_trace(trace)
                     return "Return (%)", "%"
 
-            if dual and m2 is not None and m2.startswith("[F] "):
-                y2_title, y2_sfx = _add_ts(m2, secondary=True)
-                y1_title, y1_sfx = _add_ts(m1, secondary=False)
-            else:
-                y1_title, y1_sfx = _add_ts(m1, secondary=False)
-                if dual:
-                    y2_title, y2_sfx = _add_ts(m2, secondary=True)
+            axis_titles = []
+            for metric_idx, metric in enumerate(metrics):
+                is_fundamental = metric.startswith('[F] ')
+                title, suffix = _add_ts(
+                    metric, metric_idx=metric_idx,
+                    secondary=(dual and is_fundamental)
+                )
+                axis_titles.append((title, suffix, is_fundamental))
+            # Keep axis labels meaningful when several metrics share an axis.
+            left_items = [(t, s) for t, s, is_f in axis_titles if not (dual and is_f)]
+            right_items = [(t, s) for t, s, is_f in axis_titles if dual and is_f]
+            y1_title = ' / '.join(dict.fromkeys(t for t, _ in left_items)) or 'Metric'
+            y1_sfx = left_items[0][1] if len(left_items) == 1 else ''
+            y2_title = ' / '.join(dict.fromkeys(t for t, _ in right_items)) or 'Fundamentals'
+            y2_sfx = right_items[0][1] if len(right_items) == 1 else ''
 
             layout_kw = dict(
                 height=320, margin=dict(l=0, r=0, t=28, b=0),
@@ -409,56 +442,70 @@ def render():
                                           zeroline=False, ticksuffix=y1_sfx, title=y1_title)
                 fig.update_layout(**layout_kw)
 
-            if "Return" in m1:
+            if any("Return" in m for m in metrics):
                 fig.add_hline(y=0, line_dash="dash", line_color="#94a3b8", line_width=1)
-            elif m1 == REBASED_METRIC:
+            if any(m == REBASED_METRIC for m in metrics):
                 fig.add_hline(y=100, line_dash="dash", line_color="#94a3b8", line_width=1)
             return fig
 
-        # ── SNAPSHOT PATH ─────────────────────────────────────────────────────────
+        # ── SNAPSHOT PATH: render every selected snapshot metric as grouped bars ──
         snap_metrics = [m for m in metrics if not _is_ts(m)]
         if not snap_metrics:
             return None
-        metric = snap_metrics[0]
-        is_momentum = metric.startswith("[M] ")
-        col_raw = metric[4:] if is_momentum else metric
         snapshot_tickers = list(all_tickers)
-
-        if is_momentum:
-            raw = get_momentum_snapshot(tuple(snapshot_tickers), col_raw)
-            if not raw.empty:
-                raw = raw.rename(columns={'ticker': 'Ticker', col_raw: metric})
-        else:
-            raw = df_matrix[df_matrix['Ticker'].isin(snapshot_tickers)][['Ticker', metric]].copy()
-
-        raw = raw.dropna(subset=[metric]) if not raw.empty else raw
-        if raw.empty:
-            return None
-
-        ordered = [t for t in snapshot_tickers if t in raw['Ticker'].values]
-        raw = raw.set_index('Ticker').reindex(ordered).reset_index()
-
         fig = go.Figure()
-        for i, row in raw.iterrows():
-            tk, val = row['Ticker'], row[metric]
-            is_primary = (tk == primary)
-            fig.add_trace(go.Bar(
-                x=[tk], y=[val], name=tk,
-                marker_color=COLORS[i % len(COLORS)],
-                marker_line_color="#1e3a8a" if is_primary else "rgba(0,0,0,0)",
-                marker_line_width=2.5 if is_primary else 0,
-                text=[f"{val:,.2f}"], textposition="outside",
-            ))
-        sfx = "%" if _looks_pct(metric) else ""
+        found_any = False
+
+        for metric_idx, metric in enumerate(snap_metrics):
+            is_momentum = metric.startswith("[M] ")
+            col_raw = metric[4:] if is_momentum else metric
+
+            if is_momentum:
+                raw = get_momentum_snapshot(tuple(snapshot_tickers), col_raw)
+                if not raw.empty:
+                    raw = raw.rename(columns={'ticker': 'Ticker', col_raw: metric})
+            elif metric in df_matrix.columns:
+                raw = df_matrix[df_matrix['Ticker'].isin(snapshot_tickers)][['Ticker', metric]].copy()
+            else:
+                continue
+
+            if raw.empty or metric not in raw.columns:
+                continue
+            raw = raw.dropna(subset=[metric])
+            if raw.empty:
+                continue
+            found_any = True
+            ordered = [t for t in snapshot_tickers if t in raw['Ticker'].values]
+            raw = raw.set_index('Ticker').reindex(ordered).reset_index()
+
+            for i, row in raw.iterrows():
+                tk, val = row['Ticker'], row[metric]
+                if pd.isna(val):
+                    continue
+                is_primary = (tk == primary)
+                fig.add_trace(go.Bar(
+                    x=[tk], y=[val], name=f"{metric} · {tk}",
+                    legendgroup=metric,
+                    marker_color=COLORS_PALE[metric_idx % len(COLORS_PALE)],
+                    marker_line_color=COLORS[i % len(COLORS)],
+                    marker_line_width=2.5 if is_primary else 0.5,
+                    text=[f"{val:,.2f}"], textposition="outside",
+                    hovertemplate=f"{metric}<br>{tk}<br>%{{y:,.2f}}<extra></extra>",
+                ))
+
+        if not found_any:
+            return None
         fig.update_layout(
-            height=300, margin=dict(l=0, r=0, t=30, b=0),
-            title=dict(text=metric, font=dict(size=13)),
+            height=340, margin=dict(l=0, r=0, t=30, b=0),
+            title=dict(text=' | '.join(snap_metrics), font=dict(size=13)),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            showlegend=False,
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                        xanchor="right", x=1),
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=True, gridcolor="#e2e8f0", zeroline=True,
-                       zerolinecolor="#94a3b8", ticksuffix=sfx, title=metric),
-            bargap=0.35,
+                       zerolinecolor="#94a3b8"),
+            barmode='group', bargap=0.25,
         )
         return fig
 
@@ -589,20 +636,28 @@ def render():
         valid_init   = [m for m in init_metrics if m in ALL_METRIC_OPTIONS] or ["Price (Close)"]
 
         compare_metrics = st.multiselect(
-            "Metrics (1 or 2):", ALL_METRIC_OPTIONS,
-            default=valid_init, max_selections=2,
+            "Metrics (up to 4):", ALL_METRIC_OPTIONS,
+            default=valid_init, max_selections=4,
             placeholder="Choose metrics…", key="compare_metrics",
             help=(
                 "Price (Close) / Return % → time-series line chart.\n"
                 "Price (Rebased=100) → all tickers start at 100 for easy comparison.\n"
                 "[M] columns → momentum time-series overlay.\n"
                 "[F] columns → quarterly fundamentals as bars on secondary Y.\n"
-                "All others → snapshot bar chart.  Pick 2 to compare."
+                "All others → snapshot bar chart. Up to 4 metrics are shown together; keep selections within the same chart type (time-series or snapshot)."
             )
         )
 
     if not compare_metrics:
         compare_metrics = ["Price (Close)"]
+
+    # A single Plotly X-axis cannot meaningfully combine dated series and ticker
+    # snapshot bars. Keep the first selected chart type and tell the user why.
+    _selected_types = {"time-series" if _is_ts(m) else "snapshot" for m in compare_metrics}
+    if len(_selected_types) > 1:
+        _keep_type = "time-series" if _is_ts(compare_metrics[0]) else "snapshot"
+        compare_metrics = [m for m in compare_metrics if ("time-series" if _is_ts(m) else "snapshot") == _keep_type]
+        st.warning("Time-series and snapshot metrics use different X-axes. Showing the selected metrics of the same chart type as your first selection.")
 
     # Persist for next render (use a shadow key, never the widget key)
     st.session_state["_metrics_init"] = compare_metrics
@@ -618,9 +673,9 @@ def render():
     # PERIOD TABS + MAIN CHART
     # ==============================================================================
     with st.expander("➕ Playground"):
-        PERIOD_TABS  = ["📅 5Y","📅 3Y","📅 2Y","📅 1Y","📅 6M","📅 3M","📅 1M","📅 7D"]
-        PERIOD_DAYS  = [1825,    1095,   730,    365,    182,    91,     30,     7]
-        PERIOD_LABEL = ["5Y",    "3Y",   "2Y",   "1Y",   "6M",   "3M",   "1M",   "7D"]
+        PERIOD_TABS  = ["📅 10Y", "📅 5Y", "📅 3Y", "📅 2Y", "📅 1Y", "📅 6M", "📅 3M", "📅 1M", "📅 7D"]
+        PERIOD_DAYS  = [3650,     1825,    1095,    730,    365,    182,    91,     30,     7]
+        PERIOD_LABEL = ["10Y",    "5Y",    "3Y",    "2Y",   "1Y",   "6M",   "3M",   "1M",   "7D"]
 
         period_tabs = st.tabs(PERIOD_TABS)
         for tab_idx, tab in enumerate(period_tabs):
@@ -700,3 +755,4 @@ def render():
                                     key=f"panel_{name}_{'_'.join(dash_all_tickers)}_{dash_days}")
                 else:
                     st.info("No data.")
+
