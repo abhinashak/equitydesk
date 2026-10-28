@@ -1,1303 +1,1006 @@
 """
-ui/pages/page_ai_ipo_macro.py  –  AI IPO Macro Dashboard screen
-────────────────────────────────────────────────────────────────
-Extracted from us_economy_and_news.py (Dashboard 2).
+ui/pages/page_news.py  –  Market dashboard
+──────────────────────────────────────────
+  • GIFT Nifty banner
+  • Controls  : period selector, % / absolute toggle, auto-refresh, alert threshold
+  • Overview  : core 8 + DXY, VIX, India VIX, global indices, rates, 2s10s, real yield,
+                BTC, FII/DII flows. Each card = sparkline + 1D/7D/1M/3M/1Y/YTD + 52W range
+  • Metals    : precious, base, iron & steel, zinc/tin/tungsten proxies, India metals,
+                miners/ETFs, custom tickers; ranking, rebased chart, ratios, correlation
+  • Food grains: wheat, corn, soy, rice, oils, softs, agri ETFs, India food proxies, fertilizer,
+                rupee-adjusted prices, spreads, drivers
+  • Heatmap   : every instrument × every period
+  • Analysis  : correlation matrix, Gold INR decomposition, Oil→INR→Nifty chain,
+                real yield / breakeven, 2s10s
+  • Drill-down: full chart + 50DMA + 52W band + latest news for any instrument
 Entry point: render()
 """
 
-import streamlit as st
-import pandas as pd
-import requests
-import yfinance as yf
 import datetime
-import json
 import io
-import os
-import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-# Re-use the GIFT Nifty banner from page_us_economy (avoids duplicate cache keys)
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import requests
+import streamlit as st
+import yfinance as yf
+
 from ui.pages.page_us_economy import render_gift_nifty_banner
 
 
-# ── Static data tables ────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════════
+# Registry
+# ═════════════════════════════════════════════════════════════════════════════
 
-IPO_DATA = [
-    {
-        'name': 'SpaceX / xAI', 'badge': 'LIVE TODAY', 'badge_class': 'badge-live',
-        'rows': [
-            ('Ticker',         'SPCX · Nasdaq'),
-            ('IPO price',      '$135 / share'),
-            ('Valuation',      '$1.75 trillion'),
-            ('2025 Revenue',   '$18.67B'),
-            ('Profitability',  'Unproven at scale'),
-            ('Lockup expiry',  '~Dec 2026 (~180d)'),
-            ('Key risk',       'Dual-class · Musk control'),
-            ('xAI merged',     'Feb 2026 all-stock deal'),
-        ]
-    },
-    {
-        'name': 'Anthropic', 'badge': 'OCT 2026', 'badge_class': 'badge-oct',
-        'rows': [
-            ('S-1 filed',        'Jun 1, 2026 (confidential)'),
-            ('Target listing',   'Oct 23, 2026'),
-            ('Series H val.',    '$965B → ~$1T+ IPO'),
-            ('ARR (May 2026)',   '$47B run-rate (5× in 5mo)'),
-            ('First op. profit', 'Q2 2026 projected'),
-            ('Lockup expiry',    '~Apr 2027 (THE SIGNAL)'),
-            ('Lead banks',       'Goldman · JPMorgan · MS'),
-            ('Key risk',         'Compute cost / SEC review'),
-        ]
-    },
-    {
-        'name': 'OpenAI', 'badge': '2027', 'badge_class': 'badge-2027',
-        'rows': [
-            ('S-1 filed',          'Jun 8, 2026 (confidential)'),
-            ('Target listing',     'Sep–Dec 2026 or 2027'),
-            ('Valuation',          '$730B–$1T+'),
-            ('2025 ARR',           '$20B+'),
-            ('2026 loss (proj.)',  '$14B GAAP ($25B full)'),
-            ('Profitable by',      '~2030 (CFO guidance)'),
-            ('Add. funding needed','$207B by 2030 (HSBC)'),
-            ('Key risk',           'Losses, restructuring'),
-        ]
-    },
+PERIODS = ['1D', '7D', '1M', '3M', '1Y', 'YTD']
+PERIOD_DAYS = {'7D': 7, '1M': 30, '3M': 90, '1Y': 365}
+
+REG = {}          # key -> meta
+GROUP_ORDER = []  # display order of groups
+
+
+def _m(key, label, ticker=None, group='Core', prefix='', suffix='', dec=2,
+       kind='px', src='Yahoo', proxy=False, vol=False, fred=None, alts=()):
+    """kind: 'px' price | 'yield' (level in %, moves in bps) | 'spread' (in %, moves in bps)"""
+    REG[key] = dict(key=key, label=label, ticker=ticker, group=group, prefix=prefix,
+                    suffix=suffix, dec=dec, kind=kind, src=src, proxy=proxy, vol=vol,
+                    fred=fred, alts=alts)
+    if group not in GROUP_ORDER:
+        GROUP_ORDER.append(group)
+
+
+# ── Macro / Overview ─────────────────────────────────────────────────────────
+_m('gold_usd',    'Gold USD',     'GC=F',     'Core', '$', '', 2)
+_m('usd_inr',     'USD / INR',    'USDINR=X', 'Core', '₹', '', 2)
+_m('gold_inr',    'Gold / INR*',  None,       'Core', '₹', '/g', 0, src='Derived')
+_m('crude_wti',   'Crude WTI',    'CL=F',     'Core', '$', '/bbl', 2)
+_m('crude_brent', 'Crude Brent',  'BZ=F',     'Core', '$', '/bbl', 2)
+_m('sp500',       'S&P 500',      '^GSPC',    'Core')
+_m('nifty',       'Nifty 50',     '^NSEI',    'Core')
+_m('us10y',       'US 10Y Yield', '^TNX',     'Core', kind='yield')
+
+_m('dxy',         'Dollar Index (DXY)', 'DX-Y.NYB', 'Dollar & volatility')
+_m('india_vix',   'India VIX',    '^INDIAVIX', 'Dollar & volatility', vol=True)
+_m('vix',         'CBOE VIX',     '^VIX',      'Dollar & volatility', vol=True)
+
+_m('banknifty',   'Bank Nifty',   '^NSEBANK', 'Global indices')
+_m('sensex',      'Sensex',       '^BSESN',   'Global indices')
+_m('nasdaq',      'Nasdaq Comp.', '^IXIC',    'Global indices')
+_m('nikkei',      'Nikkei 225',   '^N225',    'Global indices')
+_m('hangseng',    'Hang Seng',    '^HSI',     'Global indices')
+
+_m('us2y',        'US 2Y Yield',  None, 'Rates & crypto', kind='yield', src='FRED · DGS2', fred='DGS2')
+_m('us_2s10s',    'US 2s10s Spread', None, 'Rates & crypto', kind='spread', src='FRED · T10Y2Y', fred='T10Y2Y')
+_m('real_yield',  'US 10Y Real Yield', None, 'Rates & crypto', kind='yield', src='FRED · DFII10', fred='DFII10')
+_m('india10y',    'India 10Y G-Sec', '^IN10YT=RR', 'Rates & crypto', kind='yield')
+_m('btc',         'Bitcoin',      'BTC-USD',  'Rates & crypto', '$', '', 0)
+
+# ── Metals ───────────────────────────────────────────────────────────────────
+_m('silver',      'Silver',       'SI=F',  'Precious (futures)', '$', '/oz', 2)
+_m('m_platinum',  'Platinum',     'PL=F',  'Precious (futures)', '$', '/oz', 2)
+_m('m_palladium', 'Palladium',    'PA=F',  'Precious (futures)', '$', '/oz', 2)
+REG['gold_usd']['mgroup'] = 'Precious (futures)'
+
+_m('m_copper',    'Copper (COMEX)',   'HG=F',  'Base metals (futures)', '$', '/lb', 3)
+_m('m_aluminum',  'Aluminum (COMEX)', 'ALI=F', 'Base metals (futures)', '$', '/t', 0)
+_m('m_dbb',       'Base Metals Fund (DBB)', 'DBB', 'Base metals (futures)', '$', '', 2, proxy=True)
+
+_m('m_slx',       'Steel ETF (SLX)',  'SLX',   'Iron & steel (proxies)', '$', '', 2, proxy=True)
+_m('m_vale',      'Vale (iron ore)',  'VALE',  'Iron & steel (proxies)', '$', '', 2, proxy=True)
+_m('m_rio',       'Rio Tinto (iron ore)', 'RIO', 'Iron & steel (proxies)', '$', '', 2, proxy=True)
+_m('m_nmdc',      'NMDC (iron ore)',  'NMDC.NS', 'Iron & steel (proxies)', '₹', '', 2, proxy=True)
+_m('m_tatasteel', 'Tata Steel',       'TATASTEEL.NS', 'Iron & steel (proxies)', '₹', '', 2, proxy=True)
+_m('m_jswsteel',  'JSW Steel',        'JSWSTEEL.NS', 'Iron & steel (proxies)', '₹', '', 2, proxy=True)
+_m('m_sail',      'SAIL',             'SAIL.NS', 'Iron & steel (proxies)', '₹', '', 2, proxy=True)
+
+_m('m_hindzinc',  'Zinc · Hindustan Zinc', 'HINDZINC.NS', 'Zinc / Tin / Tungsten (proxies)', '₹', '', 2, proxy=True)
+_m('m_teck',      'Zinc · Teck Resources', 'TECK', 'Zinc / Tin / Tungsten (proxies)', '$', '', 2, proxy=True)
+_m('m_tin',       'Tin · Alphamin',   'AFM.V', 'Zinc / Tin / Tungsten (proxies)', 'C$', '', 2, proxy=True)
+_m('m_tungsten',  'Tungsten · Almonty', 'ALM', 'Zinc / Tin / Tungsten (proxies)', '$', '', 2, proxy=True,
+   alts=('AII.TO',))
+
+_m('m_cnxmetal',  'Nifty Metal Index', '^CNXMETAL', 'India metals & mining')
+_m('m_hindalco',  'Hindalco',         'HINDALCO.NS', 'India metals & mining', '₹', '', 2, proxy=True)
+_m('m_vedl',      'Vedanta',          'VEDL.NS', 'India metals & mining', '₹', '', 2, proxy=True)
+_m('m_hindcopper','Hindustan Copper', 'HINDCOPPER.NS', 'India metals & mining', '₹', '', 2, proxy=True)
+_m('m_nalco',     'NALCO',            'NATIONALUM.NS', 'India metals & mining', '₹', '', 2, proxy=True)
+
+_m('m_copx',      'Copper Miners (COPX)', 'COPX', 'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_fcx',       'Freeport-McMoRan', 'FCX',  'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_gdx',       'Gold Miners (GDX)', 'GDX', 'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_sil',       'Silver Miners (SIL)', 'SIL', 'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_xme',       'Metals & Mining (XME)', 'XME', 'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_remx',      'Rare Earth / Strategic (REMX)', 'REMX', 'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_lit',       'Lithium (LIT)',    'LIT',  'Global miners & ETFs', '$', '', 2, proxy=True)
+_m('m_ura',       'Uranium (URA)',    'URA',  'Global miners & ETFs', '$', '', 2, proxy=True)
+
+# ── Food grains & agri ───────────────────────────────────────────────────────
+_m('f_wheat',   'Wheat (CBOT)',        'ZW=F', 'Grains & oilseeds (futures)', '', '¢/bu', 2)
+_m('f_kcwheat', 'Wheat HRW (KC)',      'KE=F', 'Grains & oilseeds (futures)', '', '¢/bu', 2)
+_m('f_corn',    'Corn',                'ZC=F', 'Grains & oilseeds (futures)', '', '¢/bu', 2)
+_m('f_soy',     'Soybeans',            'ZS=F', 'Grains & oilseeds (futures)', '', '¢/bu', 2)
+_m('f_rice',    'Rough Rice',          'ZR=F', 'Grains & oilseeds (futures)', '$', '/cwt', 2)
+_m('f_oats',    'Oats',                'ZO=F', 'Grains & oilseeds (futures)', '', '¢/bu', 2)
+
+_m('f_soyoil',  'Soybean Oil',         'ZL=F', 'Veg oils & meal', '', '¢/lb', 2)
+_m('f_soymeal', 'Soybean Meal',        'ZM=F', 'Veg oils & meal', '$', '/ton', 2)
+
+_m('f_sugar',   'Sugar #11',           'SB=F', 'Softs', '', '¢/lb', 2)
+_m('f_coffee',  'Coffee',              'KC=F', 'Softs', '', '¢/lb', 2)
+_m('f_cotton',  'Cotton',              'CT=F', 'Softs', '', '¢/lb', 2)
+_m('f_cocoa',   'Cocoa',               'CC=F', 'Softs', '$', '/t', 0)
+_m('f_oj',      'Orange Juice',        'OJ=F', 'Softs', '', '¢/lb', 2)
+
+_m('f_dba',     'Agriculture Fund (DBA)', 'DBA', 'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_weat',    'Wheat ETF (WEAT)',    'WEAT', 'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_cornetf', 'Corn ETF (CORN)',     'CORN', 'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_soyb',    'Soybean ETF (SOYB)',  'SOYB', 'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_moo',     'Agribusiness (MOO)',  'MOO',  'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_adm',     'Archer-Daniels-Midland', 'ADM', 'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_bg',      'Bunge',               'BG',   'Agri ETFs & global', '$', '', 2, proxy=True)
+_m('f_de',      'Deere & Co',          'DE',   'Agri ETFs & global', '$', '', 2, proxy=True)
+
+_m('f_krbl',    'KRBL (basmati rice)', 'KRBL.NS', 'India agri & food (proxies)', '₹', '', 2, proxy=True)
+_m('f_awl',     'AWL Agri (edible oil)', 'AWL.NS', 'India agri & food (proxies)', '₹', '', 2, proxy=True)
+_m('f_itc',     'ITC (atta, foods)',   'ITC.NS', 'India agri & food (proxies)', '₹', '', 2, proxy=True)
+_m('f_tataco',  'Tata Consumer',       'TATACONSUM.NS', 'India agri & food (proxies)', '₹', '', 2, proxy=True)
+_m('f_balram',  'Balrampur Chini (sugar)', 'BALRAMCHIN.NS', 'India agri & food (proxies)', '₹', '', 2, proxy=True)
+_m('f_fmcg',    'Nifty FMCG',          '^CNXFMCG', 'India agri & food (proxies)', proxy=True)
+
+_m('f_chambal', 'Chambal Fertilisers', 'CHAMBLFERT.NS', 'Fertilizer & inputs', '₹', '', 2, proxy=True)
+_m('f_coro',    'Coromandel Intl',     'COROMANDEL.NS', 'Fertilizer & inputs', '₹', '', 2, proxy=True)
+_m('f_upl',     'UPL (agrochem)',      'UPL.NS', 'Fertilizer & inputs', '₹', '', 2, proxy=True)
+_m('f_ntr',     'Nutrien',             'NTR',  'Fertilizer & inputs', '$', '', 2, proxy=True)
+_m('f_mos',     'Mosaic',              'MOS',  'Fertilizer & inputs', '$', '', 2, proxy=True)
+_m('f_cf',      'CF Industries (urea/N)', 'CF', 'Fertilizer & inputs', '$', '', 2, proxy=True)
+
+# Derived ratios (computed in load_data)
+_m('gold_silver', 'Gold / Silver Ratio', None, 'Ratios', '', '', 1, src='Derived')
+_m('copper_gold', 'Copper / Gold (×1000)', None, 'Ratios', '', '', 3, src='Derived')
+_m('wheat_corn',  'Wheat / Corn Ratio', None, 'Ratios', '', '', 2, src='Derived')
+_m('soy_crush',   'Soy Crush Margin', None, 'Ratios', '$', '/bu', 2, src='Derived')
+
+OVERVIEW_SECTIONS = [
+    ('Core markets',          ['gold_usd', 'usd_inr', 'gold_inr', 'crude_wti',
+                               'crude_brent', 'sp500', 'nifty', 'us10y']),
+    ('Dollar & volatility',   ['dxy', 'india_vix', 'vix', 'silver']),
+    ('Global indices',        ['banknifty', 'sensex', 'nasdaq', 'nikkei', 'hangseng']),
+    ('Rates & crypto',        ['us2y', 'us_2s10s', 'real_yield', 'india10y', 'btc']),
 ]
 
-# 9-column headers mapping
-TIMELINE_COLUMNS = [
-    ("IPO / AI Complex", "cell-ipo"),
-    ("Macro / Rates", "cell-macro"),
-    ("401(k) / Contagion", "cell-401k"),
-    ("Gold / Currency", "cell-gold"),
-    ("India Equity Strategy", "cell-india"),
-    ("Food Security", "cell-warn"),
-    ("Monsoon", "cell-silver"),
-    ("Geopolitical / Conflict", "cell-danger"),
-    ("Ganga River Level", "cell-phase"),
-]
-
-TIMELINE_ROWS = [
-    {
-        'period': 'Jun 2026', 'start': '2026-06-01', 'end': '2026-06-30', 'alert': True,
-        'cells': [
-            ('cell-ipo',   'SpaceX IPO live',       'SPCX lists $1.75T. Largest IPO in history. xAI merged in.'),
-            ('cell-macro', 'Iran war inflation',    'CPI 4%+, front-end rates under pressure. Warsh paralysed.'),
-            ('cell-401k',  '$141K avg, ↓4%',        'Q1 2026 Fidelity data. First cracks. Loan withdrawals rising.'),
-            ('cell-gold',  'Gold $4,139 / INR 95.25','Stress already here. Accumulate SGBs now. Reduce US exposure.'),
-            ('cell-india', 'Accumulate phase',      'SGBs aggressively. Exit IT stocks. Build cash dry powder.'),
-            ('cell-warn',  'Food price pressure',   'Fertilizer supply shock from Hormuz disruption.'),
-            ('cell-silver','Monsoon tracking',      'IMD tracking initial onset across Peninsular India.'),
-            ('cell-danger','Middle East escalates', 'Active regional strikes driving energy risk premiums.'),
-            ('cell-phase', 'Ganga baseline',        'Pre-monsoon storage monitored across CWC stations.'),
-        ]
-    },
-    {
-        'period': 'Jul–Sep 2026', 'start': '2026-07-01', 'end': '2026-09-30', 'alert': False,
-        'cells': [
-            ('cell-ipo',   'AI melt-up',        'Anthropic IPO hype lifts Nvidia, MSFT, GOOGL. FOMO max.'),
-            ('cell-macro', 'Fed paralysed',     "Won't hike into midterms. Warsh \"disinflationary\" narrative."),
-            ('cell-401k',  'Brief recovery',    'AI rally lifts 401(k) briefly. False sense of safety.'),
-            ('cell-gold',  'Gold grinds up',    'INR ~92–97. Use the rally to EXIT Indian IT stocks.'),
-            ('cell-india', 'EXIT equities',     'Sell US-facing exposure into AI rally. These are gift prices.'),
-            ('cell-warn',  'Agri inputs watch',  'Monitoring Kharif sowing progress amidst input costs.'),
-            ('cell-silver','Monsoon deficit',   'Below LPA rainfall in key agricultural belts.'),
-            ('cell-danger','Multi-front tension', 'South China Sea and proxy friction remains persistent.'),
-            ('cell-phase', 'Peak flow period',   'River levels tracked during primary rainy season.'),
-        ]
-    },
-    {
-        'period': 'Oct 2026', 'start': '2026-10-01', 'end': '2026-10-31', 'alert': True,
-        'cells': [
-            ('cell-ipo',   'Anthropic IPO',    '~$1T+ valuation. Peak AI narrative. Maximum global FOMO.'),
-            ('cell-macro', 'Midterms Nov 2026','Every policy lever pulled. Political liquidity injections.'),
-            ('cell-401k',  'Peak balances',    '40% S&P = 10 AI stocks. Concentration at extremes.'),
-            ('cell-gold',  'Gold $4,500+?',    'Max defense. SGBs + physical. IPO = top signal, not opportunity.'),
-            ('cell-india', 'MAX DEFENSE',      'Oct 1 = full defensive. Gold 45%, Cash 30%, Equity 20%.'),
-            ('cell-warn',  'Harvest yields',   'Kharif output reports evaluate food inflation risk.'),
-            ('cell-silver','Monsoon withdrawal','Post-monsoon assessment completed across sub-regions.'),
-            ('cell-danger','Electoral risk',   'Heightened geopolitical signaling around US election.'),
-            ('cell-phase', 'Post-monsoon storage','Basin reservoir levels set winter water allocation.'),
-        ]
-    },
-    {
-        'period': 'Nov–Dec 2026', 'start': '2026-11-01', 'end': '2026-12-31', 'alert': False,
-        'cells': [
-            ('cell-ipo',   'OpenAI S-1 public', 'Files ~Aug, lists Sep–Dec. $14–25B loss disclosed. Market shock.'),
-            ('cell-macro', 'Midterm results',   'Political cover fades post-election. Bond stress resumes.'),
-            ('cell-401k',  'Deceptive calm',    "Lockups not expired. People complacent. False floor."),
-            ('cell-gold',  'Hold gold firm',    "This period will feel like you're wrong. You are NOT."),
-            ('cell-india', 'Do nothing',        'Hold position. Add gold on any weakness. Watch SPCX closely.'),
-            ('cell-warn',  'Rabi sowing start', 'Winter crop acreage monitored for food price buffer.'),
-            ('cell-silver','NE Monsoon phase', 'Northeast monsoon active over Southern Peninsula.'),
-            ('cell-danger','Post-election shift','Potential global foreign policy alignment shifts.'),
-            ('cell-phase', 'Winter baseline',   'Flow levels stabilise into dry-weather period.'),
-        ]
-    },
-    {
-        'period': 'Jan–Mar 2027', 'start': '2027-01-01', 'end': '2027-03-31', 'alert': False,
-        'cells': [
-            ('cell-ipo',   'Earnings reality',  'SpaceX Q3/Q4 + Anthropic first 2 public quarters. Gap visible.'),
-            ('cell-macro', 'Bond stress builds','Debt maturity wall. Japan/Korea EM pricing worsens.'),
-            ('cell-401k',  'Volatility rising', '$10–50K swings per week. Anxiety builds among retirees.'),
-            ('cell-gold',  'Gold $4,800+?',     'INR ~97–101. Gold INR flat to up. Keep all gold.'),
-            ('cell-india', 'Watchlist ready',   'Finalise quality India names. Cash dry powder at maximum.'),
-            ('cell-warn',  'Global EM prices',  'Imported inflation tests low-income sovereign reserves.'),
-            ('cell-silver','Pre-season outlook','Early spring indicators for upcoming monsoon cycle.'),
-            ('cell-danger','Resource friction', 'Geopolitical friction shifts toward critical resources.'),
-            ('cell-phase', 'Glacial melt watch','Himalayan snowpack melt assessment in upper basin.'),
-        ]
-    },
-    {
-        'period': 'Apr 2027', 'start': '2027-04-01', 'end': '2027-04-30', 'alert': True,
-        'cells': [
-            ('cell-danger','Lockup expiry',    'Anthropic: Google, Amazon, employees ALL can sell. Structural.'),
-            ('cell-danger','Cascade begins',   '"If Anthropic can\'t monetise, who can?" Nvidia guidance cut.'),
-            ('cell-401k',  'Balances crater',  '40% S&P concentration = brutal 401(k) loss. Forced withdrawals.'),
-            ('cell-gold',  'Gold dips briefly',"Margin call selling. INR 99–103. Gold INR flat. HOLD. DON'T SELL."),
-            ('cell-india', 'Nifty -20%+',      'FII outflows. INR 99–103. Deploy 1st tranche of equity (10–15%).'),
-            ('cell-warn',  'Supply disruption','Financial cascade strains EM trade settlement channels.'),
-            ('cell-silver','IMD 1st forecast', 'Initial official monsoon forecast for 2027 season.'),
-            ('cell-danger','Cascade spreading', 'Market dislocation spills into geopolitical instability.'),
-            ('cell-phase', 'Pre-summer minimum','Basin storage reaches lowest annual capacity level.'),
-        ]
-    },
-    {
-        'period': 'May–Jun 2027', 'start': '2027-05-01', 'end': '2027-06-30', 'alert': False,
-        'cells': [
-            ('cell-danger','Bond contagion',  'Treasuries sold not bought. 10Y spikes. Everything liquidated.'),
-            ('cell-danger','Fed choice point','Dollar or bonds? Warsh must decide. Extreme volatility.'),
-            ('cell-401k',  'Retirement crisis','Boomers near retirement forced to sell at lows. Amplifies crash.'),
-            ('cell-gold',  'Gold recovers',   'Fed signals printing. Gold starts explosive move. INR 101–106.'),
-            ('cell-india', '2nd tranche',     'Nifty -30–35%. Add domestic: FMCG, pharma, utilities, PSU banks.'),
-            ('cell-warn',  'Food strain peaks','Dollar liquidity crunch pressures food import budgets.'),
-            ('cell-silver','Monsoon arrival', 'Southeastern monsoon onset across main subcontinent.'),
-            ('cell-danger','Crisis policy',   'Global security frameworks tested by currency moves.'),
-            ('cell-phase', 'Monsoon recharge', 'River levels begin seasonal rise from initial rains.'),
-        ]
-    },
-    {
-        'period': 'Jul–Sep 2027', 'start': '2027-07-01', 'end': '2027-09-30', 'alert': True,
-        'cells': [
-            ('cell-ipo',   'AI reset',           'SpaceX may survive (rockets real). Anthropic/OpenAI 25x→8x rev.'),
-            ('cell-macro', 'QE / YCC announced', 'Fed buys bonds. Dollar collapses. New monetary framework talk.'),
-            ('cell-401k',  'Permanent damage',   'Early retirees locked in losses. Social Security stress narrative.'),
-            ('cell-gold',  'Gold EXPLODES',       '$5,500–$7,000? INR recovering 95→88. Gold INR ₹480K–₹600K. HOLD.'),
-            ('cell-india', '3rd tranche',         'Nifty bottoming. Quality mid-cap India. Build silver aggressively.'),
-            ('cell-warn',  'Agri commodity spike','Currency devaluation drives physical food price shocks.'),
-            ('cell-silver','Peak monsoon status','Mid-season rainfall distribution across prime cropland.'),
-            ('cell-danger','Realignment',        'Monetary crisis forces structural diplomatic alliances.'),
-            ('cell-phase', 'Peak discharge',     'Maximum seasonal water volume across river network.'),
-        ]
-    },
-    {
-        'period': 'H2 2027–2028', 'start': '2027-10-01', 'end': '2028-12-31', 'alert': False,
-        'cells': [
-            ('cell-phase', 'Stabilisation',   'Surviving AI cos trade on actual earnings. Dot-com survivors.'),
-            ('cell-macro', 'Dollar rebases 30%','INR strengthens 100→70–75. De-dollarisation accelerates.'),
-            ('cell-401k',  'Policy response', '401(k) bailout political pressure. Inflationary. Validates thesis.'),
-            ('cell-gold',  'EXIT GOLD NOW',   'INR strong = gold INR falls. Sell before INR hits 75. Rotate.'),
-            ('cell-india', 'Full India equity','FII money floods back. INR+Nifty double tailwind. Generational.'),
-            ('cell-warn',  'Agri stabilization','Food supply chains adjust to rebased currency terms.'),
-            ('cell-silver','Multi-year trend','Monsoon reliability patterns evaluated over cycle.'),
-            ('cell-danger','New equilibrium',  'Geopolitical landscape settles into multi-polar order.'),
-            ('cell-phase', 'Long-term basin', 'Decadal river management and reservoir replenishment.'),
-        ]
-    },
-    {
-        'period': '2029+', 'start': '2029-01-01', 'end': '2035-12-31', 'alert': False,
-        'cells': [
-            ('cell-silver','Silver peaks late', 'Gold/silver ratio 88→45. Silver $130–150. Exits AFTER gold.'),
-            ('cell-macro', 'New cycle',          'India structural winner. RBI gold reserves = strong INR backing.'),
-            ('cell-401k',  'US consumption shock','Boomers poorer. US recession deepens. India domestic shines.'),
-            ('cell-gold',  '5–10% permanent',   'Keep small gold forever (SGBs for 2.5% yield). Rest → India equity.'),
-            ('cell-india', 'Compound India',    'Domestic consumption. Pharma. Power infra. 5–10yr holding.'),
-            ('cell-warn',  'Structural security','Long-term food autonomy secured via domestic yields.'),
-            ('cell-silver','Climate baseline',  'Monsoon dynamics integrated into permanent planning.'),
-            ('cell-danger','Stable multi-polar','Post-transition regional geopolitical baseline.'),
-            ('cell-phase', 'Ecological baseline','Ecological trajectory stabilized for upper watershed.'),
-        ]
-    },
-]
-
-PORTFOLIO_PHASES = {
-    'Now – Sep 2026':      {'Gold/SGBs': 35, 'INR Cash': 25, 'India Equity': 30, 'Silver': 10},
-    'Oct 2026 – Mar 2027': {'Gold/SGBs': 45, 'INR Cash': 30, 'India Equity': 20, 'Silver':  5},
-    'Apr – Jun 2027':      {'Gold/SGBs': 50, 'INR Cash': 35, 'India Equity': 10, 'Silver':  5},
-    'H2 2027':             {'Gold/SGBs': 35, 'INR Cash': 15, 'India Equity': 35, 'Silver': 15},
-    '2028+':               {'Gold/SGBs': 25, 'INR Cash': 15, 'India Equity': 45, 'Silver': 15},
+METAL_GROUPS = {
+    'Precious (futures)':      ['gold_usd', 'silver', 'm_platinum', 'm_palladium'],
+    'Base metals (futures)':   ['m_copper', 'm_aluminum', 'm_dbb'],
+    'Iron & steel (proxies)':  ['m_slx', 'm_vale', 'm_rio', 'm_nmdc', 'm_tatasteel', 'm_jswsteel', 'm_sail'],
+    'Zinc / Tin / Tungsten (proxies)': ['m_hindzinc', 'm_teck', 'm_tin', 'm_tungsten'],
+    'India metals & mining':   ['m_cnxmetal', 'm_hindalco', 'm_vedl', 'm_hindcopper', 'm_nalco'],
+    'Global miners & ETFs':    ['m_copx', 'm_fcx', 'm_gdx', 'm_sil', 'm_xme', 'm_remx', 'm_lit', 'm_ura'],
 }
+ALL_METAL_KEYS = [k for ks in METAL_GROUPS.values() for k in ks]
 
-PHASE_EVENTS = [
-    {'date': '2026-06-12', 'label': 'SpaceX IPO\n$1.75T',       'color': '#818cf8', 'symbol': 'star'},
-    {'date': '2026-10-23', 'label': 'Anthropic IPO\n~$1T',      'color': '#c084fc', 'symbol': 'star'},
-    {'date': '2026-11-03', 'label': 'US Midterms',               'color': '#60a5fa', 'symbol': 'triangle-up'},
-    {'date': '2026-12-15', 'label': 'SpaceX lockup\nexpiry',    'color': '#f87171', 'symbol': 'x'},
-    {'date': '2027-04-23', 'label': 'Anthropic\nlockup expiry', 'color': '#f87171', 'symbol': 'x'},
-    {'date': '2027-06-15', 'label': 'Fed decision\npoint',      'color': '#fbbf24', 'symbol': 'diamond'},
-    {'date': '2027-09-01', 'label': 'Fed prints\n(projected)',  'color': '#4ade80', 'symbol': 'circle'},
-    {'date': '2028-03-01', 'label': 'USD rebase\n-30% INR',     'color': '#34d399', 'symbol': 'triangle-down'},
-]
+FOOD_GROUPS = {
+    'Grains & oilseeds (futures)': ['f_wheat', 'f_kcwheat', 'f_corn', 'f_soy', 'f_rice', 'f_oats'],
+    'Veg oils & meal':             ['f_soyoil', 'f_soymeal'],
+    'Softs':                       ['f_sugar', 'f_coffee', 'f_cotton', 'f_cocoa', 'f_oj'],
+    'Agri ETFs & global':          ['f_dba', 'f_weat', 'f_cornetf', 'f_soyb', 'f_moo', 'f_adm', 'f_bg', 'f_de'],
+    'India agri & food (proxies)': ['f_krbl', 'f_awl', 'f_itc', 'f_tataco', 'f_balram', 'f_fmcg'],
+    'Fertilizer & inputs':         ['f_chambal', 'f_coro', 'f_upl', 'f_ntr', 'f_mos', 'f_cf'],
+}
+ALL_FOOD_KEYS = [k for ks in FOOD_GROUPS.values() for k in ks]
+FOOD_FUTURES = [k for g in list(FOOD_GROUPS)[:3] for k in FOOD_GROUPS[g]]
+
+FOOD_MAP = pd.DataFrame([
+    ('Wheat',    'Direct futures (CBOT, KC)', 'ZW=F, KE=F · quoted in US cents per bushel'),
+    ('Corn, Soybeans, Oats', 'Direct futures (CBOT)', 'ZC=F, ZS=F, ZO=F · cents per bushel'),
+    ('Rice',     'Direct futures (US rough rice) + India proxy', 'ZR=F ($/cwt), KRBL.NS. Not Asian export rice (Thai/Viet/India)'),
+    ('Edible oils', 'Soybean oil futures + proxy', 'ZL=F, AWL.NS. No free palm-oil feed'),
+    ('Sugar, Coffee, Cotton, Cocoa', 'Direct futures (ICE)', 'SB=F, KC=F, CT=F, CC=F'),
+    ('Pulses, Indian wheat/rice mandi prices, MSP', 'No free feed', 'Needs Agmarknet / e-NAM via a data.gov.in key'),
+    ('Fertilizer', 'Proxy: producers', 'NTR, MOS, CF, CHAMBLFERT.NS, COROMANDEL.NS'),
+], columns=['Commodity', 'How it is tracked here', 'Tickers / note'])
+
+METAL_MAP = pd.DataFrame([
+    ('Gold, Silver, Platinum, Palladium', 'Direct futures (COMEX / NYMEX)', 'GC=F, SI=F, PL=F, PA=F'),
+    ('Copper',     'Direct futures (COMEX)',  'HG=F'),
+    ('Aluminum',   'Direct futures (COMEX)',  'ALI=F'),
+    ('Iron ore',   'Proxy: producers + steel ETF', 'VALE, RIO, NMDC.NS, SLX'),
+    ('Steel',      'Proxy: steel makers',     'TATASTEEL.NS, JSWSTEEL.NS, SAIL.NS, SLX'),
+    ('Zinc',       'Proxy: zinc producers',   'HINDZINC.NS, TECK'),
+    ('Tin',        'Proxy: tin producer',     'AFM.V (Alphamin)'),
+    ('Tungsten',   'Proxy: tungsten producer', 'ALM (Almonty)'),
+    ('Nickel, Lead', 'No free feed', 'Use DBB as a rough read, or add a paid LME key'),
+    ('Rare earths, Lithium, Uranium', 'Proxy: thematic ETFs', 'REMX, LIT, URA'),
+], columns=['Metal', 'How it is tracked here', 'Tickers'])
 
 
-# ── Data fetching (all cached) ────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════════
+# Data
+# ═════════════════════════════════════════════════════════════════════════════
 
-@st.cache_data(ttl=300)
-def fetch_gold_historical():
+def _extract_close(df, t):
+    if df is None or df.empty:
+        return None
+    if isinstance(df.columns, pd.MultiIndex):
+        if t in df.columns.get_level_values(0):
+            return df[t]['Close']
+        try:
+            return df['Close'][t]
+        except KeyError:
+            return None
+    return df['Close'] if 'Close' in df.columns else None
+
+
+def _clean(s):
+    s = s.dropna().copy()
+    s.index = pd.to_datetime(s.index).tz_localize(None).normalize()
+    return s[~s.index.duplicated(keep='last')].sort_index()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_prices(tickers: tuple) -> dict:
+    """One batched Yahoo call for ~2y of daily closes, per-ticker fallback if empty."""
+    out = {}
     try:
-        url = "https://raw.githubusercontent.com/datasets/gold-prices/master/data/monthly.csv"
-        r   = requests.get(url, timeout=8)
-        df  = pd.read_csv(io.StringIO(r.text))
-        df.columns = ['Date', 'Price']
+        df = yf.download(list(tickers), period='2y', interval='1d', auto_adjust=False,
+                         group_by='ticker', progress=False, threads=True)
+    except Exception:
+        df = None
+    for t in tickers:
+        s = None
+        try:
+            s = _extract_close(df, t)
+            if s is not None:
+                s = s.dropna()
+        except Exception:
+            s = None
+        if s is None or len(s) < 2:
+            try:
+                s = yf.Ticker(t).history(period='2y', interval='1d', auto_adjust=False)['Close'].dropna()
+            except Exception:
+                s = None
+        if s is not None and len(s) >= 2:
+            out[t] = _clean(s)
+    return out
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_fred(series_id: str):
+    try:
+        r = requests.get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}", timeout=8)
+        df = pd.read_csv(io.StringIO(r.text))
+        df.columns = ['Date', 'V']
         df['Date'] = pd.to_datetime(df['Date'])
-        return df[df['Date'] >= '2000-01-01'].copy()
+        df['V'] = pd.to_numeric(df['V'], errors='coerce')
+        s = df.dropna().set_index('Date')['V']
+        s = s[s.index >= pd.Timestamp.today() - pd.Timedelta(days=800)]
+        return s if len(s) > 2 else None
     except Exception:
         return None
 
 
-@st.cache_data(ttl=300)
-def fetch_sp500_historical():
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_fii_dii():
+    """Best-effort NSE FII/DII feed (NSE blocks bots often → None)."""
     try:
-        url = "https://raw.githubusercontent.com/vega/vega-datasets/main/data/sp500.csv"
-        r   = requests.get(url, timeout=8)
-        df  = pd.read_csv(io.StringIO(r.text))
-        df.columns = ['Date', 'Price']
-        df['Date'] = pd.to_datetime(df['Date'], format='%b %d %Y', errors='coerce')
-        return df.dropna().sort_values('Date')
+        h = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                           '(KHTML, like Gecko) Chrome/124 Safari/537.36',
+             'Accept': 'application/json', 'Referer': 'https://www.nseindia.com/reports/fii-dii'}
+        s = requests.Session()
+        s.get('https://www.nseindia.com', headers=h, timeout=8)
+        rows = s.get('https://www.nseindia.com/api/fiidiiTradeReact', headers=h, timeout=8).json()
+        out = {}
+        for r in rows:
+            cat = 'FII' if 'FII' in r.get('category', '') else 'DII'
+            out[cat] = {'net': float(str(r.get('netValue', '0')).replace(',', '')),
+                        'buy': float(str(r.get('buyValue', '0')).replace(',', '')),
+                        'sell': float(str(r.get('sellValue', '0')).replace(',', '')),
+                        'date': r.get('date', '')}
+        return out if out else None
     except Exception:
         return None
 
 
-@st.cache_data(ttl=300)
-def fetch_crude_historical():
-    oil_anchors = {
-        '2000-01': 27,  '2001-01': 28,  '2002-01': 19,  '2003-01': 33,
-        '2004-01': 34,  '2005-01': 47,  '2006-01': 65,  '2007-01': 58,
-        '2008-01': 91,  '2008-07': 133, '2009-01': 41,  '2010-01': 79,
-        '2011-01': 91,  '2012-01': 100, '2013-01': 94,  '2014-01': 95,
-        '2015-01': 47,  '2016-01': 32,  '2017-01': 52,  '2018-01': 62,
-        '2019-01': 53,  '2020-01': 61,  '2020-03': 20,  '2021-01': 52,
-        '2022-01': 83,  '2022-06': 114, '2023-01': 76,  '2024-01': 73,
-        '2025-01': 75,  '2025-06': 68,  '2026-01': 82,  '2026-06': 89,
-    }
-    anchor_df = pd.DataFrame([
-        {'Date': pd.to_datetime(k), 'Price': v}
-        for k, v in oil_anchors.items()
-    ]).sort_values('Date')
-    interp = (anchor_df.set_index('Date')
-              .reindex(pd.date_range(anchor_df['Date'].min(),
-                                     anchor_df['Date'].max(), freq='MS'))
-              .interpolate('linear').reset_index())
-    interp.columns = ['Date', 'Price']
-    return interp
-
-
-@st.cache_data(ttl=300)
-def fetch_inr_historical():
-    inr_anchors = {
-        '2000-01': 44.9,  '2002-01': 48.2,  '2004-01': 45.3,  '2006-01': 44.1,
-        '2008-01': 39.4,  '2008-07': 42.8,  '2009-01': 48.9,  '2010-01': 45.7,
-        '2011-01': 44.7,  '2012-01': 52.6,  '2013-07': 59.8,  '2014-01': 62.5,
-        '2015-01': 63.1,  '2016-01': 67.8,  '2017-01': 67.7,  '2018-10': 74.2,
-        '2019-01': 71.3,  '2020-01': 71.3,  '2020-04': 76.4,  '2021-01': 73.1,
-        '2022-01': 74.5,  '2022-10': 83.1,  '2023-01': 81.9,  '2024-01': 83.2,
-        '2025-01': 86.5,  '2025-06': 84.1,  '2025-12': 87.3,
-        '2026-01': 88.9,  '2026-03': 91.2,  '2026-06': 95.25,
-    }
-    anchor_df = pd.DataFrame([
-        {'Date': pd.to_datetime(k), 'Rate': v}
-        for k, v in inr_anchors.items()
-    ]).sort_values('Date')
-    interp = (anchor_df.set_index('Date')
-              .reindex(pd.date_range(anchor_df['Date'].min(),
-                                     anchor_df['Date'].max(), freq='MS'))
-              .interpolate('linear').reset_index())
-    interp.columns = ['Date', 'Rate']
-    return interp
-
-
-def _yf_fetch(ticker: str, label: str):
-    """Fetch current price and day-change % from Yahoo Finance via yfinance."""
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_news(ticker: str):
     try:
-        t = yf.Ticker(ticker)
-        info = t.fast_info
-        price = info.last_price
-        prev  = info.previous_close
-        if price is None or prev is None or prev == 0:
-            raise ValueError("missing price")
-        pct   = (price - prev) / prev * 100
-        sign  = '+' if pct >= 0 else ''
-        return {
-            'value':  price,
-            'change': f"{sign}{pct:.2f}%",
-            'change_pct': pct,         # raw float for colour logic
-            'source': f'Yahoo Finance · {label}',
-            'status': 'live',
-        }
-    except Exception as e:
-        return {
-            'value':  None,
-            'change': 'N/A',
-            'change_pct': 0.0,
-            'source': f'Yahoo Finance error ({label})',
-            'status': 'error',
-        }
-
-
-@st.cache_data(ttl=300)
-def get_live_prices():
-    # Yahoo Finance tickers
-    gold     = _yf_fetch('GC=F',    'GC=F')       # Gold futures (USD/oz)
-    usd_inr  = _yf_fetch('USDINR=X','USDINR=X')   # USD/INR spot
-    wti      = _yf_fetch('CL=F',    'CL=F')        # WTI Crude futures
-    brent    = _yf_fetch('BZ=F',    'BZ=F')        # Brent Crude futures
-    sp500    = _yf_fetch('^GSPC',   'GSPC')        # S&P 500
-    nifty    = _yf_fetch('^NSEI',   'NSEI')        # Nifty 50
-    btc      = _yf_fetch('BTC-USD', 'BTC-USD')     # Bitcoin
-    us10y    = _yf_fetch('^TNX',    'TNX')         # US 10-Year yield
-
-    prices = {
-        'gold_usd':    gold,
-        'usd_inr':     usd_inr,
-        'crude_wti':   wti,
-        'crude_brent': brent,
-        'sp500':       sp500,
-        'nifty':       nifty,
-        'btc_usd':     btc,
-        'us10y':       us10y,
-        'gold_inr':    {'value': None, 'change': 'derived', 'change_pct': 0.0,
-                        'source': 'Gold × INR / 31.1035', 'status': 'derived'},
-    }
-
-    # Derive Gold/INR (per gram)
-    g_val   = gold.get('value')
-    inr_val = usd_inr.get('value')
-    if g_val and inr_val:
-        gold_inr_val = g_val * inr_val / 31.1035
-        # approximate combined day-change
-        gold_pct = gold.get('change_pct', 0.0)
-        inr_pct  = usd_inr.get('change_pct', 0.0)
-        combined_pct = gold_pct + inr_pct           # additive approximation
-        sign = '+' if combined_pct >= 0 else ''
-        prices['gold_inr'] = {
-            'value':      round(gold_inr_val, 0),
-            'change':     f"{sign}{combined_pct:.2f}%",
-            'change_pct': combined_pct,
-            'source':     'Gold × INR / 31.1035',
-            'status':     'derived',
-        }
-
-    return prices
-
-
-@st.cache_data(ttl=1800)
-def fetch_food_security_snapshot():
-    """Latest global food-security situation update, aggregated from FAO/WFP
-    reporting via ReliefWeb's open API (no key required)."""
-    try:
-        url = ("https://api.reliefweb.int/v1/reports"
-               "?appname=macro-dashboard"
-               "&query[value]=food security AND (FAO OR WFP)"
-               "&query[fields][]=title"
-               "&sort[]=date:desc&limit=1"
-               "&fields[include][]=title&fields[include][]=date"
-               "&fields[include][]=source")
-        r = requests.get(url, timeout=8)
-        r.raise_for_status()
-        item = r.json()['data'][0]['fields']
-        src  = ', '.join(s.get('shortname', s.get('name', ''))
-                         for s in item.get('source', [])) or 'FAO/WFP'
-        return {
-            'headline': item.get('title', 'N/A'),
-            'date':     item.get('date', {}).get('created', '')[:10],
-            'source':   f'ReliefWeb aggregation ({src})',
-            'status':   'live',
-        }
+        items = yf.Ticker(ticker).news or []
     except Exception:
-        return {
-            'headline': 'Live feed unavailable',
-            'date': None,
-            'source': 'FAO/WFP via ReliefWeb — request failed, no cached fallback',
-            'status': 'error',
-        }
+        return []
+    out = []
+    for it in items[:8]:
+        c = it.get('content', it)
+        title = c.get('title')
+        url = ((c.get('canonicalUrl') or {}).get('url')
+               or (c.get('clickThroughUrl') or {}).get('url') or it.get('link'))
+        pub = (c.get('provider') or {}).get('displayName') or it.get('publisher') or ''
+        if title and url:
+            out.append((title, url, pub))
+    return out
 
 
-@st.cache_data(ttl=1800)
-def fetch_monsoon_snapshot():
-    """India Meteorological Department seasonal rainfall status, via the
-    data.gov.in open-data API. Requires a free API key (set DATA_GOV_IN_KEY
-    in st.secrets) — IMD does not expose an unauthenticated JSON feed."""
-    api_key = st.secrets.get("DATA_GOV_IN_KEY", "") if hasattr(st, "secrets") else ""
-    if not api_key:
-        return {
-            'headline': 'No API key configured',
-            'date': None,
-            'source': 'IMD rainfall data (via data.gov.in) — add DATA_GOV_IN_KEY '
-                      'to st.secrets to enable this feed',
-            'status': 'error',
-        }
-    try:
-        # data.gov.in "Sub-division wise rainfall" resource
-        url = ("https://api.data.gov.in/resource/"
-               "88a4bf74-2ed3-4c6f-9d3e-e6a4b0a5a5c1"
-               f"?api-key={api_key}&format=json&limit=1&sort[date]=desc")
-        r = requests.get(url, timeout=8)
-        r.raise_for_status()
-        rec = r.json()['records'][0]
-        return {
-            'headline': f"{rec.get('subdivision', 'India')}: rainfall "
-                        f"{rec.get('departure', '?')}% of long-period average",
-            'date':   rec.get('date', ''),
-            'source': 'India Meteorological Department (data.gov.in)',
-            'status': 'live',
-        }
-    except Exception:
-        return {
-            'headline': 'Live feed unavailable',
-            'date': None,
-            'source': 'IMD via data.gov.in — request failed; verify resource ID / key',
-            'status': 'error',
-        }
+def load_data(extra_tickers=()):
+    """Returns S: key -> daily close Series (tz-naive)."""
+    tick = {k: m['ticker'] for k, m in REG.items() if m['ticker']}
+    px = fetch_prices(tuple(sorted(set(tick.values()))))
+    S = {}
+    for k, t in tick.items():
+        s = px.get(t)
+        if s is None:
+            for alt in REG[k]['alts']:
+                s = fetch_prices((alt,)).get(alt)
+                if s is not None:
+                    break
+        if s is not None:
+            S[k] = s
+    for k, m in REG.items():
+        if m['fred']:
+            s = fetch_fred(m['fred'])
+            if s is not None:
+                S[k] = s
+    # derived
+    def combine(a, b, f):
+        df = pd.concat([a, b], axis=1, keys=['a', 'b']).ffill().dropna()
+        return f(df['a'], df['b'])
+    if 'gold_usd' in S and 'usd_inr' in S:
+        S['gold_inr'] = combine(S['gold_usd'], S['usd_inr'], lambda g, i: g * i / 31.1035)
+    if 'gold_usd' in S and 'silver' in S:
+        S['gold_silver'] = combine(S['gold_usd'], S['silver'], lambda g, s: g / s)
+    if 'gold_usd' in S and 'm_copper' in S:
+        S['copper_gold'] = combine(S['m_copper'], S['gold_usd'], lambda c, g: c / g * 1000)
+    if 'f_wheat' in S and 'f_corn' in S:
+        S['wheat_corn'] = combine(S['f_wheat'], S['f_corn'], lambda w, c: w / c)
+    if all(k in S for k in ('f_soy', 'f_soymeal', 'f_soyoil')):
+        df = pd.concat([S['f_soy'], S['f_soymeal'], S['f_soyoil']], axis=1,
+                       keys=['b', 'm', 'o']).ffill().dropna()
+        S['soy_crush'] = df['m'] * 0.022 + df['o'] * 0.11 - df['b'] / 100
+    # custom tickers
+    for t in extra_tickers:
+        got = fetch_prices((t,)).get(t)
+        key = f'c_{t}'
+        REG[key] = dict(key=key, label=t, ticker=t, group='Custom', prefix='', suffix='', dec=2,
+                        kind='px', src='Yahoo', proxy=True, vol=False, fred=None, alts=())
+        if got is not None:
+            S[key] = got
+    return S
 
 
-@st.cache_data(ttl=1800)
-def fetch_conflict_snapshot():
-    """Recent conflict-event summary. UCDP's Candidate/GED API is open and
-    key-free and is used as the live source; ACLED offers a finer-grained
-    feed but requires a registered API key (set ACLED_KEY in st.secrets)."""
-    try:
-        url = "https://ucdpapi.pcr.uu.se/api/gedevents/24.1?pagesize=5&sort=-date_end"
-        r = requests.get(url, timeout=8)
-        r.raise_for_status()
-        events = r.json().get('Result', [])
-        if not events:
-            raise ValueError("empty result")
-        latest = events[0]
-        return {
-            'headline': f"{latest.get('country', '?')}: {latest.get('best', 0)} "
-                        f"reported fatalities ({latest.get('type_of_violence', '?')})",
-            'date':   str(latest.get('date_end', ''))[:10],
-            'source': 'UCDP GED (open API). ACLED needs a registered key — '
-                      'add ACLED_KEY in st.secrets for that feed too',
-            'status': 'live',
-        }
-    except Exception:
-        return {
-            'headline': 'Live feed unavailable',
-            'date': None,
-            'source': 'UCDP/ACLED — request failed or endpoint changed; '
-                      'ACLED requires a registered key in st.secrets',
-            'status': 'error',
-        }
+# ═════════════════════════════════════════════════════════════════════════════
+# Stats / formatting
+# ═════════════════════════════════════════════════════════════════════════════
+
+def stats(s: pd.Series) -> dict:
+    s = s.dropna()
+    cur, prev, last = float(s.iloc[-1]), float(s.iloc[-2]), s.index[-1]
+    bases = {'1D': prev}
+    for lab, d in PERIOD_DAYS.items():
+        o = s[s.index <= last - pd.Timedelta(days=d)]
+        bases[lab] = float(o.iloc[-1]) if len(o) else None
+    y = s[s.index < pd.Timestamp(last.year, 1, 1)]
+    bases['YTD'] = float(y.iloc[-1]) if len(y) else None
+    pct, ab, bps = {}, {}, {}
+    for p, b in bases.items():
+        if b is None or b == 0 or np.isnan(b):
+            pct[p] = ab[p] = bps[p] = None
+        else:
+            pct[p], ab[p], bps[p] = (cur - b) / abs(b) * 100, cur - b, (cur - b) * 100
+    w = s[s.index >= last - pd.Timedelta(days=365)]
+    hi, lo = float(w.max()), float(w.min())
+    return dict(cur=cur, last=last, pct=pct, abs=ab, bps=bps, hi=hi, lo=lo,
+                pos=(cur - lo) / (hi - lo) if hi > lo else 0.5)
 
 
-@st.cache_data(ttl=1800)
-def fetch_ganga_river_level():
-    """Central Water Commission river-level reading for the Ganga, via
-    India-WRIS / data.gov.in. Requires a free API key (set DATA_GOV_IN_KEY
-    in st.secrets) — CWC does not expose an unauthenticated JSON feed."""
-    api_key = st.secrets.get("DATA_GOV_IN_KEY", "") if hasattr(st, "secrets") else ""
-    if not api_key:
-        return {
-            'headline': 'No API key configured',
-            'date': None,
-            'source': 'CWC river-level data (via data.gov.in) — add '
-                      'DATA_GOV_IN_KEY to st.secrets to enable this feed',
-            'status': 'error',
-        }
-    try:
-        url = ("https://api.data.gov.in/resource/"
-               "a6b3a8f6-8b8b-4c1b-9a1a-9b3c8d0e5f2a"
-               f"?api-key={api_key}&format=json&filters[river]=Ganga&limit=1")
-        r = requests.get(url, timeout=8)
-        r.raise_for_status()
-        rec = r.json()['records'][0]
-        level    = rec.get('current_level', '?')
-        danger   = rec.get('danger_level', '?')
-        station  = rec.get('station', 'Ganga')
-        return {
-            'headline': f"{station}: {level} m (danger level {danger} m)",
-            'date':   rec.get('date', ''),
-            'source': 'Central Water Commission (data.gov.in)',
-            'status': 'live',
-        }
-    except Exception:
-        return {
-            'headline': 'Live feed unavailable',
-            'date': None,
-            'source': 'CWC via data.gov.in — request failed; verify resource ID / key',
-            'status': 'error',
-        }
+def get_chg(stt, meta, p, mode):
+    if meta['kind'] in ('yield', 'spread'):
+        return stt['bps'][p]
+    return stt['pct'][p] if mode == '%' else stt['abs'][p]
 
 
-@st.cache_data(ttl=600)
-def build_scenario_projections():
-    today  = pd.Timestamp.now().normalize()
-    end    = today + pd.DateOffset(years=3)
-    months = pd.date_range(today, end, freq='MS')
-
-    def sigmoid_interp(x, x0, k=8):
-        return 1 / (1 + np.exp(-k * (x - x0)))
-
-    n  = len(months)
-    t  = np.linspace(0, 1, n)
-
-    ph1_end  = 0.14
-    ph2_end  = 0.35
-    ph3_peak = 0.50
-    ph4_start = 0.60
-
-    base_gold = 4139
-    gold_base = base_gold * (1 + 0.12 * t)
-    gold_rupture = base_gold * np.where(
-        t < ph1_end,  1 + 0.08*t/ph1_end,
-        np.where(t < ph2_end,
-                 (1 + 0.08) * (1 - 0.05*sigmoid_interp(t, ph1_end+0.05)),
-                 np.where(t < ph3_peak,
-                          (1 + 0.03) + 0.75*sigmoid_interp(t, (ph2_end+ph3_peak)/2, k=12),
-                          1.78 - 0.15*(t - ph3_peak)/(1-ph3_peak))))
-    gold_bull = base_gold * np.where(
-        t < ph3_peak,
-        1 + 0.90*sigmoid_interp(t, ph2_end+0.05, k=10),
-        1.90 - 0.05*(t - ph3_peak))
-
-    base_inr = 95.25
-    inr_rupture = base_inr * np.where(
-        t < ph1_end, 1 + 0.05*t/ph1_end,
-        np.where(t < ph2_end, 1.05 + 0.02*(t-ph1_end)/(ph2_end-ph1_end),
-                 np.where(t < ph3_peak,
-                          1.07 - 0.10*sigmoid_interp(t, ph2_end+0.08, k=10),
-                          0.97 - 0.18*(t-ph3_peak)/(1-ph3_peak))))
-    inr_rupture = np.clip(inr_rupture, 0.75, 1.12) * base_inr
-
-    base_crude = 89.4
-    crude_rupture = base_crude * np.where(
-        t < ph1_end,  1 + 0.08*t/ph1_end,
-        np.where(t < ph2_end, 1.08 + 0.12*(t-ph1_end)/(ph2_end-ph1_end),
-                 np.where(t < ph3_peak,
-                          1.20 - 0.10*sigmoid_interp(t, ph3_peak-0.05),
-                          1.10 + 0.05*np.sin(20*(t-ph3_peak)))))
-
-    base_sp = 5821
-    sp_rupture = base_sp * np.where(
-        t < ph1_end,  1 + 0.06*t/ph1_end,
-        np.where(t < ph2_end, 1.06 - 0.02*(t-ph1_end)/(ph2_end-ph1_end),
-                 np.where(t < ph3_peak,
-                          1.04 - 0.40*sigmoid_interp(t, ph2_end+0.03, k=15),
-                          0.65 + 0.20*sigmoid_interp(t, ph4_start, k=10))))
-
-    base_nifty = 24350
-    nifty_rupture = base_nifty * np.where(
-        t < ph1_end,  1 + 0.04*t/ph1_end,
-        np.where(t < ph2_end, 1.04 - 0.01*(t-ph1_end)/(ph2_end-ph1_end),
-                 np.where(t < ph3_peak,
-                          1.03 - 0.32*sigmoid_interp(t, ph2_end+0.05, k=12),
-                          0.72 + 0.35*sigmoid_interp(t, ph4_start+0.05, k=8))))
-
-    gold_inr_rupture = gold_rupture * inr_rupture / 31.1035
-
-    return pd.DataFrame({
-        'Date': months, 't': t,
-        'gold_base': gold_base, 'gold_rupture': gold_rupture, 'gold_bull': gold_bull,
-        'inr_rupture': inr_rupture, 'crude_rupture': crude_rupture,
-        'sp_rupture': sp_rupture, 'nifty_rupture': nifty_rupture,
-        'gold_inr_rupture': gold_inr_rupture,
-    })
+def fmt_value(meta, v):
+    if v is None:
+        return '—'
+    if meta['kind'] == 'yield':
+        return f"{v:.2f}%"
+    if meta['kind'] == 'spread':
+        return f"{v * 100:+.0f} bps"
+    return f"{meta['prefix']}{v:,.{meta['dec']}f}{meta['suffix']}"
 
 
-# ── Main render ───────────────────────────────────────────────────────────────
+def fmt_chg(meta, v, mode):
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return '—'
+    if meta['kind'] in ('yield', 'spread'):
+        return f"{v:+.0f} bps"
+    if mode == '%':
+        return f"{v:+.2f}%"
+    return f"{v:+,.{min(meta['dec'], 2)}f}"
+
+
+def spark_slice(s, period):
+    last = s.index[-1]
+    if period == '1D':
+        return s.iloc[-6:]
+    if period == 'YTD':
+        return s[s.index >= pd.Timestamp(last.year, 1, 1)]
+    return s[s.index >= last - pd.Timedelta(days=PERIOD_DAYS[period])]
+
+
+def sparkline(vals, up):
+    v = np.asarray(vals, float)
+    if len(v) < 2:
+        return ''
+    if len(v) > 90:
+        v = v[np.linspace(0, len(v) - 1, 90).astype(int)]
+    lo, hi = v.min(), v.max()
+    rng = (hi - lo) or 1.0
+    xs = np.linspace(0, 100, len(v))
+    ys = 29 - (v - lo) / rng * 27
+    pts = ' '.join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys))
+    col = '#2D6A0F' if up else '#7A1F1F'
+    return (f"<svg viewBox='0 0 100 30' preserveAspectRatio='none' "
+            f"style='width:100%;height:48px;display:block;margin:2px 0 14px'>"
+            f"<polyline fill='none' stroke='{col}' stroke-width='1.8' "
+            f"vector-effect='non-scaling-stroke' points='{pts}'/></svg>")
+
+
+def is_alert(meta, stt, thr):
+    d = stt['pct']['1D']
+    if meta['kind'] in ('yield', 'spread'):
+        b = stt['bps']['1D']
+        return b is not None and abs(b) >= 10
+    if d is None:
+        return False
+    return abs(d) >= thr * (4 if meta['vol'] else 1)
+
+
+def card(key, S, period, mode, thr):
+    meta, s = REG[key], S[key]
+    stt = stats(s)
+    sel = get_chg(stt, meta, period, mode)
+    vc = 'v-warn' if not sel else 'v-up' if sel > 0 else 'v-down'
+    sp = spark_slice(s, period)
+    spark = sparkline(sp.values, len(sp) < 2 or sp.iloc[-1] >= sp.iloc[0])
+    chips = ''
+    for p in PERIODS:
+        c = get_chg(stt, meta, p, mode)
+        cls = 'chg-na' if not c else 'chg-up' if c > 0 else 'chg-down'
+        chips += (f"<div class='chip {cls}{' sel' if p == period else ''}'>"
+                  f"<div class='chip-l'>{p}</div><div class='chip-v'>{fmt_chg(meta, c, mode)}</div></div>")
+    d = meta['decimals'] if 'decimals' in meta else meta['dec']
+    num = lambda x: f"{x:,.{d}f}" if meta['kind'] == 'px' else f"{x:.2f}"
+    rng = (f"<div class='rng'><div class='rng-dot' style='left:{stt['pos'] * 100:.0f}%'></div></div>"
+           f"<div class='rng-l'><span>{num(stt['lo'])}</span><span>52W range</span>"
+           f"<span>{num(stt['hi'])}</span></div>")
+    age = (pd.Timestamp(datetime.date.today()) - stt['last']).days
+    stale = "<span class='tag tag-stale'>STALE</span>" if age > 5 else ''
+    src = f"{meta['src']} · {meta['ticker'] or ''}".strip(' ·') if meta['ticker'] else meta['src']
+    asof = f"as of {stt['last']:%d %b}"
+    alerted = is_alert(meta, stt, thr)
+    tags = ('<span class="tag tag-alert">ALERT</span>' if alerted else '') + \
+           ('<span class="tag tag-proxy">PROXY</span>' if meta['proxy'] else '') + stale
+    html = (f"<div class='mcard{' alert' if alerted else ''}'>"
+            f"<div class='mtop'><div class='mlabel'>{meta['label']}</div><div>{tags}</div></div>"
+            f"<div class='mvalue {vc}'>{fmt_value(meta, stt['cur'])}</div>"
+            f"{spark}<div class='chips'>{chips}</div>{rng}"
+            f"<div class='msrc'>{src} · {asof}</div></div>")
+    return html.replace('$', '&#36;')
+
+
+def grid(keys, S, period, mode, thr, ncols=4):
+    present = [k for k in keys if k in S]
+    for i in range(0, len(present), ncols):
+        cols = st.columns(ncols, gap='medium')
+        for col, k in zip(cols, present[i:i + ncols]):
+            col.markdown(card(k, S, period, mode, thr), unsafe_allow_html=True)
+    missing = [REG[k]['label'] for k in keys if k not in S]
+    if missing:
+        st.caption("No data right now: " + ', '.join(missing))
+
+
+def header(text):
+    st.markdown(f"<div class='section-header'>{text}</div>", unsafe_allow_html=True)
+
+
+CHART = dict(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFFFF',
+             font=dict(family='Inter', color='#666560', size=12),
+             margin=dict(l=50, r=20, t=40, b=40), hovermode='x unified',
+             legend=dict(bgcolor='rgba(255,255,255,0.9)', bordercolor='#D6D3CA'))
+
+
+def style(fig, h=380, **kw):
+    fig.update_layout(**{**CHART, 'height': h, **kw})
+    fig.update_xaxes(gridcolor='#ECEAE4', linecolor='#D6D3CA')
+    fig.update_yaxes(gridcolor='#ECEAE4', linecolor='#D6D3CA')
+    return fig
+
+
+def rebased(S, keys, days):
+    out = {}
+    for k in keys:
+        if k in S:
+            s = S[k]
+            w = s[s.index >= s.index[-1] - pd.Timedelta(days=days)]
+            if len(w) > 1:
+                out[k] = w / w.iloc[0] * 100
+    return out
+
+
+def window(s, days):
+    return s[s.index >= s.index[-1] - pd.Timedelta(days=days)]
+
+
+WIN = {'1M': 30, '3M': 90, '6M': 180, '1Y': 365}
+
+
+def labels_of(keys):
+    return {k: REG[k]['label'] for k in keys}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Tabs
+# ═════════════════════════════════════════════════════════════════════════════
+
+def tab_overview(S, period, mode, thr):
+    # alert banner
+    hits = []
+    for k in S:
+        if REG[k]['group'] in ('Ratios', 'Custom'):
+            continue
+        stt = stats(S[k])
+        if is_alert(REG[k], stt, thr):
+            m = REG[k]
+            c = stt['bps']['1D'] if m['kind'] in ('yield', 'spread') else stt['pct']['1D']
+            hits.append(f"<b>{m['label']}</b> {fmt_chg(m, c, '%')}")
+    if hits:
+        st.markdown("<div class='alert-box'>⚠ 1D alerts: " + ' &nbsp;·&nbsp; '.join(hits) + "</div>",
+                    unsafe_allow_html=True)
+    for title, keys in OVERVIEW_SECTIONS:
+        header(title)
+        grid(keys, S, period, mode, thr)
+    header("India institutional flows (NSE, ₹ crore)")
+    fd = fetch_fii_dii()
+    if not fd:
+        st.markdown("<div class='note-box'>NO FEED — NSE blocks automated requests fairly often. "
+                    "Check <a href='https://www.nseindia.com/reports/fii-dii' target='_blank'>nseindia.com/reports/fii-dii</a>. "
+                    "A stable alternative is a paid data API or a daily CSV you drop in.</div>",
+                    unsafe_allow_html=True)
+    else:
+        cols = st.columns(4, gap='medium')
+        for col, cat, name in zip(cols[:2], ['FII', 'DII'], ['FII / FPI net', 'DII net']):
+            d = fd.get(cat)
+            if not d:
+                continue
+            vc = 'v-up' if d['net'] > 0 else 'v-down'
+            col.markdown(
+                f"<div class='mcard'><div class='mlabel'>{name}</div>"
+                f"<div class='mvalue {vc}'>{d['net']:+,.0f} Cr</div>"
+                f"<div class='msrc'>Buy {d['buy']:,.0f} · Sell {d['sell']:,.0f} · {d['date']}</div></div>",
+                unsafe_allow_html=True)
+
+
+def tab_metals(S, period, mode, thr):
+    header("Metals tracker")
+    c1, c2 = st.columns([2, 3])
+    group = c1.selectbox("Group", list(METAL_GROUPS) + ['Custom tickers'], key='mgroup')
+    custom_raw = c2.text_input("Add Yahoo tickers (comma-separated, e.g. SQM, MP, 1211.HK)",
+                               key='mcustom')
+    custom = [t.strip() for t in custom_raw.split(',') if t.strip()]
+    if custom:
+        S = {**S, **load_data(tuple(custom))}   # cached; fetches only the new ones
+    if group == 'Custom tickers':
+        keys = [f'c_{t}' for t in custom]
+        if not keys:
+            st.info("Type one or more Yahoo tickers above to track them here.")
+    else:
+        keys = METAL_GROUPS[group]
+    grid(keys, S, period, mode, thr)
+
+    st.markdown(
+        "<div class='note-box'><b>PROXY</b> tiles are producer stocks / ETFs, not spot prices. Yahoo has no free "
+        "spot or futures feed for tin, tungsten, zinc, nickel, lead or iron ore, so these are the closest "
+        "tradable reads. Real LME prices need a paid feed.</div>", unsafe_allow_html=True)
+    with st.expander("How each metal is tracked"):
+        st.dataframe(METAL_MAP, hide_index=True, use_container_width=True)
+
+    # ranking
+    header(f"Metals ranking · {period}")
+    rows = []
+    for k in ALL_METAL_KEYS:
+        if k in S:
+            v = stats(S[k])['pct'][period]
+            if v is not None:
+                rows.append((REG[k]['label'], v))
+    if rows:
+        rows.sort(key=lambda x: x[1])
+        fig = go.Figure(go.Bar(
+            x=[r[1] for r in rows], y=[r[0] for r in rows], orientation='h',
+            marker_color=['#2D6A0F' if r[1] >= 0 else '#A32D2D' for r in rows],
+            text=[f"{r[1]:+.1f}%" for r in rows], textposition='outside'))
+        style(fig, h=max(360, 26 * len(rows)), hovermode='closest', xaxis_title=f'% change ({period})')
+        st.plotly_chart(fig, use_container_width=True, key='metal_rank')
+
+    # rebased performance
+    header("Relative performance (rebased to 100)")
+    c1, c2 = st.columns([4, 1])
+    default = [k for k in ['gold_usd', 'silver', 'm_copper', 'm_aluminum', 'm_cnxmetal'] if k in S]
+    pick = c1.multiselect("Metals", [k for k in ALL_METAL_KEYS if k in S], default=default,
+                          format_func=lambda k: REG[k]['label'], key='mreb')
+    win = c2.selectbox("Window", list(WIN), index=1, key='mrebw')
+    reb = rebased(S, pick, WIN[win])
+    if reb:
+        fig = go.Figure()
+        for k, s in reb.items():
+            fig.add_trace(go.Scatter(x=s.index, y=s.values, name=REG[k]['label'], mode='lines'))
+        fig.add_hline(y=100, line_dash='dot', line_color='#B4B2A9')
+        st.plotly_chart(style(fig), use_container_width=True, key='metal_reb')
+
+    # ratios
+    header("Metal ratios")
+    r1, r2 = st.columns(2, gap='medium')
+    for col, k, note in [(r1, 'gold_silver', "Higher = silver cheap vs gold (risk-off / defensive)."),
+                         (r2, 'copper_gold', "Higher = growth optimism; falling = defensive.")]:
+        with col:
+            if k in S:
+                w = window(S[k], 365)
+                fig = go.Figure(go.Scatter(x=w.index, y=w.values, mode='lines', line=dict(color='#854F0B')))
+                style(fig, h=280, title=f"{REG[k]['label']} · now {stats(S[k])['cur']:.{REG[k]['dec']}f}",
+                      showlegend=False)
+                st.plotly_chart(fig, use_container_width=True, key=f'ratio_{k}')
+                st.caption(note)
+
+    # correlation
+    header("Metals correlation (daily returns)")
+    cw = st.selectbox("Window", ['1M', '3M', '6M', '1Y'], index=1, key='mcorrw')
+    ck = [k for k in ['gold_usd', 'silver', 'm_platinum', 'm_copper', 'm_aluminum', 'm_cnxmetal',
+                      'm_vale', 'm_hindzinc', 'm_tin', 'm_tungsten', 'dxy', 'usd_inr'] if k in S]
+    corr_heat(S, ck, WIN[cw], 'metal_corr')
+
+
+def tab_food(S, period, mode, thr):
+    header("Food grains & agri tracker")
+    group = st.selectbox("Group", list(FOOD_GROUPS), key='fgroup')
+    grid(FOOD_GROUPS[group], S, period, mode, thr)
+    st.markdown(
+        "<div class='note-box'>Grain futures are CBOT / ICE prices in US units (mostly cents per bushel), "
+        "so they reflect global benchmarks rather than Indian mandi prices. <b>PROXY</b> tiles are stocks / ETFs. "
+        "Indian wheat, rice and pulse prices have no free live feed; they need an Agmarknet / e-NAM key.</div>",
+        unsafe_allow_html=True)
+    with st.expander("How each commodity is tracked"):
+        st.dataframe(FOOD_MAP, hide_index=True, use_container_width=True)
+
+    header(f"Food ranking · {period}")
+    rows = []
+    for k in FOOD_FUTURES:
+        if k in S:
+            v = stats(S[k])['pct'][period]
+            if v is not None:
+                rows.append((REG[k]['label'], v))
+    if rows:
+        rows.sort(key=lambda x: x[1])
+        fig = go.Figure(go.Bar(
+            x=[r[1] for r in rows], y=[r[0] for r in rows], orientation='h',
+            marker_color=['#2D6A0F' if r[1] >= 0 else '#A32D2D' for r in rows],
+            text=[f"{r[1]:+.1f}%" for r in rows], textposition='outside'))
+        style(fig, h=max(340, 30 * len(rows)), hovermode='closest', xaxis_title=f'% change ({period})')
+        st.plotly_chart(fig, use_container_width=True, key='food_rank')
+
+    header("Relative performance (rebased to 100)")
+    c1, c2 = st.columns([4, 1])
+    default = [k for k in ['f_wheat', 'f_corn', 'f_soy', 'f_rice', 'f_sugar'] if k in S]
+    pick = c1.multiselect("Commodities", [k for k in ALL_FOOD_KEYS if k in S], default=default,
+                          format_func=lambda k: REG[k]['label'], key='freb')
+    win = c2.selectbox("Window", list(WIN), index=1, key='frebw')
+    reb = rebased(S, pick, WIN[win])
+    if reb:
+        fig = go.Figure()
+        for k, sr in reb.items():
+            fig.add_trace(go.Scatter(x=sr.index, y=sr.values, name=REG[k]['label'], mode='lines'))
+        fig.add_hline(y=100, line_dash='dot', line_color='#B4B2A9')
+        st.plotly_chart(style(fig), use_container_width=True, key='food_reb')
+
+    header("In rupee terms (what India actually pays)")
+    rows = []
+    if 'usd_inr' in S:
+        fx = stats(S['usd_inr'])['pct'][period]
+        for k in FOOD_FUTURES:
+            if k in S and fx is not None:
+                a = stats(S[k])['pct'][period]
+                if a is not None:
+                    rows.append({'Commodity': REG[k]['label'], f'USD price {period}': f"{a:+.2f}%",
+                                 f'USD/INR {period}': f"{fx:+.2f}%",
+                                 f'INR price {period}': f"{((1 + a / 100) * (1 + fx / 100) - 1) * 100:+.2f}%"})
+    if rows:
+        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        st.caption("A weaker rupee adds to imported food inflation (edible oil, sugar, pulses) even when global prices are flat.")
+
+    header("Grain spreads")
+    r1, r2 = st.columns(2, gap='medium')
+    for col, k, note in [(r1, 'wheat_corn', "Rising = wheat getting dearer vs corn (feed substitution shifts to corn)."),
+                         (r2, 'soy_crush', "Processor margin on crushing soybeans into meal and oil; low = weak processing demand.")]:
+        with col:
+            if k in S:
+                w = window(S[k], 365)
+                fig = go.Figure(go.Scatter(x=w.index, y=w.values, mode='lines', line=dict(color='#27500A')))
+                style(fig, h=280, title=f"{REG[k]['label']} · now {stats(S[k])['cur']:.2f}", showlegend=False)
+                st.plotly_chart(fig, use_container_width=True, key=f'fspread_{k}')
+                st.caption(note)
+
+    header("What drives food prices (daily-return correlation)")
+    cw = st.selectbox("Window", ['1M', '3M', '6M', '1Y'], index=1, key='fcorrw')
+    ck = [k for k in ['f_wheat', 'f_corn', 'f_soy', 'f_rice', 'f_soyoil', 'f_sugar', 'crude_brent',
+                      'dxy', 'usd_inr', 'f_ntr', 'nifty'] if k in S]
+    corr_heat(S, ck, WIN[cw], 'food_corr')
+
+
+def corr_heat(S, keys, days, key):
+    if len(keys) < 2:
+        st.info("Not enough data for a correlation matrix.")
+        return
+    df = pd.concat({k: window(S[k], days + 10) for k in keys}, axis=1).ffill().dropna()
+    df = df[df.index >= df.index[-1] - pd.Timedelta(days=days)]
+    r = df.pct_change().dropna()
+    if len(r) < 5:
+        st.info("Not enough overlapping history.")
+        return
+    c = r.corr()
+    names = [REG[k]['label'] for k in c.columns]
+    fig = go.Figure(go.Heatmap(z=c.values, x=names, y=names, zmin=-1, zmax=1,
+                               colorscale='RdYlGn', text=np.round(c.values, 2),
+                               texttemplate='%{text}', hovertemplate='%{x} / %{y}: %{z:.2f}<extra></extra>'))
+    style(fig, h=max(420, 44 * len(keys)), hovermode='closest')
+    fig.update_yaxes(autorange='reversed')
+    st.plotly_chart(fig, use_container_width=True, key=key)
+    st.caption(f"{len(r)} daily observations · series forward-filled across market holidays.")
+
+
+def tab_heatmap(S, period):
+    header("Everything vs everything")
+    groups = [g for g in GROUP_ORDER if g not in ('Ratios', 'Custom')]
+    sel = st.multiselect("Groups", groups, default=groups[:4] + ['Precious (futures)', 'Base metals (futures)'],
+                         key='hmgroups')
+    keys = [k for k, m in REG.items() if m['group'] in sel and k in S and m['kind'] != 'spread']
+    if not keys:
+        st.info("Pick at least one group.")
+        return
+    z, labels = [], []
+    for k in keys:
+        pc = stats(S[k])['pct']
+        z.append([pc[p] if pc[p] is not None else np.nan for p in PERIODS])
+        labels.append(REG[k]['label'] + (' ·P' if REG[k]['proxy'] else ''))
+    z = np.array(z, float)
+    scale = np.nanpercentile(np.abs(z), 90, axis=0)
+    scale[scale == 0] = 1
+    color = np.clip(z / scale, -1.5, 1.5)
+    text = np.where(np.isnan(z), '—', np.char.add(np.char.mod('%+.1f', np.nan_to_num(z)), '%'))
+    fig = go.Figure(go.Heatmap(z=color, x=PERIODS, y=labels, text=text, texttemplate='%{text}',
+                               colorscale='RdYlGn', zmid=0, zmin=-1.5, zmax=1.5, showscale=False,
+                               customdata=z, hovertemplate='%{y} · %{x}: %{customdata:+.2f}%<extra></extra>'))
+    style(fig, h=max(400, 30 * len(keys) + 80), hovermode='closest')
+    fig.update_yaxes(autorange='reversed')
+    fig.update_xaxes(side='top')
+    st.plotly_chart(fig, use_container_width=True, key='heatmap')
+    st.caption("Colour is scaled per column (so 1D and 1Y are comparable). ·P = proxy (stock / ETF). "
+               "Yield rows show % change of the yield level.")
+
+
+def tab_analysis(S, period):
+    # 1 ─ correlation
+    header("Cross-asset correlation")
+    cw = st.selectbox("Window", ['1M', '3M', '6M', '1Y'], index=1, key='acorrw')
+    ck = [k for k in ['gold_usd', 'silver', 'm_copper', 'crude_brent', 'dxy', 'usd_inr', 'nifty',
+                      'sp500', 'us10y', 'btc', 'vix'] if k in S]
+    corr_heat(S, ck, WIN[cw], 'asset_corr')
+
+    # 2 ─ gold INR decomposition
+    header(f"Gold in INR: metal vs currency · {period}")
+    if all(k in S for k in ('gold_usd', 'usd_inr', 'gold_inr')):
+        a = stats(S['gold_usd'])['pct'][period]
+        b = stats(S['usd_inr'])['pct'][period]
+        t = stats(S['gold_inr'])['pct'][period]
+        if None not in (a, b, t):
+            c1, c2, c3 = st.columns(3, gap='medium')
+            for col, lab, v in [(c1, 'Gold USD (the metal)', a), (c2, 'USD/INR (the rupee)', b),
+                                (c3, 'Gold INR (what you earn)', t)]:
+                vc = 'v-up' if v > 0 else 'v-down'
+                col.markdown(f"<div class='mcard'><div class='mlabel'>{lab}</div>"
+                             f"<div class='mvalue {vc}'>{v:+.2f}%</div></div>", unsafe_allow_html=True)
+            share = (b / t * 100) if t else 0
+            st.caption(f"Of the {t:+.2f}% move in rupee gold, about {a:+.2f}% came from the metal and "
+                       f"{b:+.2f}% from the rupee ({share:.0f}% of the total from currency).")
+        reb = rebased(S, ['gold_usd', 'usd_inr', 'gold_inr'], 180)
+        fig = go.Figure()
+        for k, s in reb.items():
+            fig.add_trace(go.Scatter(x=s.index, y=s.values, name=REG[k]['label'], mode='lines'))
+        st.plotly_chart(style(fig, h=340), use_container_width=True, key='goldinr')
+
+    # 3 ─ Oil → INR → Nifty
+    header(f"Oil → Rupee → Nifty chain · {period}")
+    if all(k in S for k in ('crude_brent', 'usd_inr', 'nifty')):
+        chain = [('crude_brent', 'Brent crude'), ('usd_inr', 'USD/INR (↑ = weaker rupee)'), ('nifty', 'Nifty 50')]
+        cols = st.columns(5, gap='small')
+        slots = [cols[0], cols[2], cols[4]]
+        for col, (k, lab) in zip(slots, chain):
+            v = stats(S[k])['pct'][period]
+            vc = 'v-warn' if not v else 'v-up' if v > 0 else 'v-down'
+            col.markdown(f"<div class='mcard'><div class='mlabel'>{lab}</div>"
+                         f"<div class='mvalue {vc}' style='font-size:34px'>{fmt_chg(REG[k], v, '%')}</div></div>",
+                         unsafe_allow_html=True)
+        for col in (cols[1], cols[3]):
+            col.markdown("<div style='text-align:center;font-size:40px;padding-top:44px;color:#B4B2A9'>→</div>",
+                         unsafe_allow_html=True)
+        df = pd.concat({k: window(S[k], 130) for k in ('crude_brent', 'usd_inr', 'nifty')},
+                       axis=1).ffill().dropna()
+        r = df.pct_change().dropna()
+        if len(r) > 10:
+            r3 = r[r.index >= r.index[-1] - pd.Timedelta(days=90)]
+            beta = r3['nifty'].cov(r3['crude_brent']) / r3['crude_brent'].var()
+            m1, m2, m3, m4 = st.columns(4, gap='medium')
+            m1.metric("Brent ↔ USDINR (3M)", f"{r3['crude_brent'].corr(r3['usd_inr']):+.2f}")
+            m2.metric("Brent ↔ Nifty (3M)", f"{r3['crude_brent'].corr(r3['nifty']):+.2f}")
+            m3.metric("USDINR ↔ Nifty (3M)", f"{r3['usd_inr'].corr(r3['nifty']):+.2f}")
+            m4.metric("Nifty beta to Brent", f"{beta:+.2f}")
+        reb = rebased(S, ['crude_brent', 'usd_inr', 'nifty'], 180)
+        fig = go.Figure()
+        for k, s in reb.items():
+            fig.add_trace(go.Scatter(x=s.index, y=s.values, name=REG[k]['label'], mode='lines'))
+        st.plotly_chart(style(fig, h=340), use_container_width=True, key='chain')
+
+    # 4 ─ real yield
+    header("US real yield, breakeven & gold")
+    if 'real_yield' in S and 'us10y' in S:
+        df = pd.concat({'nominal': S['us10y'], 'real': S['real_yield']}, axis=1).ffill().dropna()
+        df['breakeven'] = df['nominal'] - df['real']
+        w = df[df.index >= df.index[-1] - pd.Timedelta(days=365)]
+        c1, c2, c3 = st.columns(3, gap='medium')
+        rs = stats(S['real_yield'])
+        c1.metric("10Y real yield", f"{rs['cur']:.2f}%", f"{rs['bps']['1M']:+.0f} bps (1M)" if rs['bps']['1M'] is not None else None)
+        c2.metric("10Y nominal", f"{df['nominal'].iloc[-1]:.2f}%")
+        c3.metric("10Y breakeven inflation", f"{df['breakeven'].iloc[-1]:.2f}%")
+        fig = go.Figure()
+        for col, name, colr in [('nominal', 'Nominal', '#0C447C'), ('real', 'Real', '#854F0B'),
+                                ('breakeven', 'Breakeven', '#A32D2D')]:
+            fig.add_trace(go.Scatter(x=w.index, y=w[col], name=name, line=dict(color=colr)))
+        st.plotly_chart(style(fig, h=320), use_container_width=True, key='realy')
+        if 'gold_usd' in S:
+            g = window(S['gold_usd'], 365)
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=w.index, y=w['real'], name='Real yield (lhs)', line=dict(color='#854F0B')))
+            fig.add_trace(go.Scatter(x=g.index, y=g.values, name='Gold USD (rhs)', yaxis='y2',
+                                     line=dict(color='#C9A227')))
+            style(fig, h=320, yaxis2=dict(overlaying='y', side='right', showgrid=False))
+            st.plotly_chart(fig, use_container_width=True, key='goldreal')
+            st.caption("Gold usually moves inversely to real yields: falling real yield is supportive for gold.")
+    else:
+        st.info("FRED real-yield data unavailable right now.")
+
+    # 5 ─ 2s10s
+    header("US 2s10s curve")
+    if 'us_2s10s' in S:
+        w = window(S['us_2s10s'], 730) * 100
+        fig = go.Figure(go.Scatter(x=w.index, y=w.values, fill='tozeroy', line=dict(color='#0C447C')))
+        fig.add_hline(y=0, line_color='#A32D2D', line_dash='dot')
+        style(fig, h=300, yaxis_title='bps', showlegend=False)
+        st.plotly_chart(fig, use_container_width=True, key='curve')
+        st.caption("Below zero = inverted curve (classic recession signal); the steepening after inversion is often "
+                   "when the downturn arrives.")
+
+
+def tab_drill(S):
+    header("Drill-down")
+    keys = [k for k in S if REG[k]['group'] != 'Custom'] + [k for k in S if REG[k]['group'] == 'Custom']
+    k = st.selectbox("Instrument", keys, format_func=lambda x: REG[x]['label'], key='drill')
+    meta, s = REG[k], S[k]
+    stt = stats(s)
+    c = st.columns(6)
+    for col, p in zip(c, PERIODS):
+        v = get_chg(stt, meta, p, '%')
+        col.metric(p, fmt_chg(meta, v, '%'))
+    w = s[s.index >= s.index[-1] - pd.Timedelta(days=730)]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=w.index, y=w.values, name='Close', line=dict(color='#1A1A18', width=2)))
+    fig.add_trace(go.Scatter(x=w.index, y=w.rolling(50).mean(), name='50-day avg',
+                             line=dict(color='#854F0B', dash='dot')))
+    fig.add_hline(y=stt['hi'], line_dash='dash', line_color='#2D6A0F', annotation_text='52W high')
+    fig.add_hline(y=stt['lo'], line_dash='dash', line_color='#A32D2D', annotation_text='52W low')
+    style(fig, h=430)
+    fig.update_xaxes(rangeselector=dict(buttons=[
+        dict(count=1, label='1M', step='month', stepmode='backward'),
+        dict(count=3, label='3M', step='month', stepmode='backward'),
+        dict(count=6, label='6M', step='month', stepmode='backward'),
+        dict(count=1, label='1Y', step='year', stepmode='backward'),
+        dict(step='all', label='2Y')]))
+    st.plotly_chart(fig, use_container_width=True, key='drillchart')
+    if meta['ticker']:
+        st.markdown("**Latest news**")
+        news = fetch_news(meta['ticker'])
+        if news:
+            for title, url, pub in news:
+                st.markdown(f"- [{title.replace('$', chr(92) + '$')}]({url})  \n  <span style='color:#888480;font-size:12px'>{pub}</span>",
+                            unsafe_allow_html=True)
+        else:
+            st.caption("No headlines returned by Yahoo for this ticker.")
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Body (refreshable fragment) + render
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _body(period, mode, thr):
+    with st.spinner("Loading market data..."):
+        S = load_data()
+    st.caption(f"Last updated {datetime.datetime.now():%d %b %Y, %H:%M:%S} · "
+               f"{len(S)} series loaded · Yahoo Finance & FRED (daily bars, ~15 min delayed on some feeds)")
+    t1, t2, t2b, t3, t4, t5 = st.tabs(["Overview", "Metals", "Food grains", "Heatmap", "Analysis", "Drill-down"])
+    with t1:
+        tab_overview(S, period, mode, thr)
+    with t2:
+        tab_metals(S, period, mode, thr)
+    with t2b:
+        tab_food(S, period, mode, thr)
+    with t3:
+        tab_heatmap(S, period)
+    with t4:
+        tab_analysis(S, period)
+    with t5:
+        tab_drill(S)
+
+
+_frag = getattr(st, 'fragment', None)
+_body_live = _frag(run_every=300)(_body) if _frag else _body
+_body_static = _frag(_body) if _frag else _body
+
+CSS = """
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+  html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+  .main { background-color: #F5F4F0; }
+  .block-container { padding: 1.5rem 2rem; max-width: 1500px; background: #F5F4F0; }
+  .section-header { font-size:14px;font-weight:600;color:#888480;text-transform:uppercase;
+                    letter-spacing:0.08em;border-bottom:0.5px solid #D6D3CA;
+                    padding-bottom:8px;margin:28px 0 18px; }
+  .mcard  { background:#FFFFFF;border:0.5px solid #D6D3CA;border-radius:14px;
+            padding:22px 24px;margin-bottom:18px; }
+  .mcard.alert { border:1.5px solid #E8940A;background:#FFFDF7; }
+  .mtop   { display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px; }
+  .mlabel { font-size:13px;color:#666560;text-transform:uppercase;letter-spacing:0.08em;font-weight:500; }
+  .mvalue { font-size:40px;font-weight:600;line-height:1.1;margin-bottom:6px; }
+  .v-up { color:#2D6A0F; } .v-down { color:#7A1F1F; } .v-warn { color:#7A4A0A; }
+  .chips  { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+  .chip   { border-radius:9px;padding:7px 4px;text-align:center; }
+  .chip.sel { outline:2px solid #1A1A18; }
+  .chip-l { font-size:11px;font-weight:600;letter-spacing:0.06em;opacity:0.7;margin-bottom:2px; }
+  .chip-v { font-size:15px;font-weight:600; }
+  .chg-up { background:#EAF3DE;color:#27500A; } .chg-down { background:#FCEBEB;color:#791F1F; }
+  .chg-na { background:#F1EFE8;color:#666560; }
+  .rng { position:relative;height:6px;background:#ECEAE4;border-radius:3px;margin-top:16px; }
+  .rng-dot { position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;
+             background:#1A1A18;transform:translateX(-50%); }
+  .rng-l { display:flex;justify-content:space-between;font-size:11px;color:#888480;margin-top:6px; }
+  .msrc { font-size:12px;color:#888480;margin-top:12px; }
+  .tag { font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:4px; }
+  .tag-alert { background:#FAEEDA;color:#633806; } .tag-proxy { background:#EEEDFE;color:#3C3489; }
+  .tag-stale { background:#F1EFE8;color:#666560; }
+  .alert-box { background:#FFFBF0;border:0.5px solid #FAC775;border-left:3px solid #E8940A;
+               border-radius:6px;padding:12px 16px;font-size:14px;color:#633806;margin-bottom:6px; }
+  .note-box { background:#FFFFFF;border:0.5px solid #D6D3CA;border-left:2px solid #B4B2A9;
+              border-radius:6px;padding:10px 14px;font-size:12px;color:#666560;margin-top:6px; }
+  .stTabs [data-baseweb="tab-list"] { background:#ECEAE4;border-radius:8px;padding:3px;gap:3px; }
+  .stTabs [data-baseweb="tab"] { background:transparent;color:#888480;border-radius:6px;padding:6px 18px;font-size:14px; }
+  .stTabs [aria-selected="true"] { background:#FFFFFF !important;color:#1A1A18 !important;
+                                   box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  div[data-testid="stMarkdownContainer"] p { margin:0; }
+</style>
+"""
+
 
 def render():
     render_gift_nifty_banner()
+    st.markdown(CSS, unsafe_allow_html=True)
 
-    # ── News overlay loader ───────────────────────────────────────────────────
-    def load_news_data():
-        for path in [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../outputs/news.json'),
-            os.path.join(os.getcwd(), 'news.json'),
-            'news.json',
-        ]:
-            if os.path.exists(path):
-                with open(path, 'r') as f:
-                    return json.load(f)
-        return {}
-
-    _raw_news    = load_news_data()
-    NEWS_OVERLAY = {}
-    for phase_data in _raw_news.values():
-        if isinstance(phase_data, dict):
-            for key, val in phase_data.items():
-                if isinstance(val, dict) and 'status' in val:
-                    NEWS_OVERLAY[key] = val
-
-    STATUS_BADGE = {
-        'Validated 🟢':   ('background:#EAF3DE;color:#27500A;border:0.5px solid #97C459;', '✅'),
-        'Partial 🟡':     ('background:#FFF8E8;color:#854F0B;border:0.5px solid #FAC775;', '⚠️'),
-        'Too Early ⏳':   ('background:#F1EFE8;color:#666560;border:0.5px solid #B4B2A9;', '⏳'),
-        'Invalidated 🔴': ('background:#FCEBEB;color:#791F1F;border:0.5px solid #F09595;', '❌'),
-    }
-    DEFAULT_BADGE = ('background:#F1EFE8;color:#888480;border:0.5px solid #D6D3CA;', '·')
-
-    def cell_key(row_idx, col_idx):
-        return f"{chr(65 + col_idx)}{row_idx + 1}"
-
-    def news_overlay_html(row_idx, col_idx):
-        key  = cell_key(row_idx, col_idx)
-        data = NEWS_OVERLAY.get(key)
-        if not data:
-            return ''
-        status     = data.get('status', '')
-        signal     = data.get('real_world_signal', '')
-        divergence = data.get('thesis_divergence', '')
-        confidence = data.get('confidence', '')
-        style, icon = STATUS_BADGE.get(status, DEFAULT_BADGE)
-        show_div = (
-            '' if divergence in ('', 'None', 'None.')
-            else f"<div style='margin-top:5px;padding-top:5px;"
-                 f"border-top:0.5px solid rgba(0,0,0,0.1);"
-                 f"font-size:9.5px;opacity:0.8;'>"
-                 f"<b>Divergence:</b> {divergence}</div>"
-        )
-        return (
-            f"<div style='margin-top:6px;padding:5px 7px;border-radius:5px;"
-            f"font-size:10px;line-height:1.45;{style}'>"
-            f"<div style='display:flex;align-items:center;justify-content:space-between;"
-            f"margin-bottom:3px;'>"
-            f"<span style='font-weight:600;font-size:9px;text-transform:uppercase;"
-            f"letter-spacing:0.06em;'>{icon} {status}</span>"
-            f"<span style='font-size:9px;opacity:0.7;'>conf: {confidence}</span></div>"
-            f"<div style='font-size:10px;'>{signal}</div>{show_div}</div>"
-        )
-
-    # ── CSS ───────────────────────────────────────────────────────────────────
-    st.markdown("""
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-      html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-      .main { background-color: #F5F4F0; }
-      .block-container { padding: 1.5rem 2rem; max-width: 1400px; background: #F5F4F0; }
-      .metric-card { background:#FFFFFF;border:0.5px solid #D6D3CA;border-radius:8px;padding:10px 12px; }
-      .metric-label   { font-size:10px;color:#666560;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px; }
-      .metric-value   { font-size:20px;font-weight:500;color:#1A1A18;margin-bottom:2px; }
-      .metric-sub     { font-size:10px;color:#888480; }
-      .metric-up      { color:#2D6A0F; }
-      .metric-down    { color:#7A1F1F; }
-      .metric-warn    { color:#7A4A0A; }
-      .metric-neutral { color:#1A1A18; }
-      .section-header { font-size:11px;font-weight:500;color:#888480;text-transform:uppercase;
-                        letter-spacing:0.06em;border-bottom:0.5px solid #D6D3CA;
-                        padding-bottom:5px;margin:18px 0 10px; }
-      .ipo-card  { background:#FFFFFF;border:0.5px solid #D6D3CA;border-radius:8px;padding:10px 12px;height:100%; }
-      .ipo-title { font-size:12px;font-weight:500;color:#1A1A18;margin-bottom:8px;display:flex;align-items:center;gap:6px; }
-      .ipo-row   { display:flex;justify-content:space-between;font-size:10px;color:#888480;
-                   margin-bottom:3px;border-bottom:0.5px solid #ECEAE4;padding-bottom:3px; }
-      .ipo-row span:last-child { color:#1A1A18;font-weight:500; }
-      .badge      { font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500; }
-      .badge-live { background:#FCEBEB;color:#791F1F; }
-      .badge-oct  { background:#EEEDFE;color:#3C3489; }
-      .badge-2027 { background:#FAEEDA;color:#633806; }
-      .badge-green{ background:#EAF3DE;color:#27500A; }
-      .timeline-row { display:grid;grid-template-columns:90px repeat(9, 1fr);
-                      gap:4px;margin-bottom:3px;align-items:stretch;min-height:44px; }
-      .tl-date  { font-size:11px;font-weight:500;color:#888480;display:flex;
-                  align-items:center;padding-right:6px;line-height:1.3; }
-      .tl-cell  { border-radius:6px;padding:5px 7px;font-size:10.5px;line-height:1.35;
-                  display:flex;flex-direction:column;justify-content:center; }
-      .tl-cell b    { font-weight:500;font-size:11px;display:block;margin-bottom:1px;color:inherit; }
-      .tl-cell span { font-size:10px;opacity:0.85; }
-      .cell-ipo    { background:#EEEDFE;color:#3C3489;border:0.5px solid #AFA9EC; }
-      .cell-macro  { background:#E6F1FB;color:#0C447C;border:0.5px solid #85B7EB; }
-      .cell-401k   { background:#FAECE7;color:#712B13;border:0.5px solid #F0997B; }
-      .cell-gold   { background:#FFF8E8;color:#854F0B;border:0.5px solid #FAC775; }
-      .cell-india  { background:#EAF3DE;color:#27500A;border:0.5px solid #97C459; }
-      .cell-danger { background:#FCEBEB;color:#791F1F;border:0.5px solid #F09595; }
-      .cell-silver { background:#E1F5EE;color:#085041;border:0.5px solid #5DCAA5; }
-      .cell-phase  { background:#F1EFE8;color:#2C2C2A;border:0.5px solid #B4B2A9; }
-      .cell-warn   { background:#FAEEDA;color:#633806;border:0.5px solid #FAC775; }
-      .phase-pill { display:inline-flex;align-items:center;gap:8px;border-radius:6px;
-                    padding:4px 10px;font-size:11px;font-weight:500;margin-right:6px;margin-bottom:6px; }
-      .phase-dot  { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
-      .ph-vacuum  { background:#EEEDFE;color:#3C3489;border:0.5px solid #AFA9EC; }
-      .ph-stress  { background:#FAEEDA;color:#633806;border:0.5px solid #FAC775; }
-      .ph-rupture { background:#FCEBEB;color:#791F1F;border:0.5px solid #F09595; }
-      .ph-reset   { background:#EAF3DE;color:#27500A;border:0.5px solid #97C459; }
-      .note-box { background:#FFFFFF;border:0.5px solid #D6D3CA;border-left:2px solid #B4B2A9;
-                  border-radius:6px;padding:8px 12px;font-size:10px;color:#666560;margin-top:10px; }
-      .warn-box { background:#FFFBF0;border:0.5px solid #FAC775;border-left:3px solid #E8940A;
-                  border-radius:6px;padding:10px 14px;font-size:12px;color:#633806;margin-bottom:14px; }
-      .stTabs [data-baseweb="tab-list"] { background:#ECEAE4;border-radius:8px;padding:3px;gap:3px; }
-      .stTabs [data-baseweb="tab"]      { background:transparent;color:#888480;border-radius:6px;
-                                           padding:5px 14px;font-size:13px; }
-      .stTabs [aria-selected="true"]    { background:#FFFFFF !important;color:#1A1A18 !important;
-                                           box-shadow:0 1px 3px rgba(0,0,0,0.08); }
-      div[data-testid="stMarkdownContainer"] p { margin:0; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ── Fetch data ────────────────────────────────────────────────────────────
-    with st.spinner("Loading market data..."):
-        prices     = get_live_prices()
-        gold_hist  = fetch_gold_historical()
-        sp500_hist = fetch_sp500_historical()
-        inr_hist   = fetch_inr_historical()
-        crude_hist = fetch_crude_historical()
-        scenarios  = build_scenario_projections()
-
-    with st.spinner("Loading humanitarian & climate risk feeds..."):
-        food_snap     = fetch_food_security_snapshot()
-        monsoon_snap  = fetch_monsoon_snapshot()
-        conflict_snap = fetch_conflict_snapshot()
-        river_snap    = fetch_ganga_river_level()
-
-    # ── Live price metrics ────────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Live market snapshot</div>", unsafe_allow_html=True)
-    cols = st.columns(8)
-    metric_defs = [
-        ('Gold USD',    'gold_usd',    '$',  ''),
-        ('USD / INR',   'usd_inr',     '₹',  ''),
-        ('Gold / INR*', 'gold_inr',    '₹',  '/g'),
-        ('Crude WTI',   'crude_wti',   '$',  '/bbl'),
-        ('Crude Brent', 'crude_brent', '$',  '/bbl'),
-        ('S&P 500',     'sp500',       '',   ''),
-        ('Nifty 50',    'nifty',       '',   ''),
-        ('US 10Y Yield','us10y',       '',   '%'),
-    ]
-    for col, (label, key, prefix, suffix) in zip(cols, metric_defs):
-        with col:
-            p   = prices[key]
-            v   = p['value']
-            pct = p.get('change_pct', 0.0)
-            status = p.get('status', '')
-            # Colour logic: green = up, red = down, amber = derived/error
-            if status in ('derived', 'error') or pct == 0.0:
-                val_cls = 'metric-warn'
-            elif pct > 0:
-                val_cls = 'metric-up'
-            else:
-                val_cls = 'metric-down'
-            # Change badge colour
-            if pct > 0:
-                chg_style = "color:#2D6A0F;background:#EAF3DE;padding:1px 5px;border-radius:3px;"
-            elif pct < 0:
-                chg_style = "color:#7A1F1F;background:#FCEBEB;padding:1px 5px;border-radius:3px;"
-            else:
-                chg_style = "color:#666560;background:#F1EFE8;padding:1px 5px;border-radius:3px;"
-            if v is None:
-                fmt = '—'
-            elif key == 'gold_inr':
-                fmt = f"₹{v:,.0f}/g"
-            elif key == 'us10y':
-                fmt = f"{v:.2f}%"
-            elif key == 'usd_inr':
-                fmt = f"₹{v:.2f}"
-            else:
-                fmt = f"{prefix}{v:,.2f}{suffix}"
-            chg_text = p['change'] or '—'
-            src_text = p['source']
-            st.markdown(f"""
-            <div class='metric-card'>
-              <div class='metric-label'>{label}</div>
-              <div class='metric-value {val_cls}'>{fmt}</div>
-              <div class='metric-sub'>
-                <span style='{chg_style};font-size:10px;font-weight:500;'>{chg_text}</span>
-                &nbsp;·&nbsp;{src_text}
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-    # ── Global risk & humanitarian snapshot ───────────────────────────────────
-    st.markdown("<div class='section-header'>Global risk &amp; humanitarian snapshot</div>",
-                unsafe_allow_html=True)
-
-    def render_snapshot_card(label, data):
-        live = data.get('status') == 'live'
-        dot_color = '#2D6A0F' if live else '#888480'
-        dot_label = 'LIVE' if live else 'NO FEED'
-        headline  = data.get('headline') or '—'
-        date_txt  = f" &nbsp;·&nbsp; {data['date']}" if data.get('date') else ''
-        return f"""
-        <div class='metric-card' style='min-height:92px;'>
-          <div class='metric-label' style='display:flex;justify-content:space-between;'>
-            <span>{label}</span>
-            <span style='color:{dot_color};font-weight:600;'>● {dot_label}</span>
-          </div>
-          <div style='font-size:12px;color:#1A1A18;font-weight:500;line-height:1.4;
-               margin:4px 0 4px;'>{headline}</div>
-          <div class='metric-sub'>{data.get('source', '')}{date_txt}</div>
-        </div>"""
-
-    rc1, rc2, rc3, rc4 = st.columns(4)
-    with rc1:
-        st.markdown(render_snapshot_card("Food security · FAO/WFP", food_snap),
-                    unsafe_allow_html=True)
-    with rc2:
-        st.markdown(render_snapshot_card("Monsoon · IMD", monsoon_snap),
-                    unsafe_allow_html=True)
-    with rc3:
-        st.markdown(render_snapshot_card("Conflict tracker · ACLED/UCDP", conflict_snap),
-                    unsafe_allow_html=True)
-    with rc4:
-        st.markdown(render_snapshot_card("Ganga river level · CWC", river_snap),
-                    unsafe_allow_html=True)
-
-    if any(d.get('status') != 'live' for d in
-           (food_snap, monsoon_snap, conflict_snap, river_snap)):
-        st.markdown("""
-        <div class='note-box'>
-        Some feeds above show "NO FEED" — IMD (monsoon) and CWC (river level) are only
-        available through data.gov.in, which requires a free personal API key. Add it as
-        <code>DATA_GOV_IN_KEY</code> in <code>st.secrets</code> to enable those two.
-        ACLED's fuller conflict feed similarly needs a registered key
-        (<code>ACLED_KEY</code>) — until then this panel falls back to UCDP's open API.
-        FAO/WFP food-security updates are pulled live with no key needed.
-        </div>""", unsafe_allow_html=True)
-
-    # ── IPO pipeline cards ────────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>IPO pipeline — confirmed &amp; expected</div>",
-                unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    for col, ipo in zip([c1, c2, c3], IPO_DATA):
-        with col:
-            rows_html = ''.join(
-                f"<div class='ipo-row'><span>{r[0]}</span><span>{r[1]}</span></div>"
-                for r in ipo['rows']
-            )
-            st.markdown(f"""
-            <div class='ipo-card'>
-              <div class='ipo-title'>
-                <span class='badge {ipo["badge_class"]}'>{ipo["badge"]}</span>{ipo["name"]}
-              </div>
-              {rows_html}
-            </div>""", unsafe_allow_html=True)
-
-    # ── Charts ────────────────────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Charts — historical + scenario projections</div>",
-                unsafe_allow_html=True)
-
-    CHART_THEME = dict(
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#FFFFFF',
-        font=dict(family='Inter', color='#666560', size=11),
-        xaxis=dict(gridcolor='#ECEAE4', linecolor='#D6D3CA', showgrid=True),
-        yaxis=dict(gridcolor='#ECEAE4', linecolor='#D6D3CA', showgrid=True),
-        legend=dict(bgcolor='rgba(255,255,255,0.9)', bordercolor='#D6D3CA'),
-        margin=dict(l=50, r=20, t=30, b=40),
-        hovermode='x unified',
-    )
-
-    def add_event_markers(fig, row=None, col=None):
-        kwargs = dict(row=row, col=col) if row is not None else {}
-        for ev in PHASE_EVENTS:
-            fig.add_vline(x=pd.to_datetime(ev['date']), line_width=1,
-                          line_dash='dot', line_color=ev['color'],
-                          opacity=0.5, **kwargs)
-
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Gold & Crude", "💱 USD/INR", "📊 Equities",
-        "🇮🇳 Gold in INR", "📋 Portfolio allocation",
-    ])
-
-    with tab1:
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                            row_heights=[0.6, 0.4],
-                            subplot_titles=('Gold price (USD/oz)', 'Crude oil WTI (USD/bbl)'),
-                            vertical_spacing=0.08)
-        if gold_hist is not None:
-            fig.add_trace(go.Scatter(x=gold_hist['Date'], y=gold_hist['Price'],
-                name='Gold historical', line=dict(color='#fbbf24', width=1.5),
-                fill='tozeroy', fillcolor='rgba(251,191,36,0.06)'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['gold_base'],
-            name='Base (slow grind)', line=dict(color='#6366f1', width=1.5, dash='dot')), row=1, col=1)
-        fig.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['gold_rupture'],
-            name='Rupture scenario', line=dict(color='#f87171', width=2.5)), row=1, col=1)
-        fig.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['gold_bull'],
-            name='Bull scenario', line=dict(color='#4ade80', width=1.5, dash='dash')), row=1, col=1)
-        fig.add_hline(y=4139, line_width=1, line_color='#fbbf24', line_dash='dash',
-                      row=1, col=1, annotation_text=' Current: $4,139',
-                      annotation_font_color='#fbbf24')
-        fig.add_trace(go.Scatter(x=crude_hist['Date'], y=crude_hist['Price'],
-            name='Crude WTI historical', line=dict(color='#fb923c', width=1.5),
-            fill='tozeroy', fillcolor='rgba(251,146,60,0.06)'), row=2, col=1)
-        fig.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['crude_rupture'],
-            name='Crude rupture', line=dict(color='#f87171', width=2, dash='dash')), row=2, col=1)
-        fig.add_hline(y=89.4, line_width=1, line_color='#fb923c', line_dash='dash',
-                      row=2, col=1, annotation_text=' Current: ~$89',
-                      annotation_font_color='#fb923c')
-        add_event_markers(fig, row=1, col=1)
-        add_event_markers(fig, row=2, col=1)
-        fig.add_vrect(x0='2027-04-01', x1='2027-09-30',
-                      fillcolor='rgba(248,113,113,0.07)',
-                      annotation_text='Rupture window', annotation_position='top left',
-                      annotation_font_color='#f87171', annotation_font_size=10, line_width=0)
-        fig.update_layout(**CHART_THEME, height=550)
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown("<div class='note-box'>Gold historical: datasets/gold-prices (GitHub). "
-                    "Crude oil: estimated from known anchor points. "
-                    "Scenarios are analytical estimates, not forecasts.</div>",
-                    unsafe_allow_html=True)
-
-    with tab2:
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=inr_hist['Date'], y=inr_hist['Rate'],
-            name='USD/INR historical', line=dict(color='#60a5fa', width=1.5),
-            fill='tozeroy', fillcolor='rgba(96,165,250,0.06)'))
-        fig2.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['inr_rupture'],
-            name='Rupture scenario', line=dict(color='#f87171', width=2.5)))
-        fig2.add_hline(y=95.25, line_color='#fbbf24', line_dash='dash', line_width=1,
-                       annotation_text=' Today: 95.25', annotation_font_color='#fbbf24')
-        fig2.add_hrect(y0=95, y1=105, fillcolor='rgba(248,113,113,0.08)', line_width=0,
-                       annotation_text='Phase 1 rupture zone (95–105)',
-                       annotation_font_color='#f87171', annotation_font_size=10,
-                       annotation_position='top right')
-        fig2.add_hrect(y0=70, y1=80, fillcolor='rgba(74,222,128,0.06)', line_width=0,
-                       annotation_text='USD rebase zone (70–80)',
-                       annotation_font_color='#27500A', annotation_font_size=10,
-                       annotation_position='bottom right')
-        add_event_markers(fig2)
-        fig2.add_vrect(x0='2027-04-01', x1='2027-09-30',
-                       fillcolor='rgba(248,113,113,0.07)',
-                       annotation_text='Rupture window',
-                       annotation_font_color='#f87171', annotation_font_size=10, line_width=0)
-        fig2.update_layout(**CHART_THEME, height=420,
-                           title=dict(text='USD/INR — historical + rupture scenario',
-                                      font=dict(color='#1A1A18', size=13)))
-        st.plotly_chart(fig2, use_container_width=True)
-        st.markdown("""
-        <div class='section-header' style='margin-top:8px;'>INR action guide</div>
-        <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;'>
-          <div class='tl-cell cell-gold' style='min-height:60px;'><b>Hold INR when</b>
-            <span>System functioning · RBI defending · Current a/c near balance</span></div>
-          <div class='tl-cell cell-danger' style='min-height:60px;'><b>Hold Gold when</b>
-            <span>System under stress · FII outflows · Yields breaking out · 2026–2027</span></div>
-          <div class='tl-cell cell-silver' style='min-height:60px;'><b>The key rule</b>
-            <span>USD weak + INR strong = gold DOWN in INR. Exit gold BEFORE full INR rebase.</span></div>
-        </div>""", unsafe_allow_html=True)
-
-    with tab3:
-        fig3 = make_subplots(rows=1, cols=2,
-                             subplot_titles=('S&P 500 scenario', 'Nifty 50 scenario'))
-        if sp500_hist is not None:
-            fig3.add_trace(go.Scatter(x=sp500_hist['Date'], y=sp500_hist['Price'],
-                name='S&P historical', line=dict(color='#60a5fa', width=1.5)), row=1, col=1)
-        fig3.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['sp_rupture'],
-            name='S&P rupture', line=dict(color='#f87171', width=2.5)), row=1, col=1)
-
-        nifty_anchors = {
-            '2015-01': 8808,  '2016-01': 7600,  '2017-01': 8186,  '2018-01': 10906,
-            '2019-01': 10831, '2020-03': 7511,  '2021-01': 14018, '2022-01': 17354,
-            '2023-01': 18105, '2024-01': 21731, '2025-01': 23169, '2026-01': 24800,
-            '2026-06': 24350,
-        }
-        nifty_df = pd.DataFrame([
-            {'Date': pd.to_datetime(k), 'Price': v}
-            for k, v in nifty_anchors.items()
-        ]).sort_values('Date')
-        nifty_interp = (nifty_df.set_index('Date')
-                        .reindex(pd.date_range(nifty_df['Date'].min(),
-                                               nifty_df['Date'].max(), freq='MS'))
-                        .interpolate('linear').reset_index())
-        nifty_interp.columns = ['Date', 'Price']
-
-        fig3.add_trace(go.Scatter(x=nifty_interp['Date'], y=nifty_interp['Price'],
-            name='Nifty historical', line=dict(color='#4ade80', width=1.5)), row=1, col=2)
-        fig3.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['nifty_rupture'],
-            name='Nifty rupture', line=dict(color='#fb923c', width=2.5)), row=1, col=2)
-        add_event_markers(fig3, row=1, col=1)
-        add_event_markers(fig3, row=1, col=2)
-        fig3.add_vrect(x0='2027-04-01', x1='2027-09-30',
-                       fillcolor='rgba(248,113,113,0.07)', line_width=0, row=1, col=1)
-        fig3.add_vrect(x0='2027-04-01', x1='2027-09-30',
-                       fillcolor='rgba(248,113,113,0.07)', line_width=0, row=1, col=2)
-        fig3.update_layout(**CHART_THEME, height=420)
-        st.plotly_chart(fig3, use_container_width=True)
-        st.markdown("""<div class='note-box'>
-        401(k) destruction: Top 10 S&P stocks = ~40% of index weight. All AI bets.
-        A 50% AI complex drawdown = ~20–25% 401(k) loss before panic selling amplifies it.
-        Political pressure to bail out will be the inflationary policy response that validates gold.
-        </div>""", unsafe_allow_html=True)
-
-    with tab4:
-        fig4 = go.Figure()
-        if gold_hist is not None and inr_hist is not None:
-            gold_m   = gold_hist.set_index('Date').resample('MS').last()
-            inr_m    = inr_hist.set_index('Date').resample('MS').last()
-            combined = gold_m.join(inr_m, how='inner', lsuffix='_gold', rsuffix='_inr')
-            combined.columns = ['gold_usd', 'usd_inr']
-            combined['gold_inr_gram'] = combined['gold_usd'] * combined['usd_inr'] / 31.1035
-            combined = combined.reset_index()
-            fig4.add_trace(go.Scatter(x=combined['Date'], y=combined['gold_inr_gram'],
-                name='Gold in INR (historical, ₹/gram)',
-                line=dict(color='#fbbf24', width=2),
-                fill='tozeroy', fillcolor='rgba(251,191,36,0.06)'))
-        fig4.add_trace(go.Scatter(x=scenarios['Date'], y=scenarios['gold_inr_rupture'],
-            name='Gold INR rupture scenario (₹/gram)',
-            line=dict(color='#f87171', width=2.5)))
-        current_gold_inr = 4139 * 95.25 / 31.1035
-        fig4.add_hline(y=current_gold_inr, line_color='#fbbf24', line_dash='dash',
-                       annotation_text=f' Today: ₹{current_gold_inr:,.0f}/g',
-                       annotation_font_color='#fbbf24')
-        fig4.add_vrect(x0='2027-07-01', x1='2027-12-31',
-                       fillcolor='rgba(74,222,128,0.07)',
-                       annotation_text='Gold INR EXIT WINDOW',
-                       annotation_font_color='#27500A', annotation_font_size=11, line_width=0)
-        fig4.add_vrect(x0='2027-04-01', x1='2027-07-01',
-                       fillcolor='rgba(248,113,113,0.07)',
-                       annotation_text="Hold — don't panic",
-                       annotation_font_color='#f87171', annotation_font_size=10, line_width=0)
-        add_event_markers(fig4)
-        fig4.update_layout(**CHART_THEME, height=420,
-                           title=dict(text='Gold price in INR (₹/gram) — the Indian investor view',
-                                      font=dict(color='#1A1A18', size=13)),
-                           yaxis_title='₹ per gram')
-        st.plotly_chart(fig4, use_container_width=True)
-        st.markdown("""
-        <div class='section-header'>Gold INR phase math</div>
-        <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;'>
-          <div class='tl-cell cell-gold'><b>Phase 1 (Apr–Jun 27)</b>
-            <span>Gold USD ↓13% + INR ↓16% = Gold INR flat. Natural hedge. HOLD.</span></div>
-          <div class='tl-cell cell-gold'><b>Phase 2 (Jul–Sep 27)</b>
-            <span>Gold USD ↑92% + INR recovers to 88 = Gold INR ↑73%. HOLD ALL.</span></div>
-          <div class='tl-cell cell-danger'><b>EXIT window (H2 27)</b>
-            <span>Gold USD plateaus + INR appreciating = gold INR FALLS. Exit before INR hits 78.</span></div>
-          <div class='tl-cell cell-silver'><b>Silver after gold</b>
-            <span>Ratio 88→45. Silver peaks AFTER gold. Solar India demand adds fuel.</span></div>
-        </div>""", unsafe_allow_html=True)
-
-    with tab5:
-        phases = list(PORTFOLIO_PHASES.keys())
-        assets = ['Gold/SGBs', 'INR Cash', 'India Equity', 'Silver']
-        colors = ['#fbbf24', '#60a5fa', '#4ade80', '#5eead4']
-        fig5   = go.Figure()
-        for asset, color in zip(assets, colors):
-            vals = [PORTFOLIO_PHASES[p][asset] for p in phases]
-            fig5.add_trace(go.Bar(
-                name=asset, x=phases, y=vals,
-                marker_color=color, marker_opacity=0.85,
-                text=[f'{v}%' for v in vals], textposition='inside',
-                textfont=dict(color='#0e1117', size=11, family='Inter'),
-            ))
-        fig5.update_layout(
-            **CHART_THEME, height=380, barmode='stack',
-            title=dict(text='Recommended portfolio allocation by phase (India investor)',
-                       font=dict(color='#1A1A18', size=13)),
-            yaxis_title='%', yaxis_range=[0, 105],
-            legend_orientation='h', legend_y=1.12, legend_x=0,
-        )
-        st.plotly_chart(fig5, use_container_width=True)
-        st.markdown("""<div class='note-box'>
-        <b style='color:#854F0B;'>SGB advantage:</b> Sovereign Gold Bonds offer 2.5% annual
-        interest + gold price appreciation + tax-free maturity at 8 years.
-        Best vehicle for the gold leg of this thesis. Avoid gold ETFs as primary vehicle —
-        counterparty risk defeats the purpose in a rupture scenario.
-        </div>""", unsafe_allow_html=True)
-
-    # ── News cascade banner ───────────────────────────────────────────────────
-    if NEWS_OVERLAY:
-        _summary   = _raw_news.get('overall_summary', {})
-        _score     = _summary.get('cascade_health_index', None)
-        _flags     = _summary.get('immediate_red_flags', '')
-        _validated = sum(1 for v in NEWS_OVERLAY.values() if 'Validated' in v.get('status', ''))
-        _partial   = sum(1 for v in NEWS_OVERLAY.values() if 'Partial'   in v.get('status', ''))
-        _total     = len(NEWS_OVERLAY)
-        _bar_w     = f"{_score}%" if _score else "0%"
-        _bar_color = ("#27500A" if _score and _score >= 75
-                      else "#854F0B" if _score and _score >= 50 else "#791F1F")
-        st.markdown(f"""
-        <div style='background:#FFFFFF;border:0.5px solid #D6D3CA;
-             border-left:3px solid {_bar_color};border-radius:8px;
-             padding:10px 14px;margin-bottom:10px;'>
-          <div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;'>
-            <span style='font-size:11px;font-weight:600;color:#1A1A18;'>
-              📰 Live news overlay active — {_total} cells annotated</span>
-            <span style='font-size:11px;font-weight:600;color:{_bar_color};'>
-              Cascade health: {_score}/100</span>
-          </div>
-          <div style='background:#F1EFE8;border-radius:4px;height:6px;margin-bottom:8px;'>
-            <div style='background:{_bar_color};width:{_bar_w};height:6px;border-radius:4px;'></div>
-          </div>
-          <div style='display:flex;gap:12px;margin-bottom:6px;'>
-            <span style='font-size:10px;background:#EAF3DE;color:#27500A;
-                  padding:2px 7px;border-radius:4px;'>✅ Validated: {_validated}</span>
-            <span style='font-size:10px;background:#FFF8E8;color:#854F0B;
-                  padding:2px 7px;border-radius:4px;'>⚠️ Partial: {_partial}</span>
-            <span style='font-size:10px;background:#F1EFE8;color:#666560;
-                  padding:2px 7px;border-radius:4px;'>⏳ Too early: {_total-_validated-_partial}</span>
-          </div>
-          <div style='font-size:10px;color:#666560;line-height:1.5;'>
-            <b style='color:#791F1F;'>Red flags:</b> {_flags}</div>
-        </div>""", unsafe_allow_html=True)
-    else:
-        st.info("📂 Place **news.json** in the same folder to activate live news overlays.")
-
-    # ── Month-by-month timeline — summary + click-to-expand detail ───────────
-    st.markdown("<div class='section-header'>Month-by-month timeline (All 9 Columns)</div>",
-                unsafe_allow_html=True)
-    st.markdown("""
-    <div style='margin-bottom:12px;'>
-      <span class='phase-pill ph-vacuum'><span class='phase-dot' style='background:#6366f1'></span>
-        Phase 1: AI vacuum (now → Sep 2026)</span>
-      <span class='phase-pill ph-stress'><span class='phase-dot' style='background:#f59e0b'></span>
-        Phase 2: Stress fractures (Oct 2026 → Mar 2027)</span>
-      <span class='phase-pill ph-rupture'><span class='phase-dot' style='background:#ef4444'></span>
-        Phase 3: Rupture (Apr → Sep 2027)</span>
-      <span class='phase-pill ph-reset'><span class='phase-dot' style='background:#22c55e'></span>
-        Phase 4: Reset / deploy (H2 2027 → 2028)</span>
-    </div>""", unsafe_allow_html=True)
-
-    # -- Scoring: each cell's news-validation status maps onto a 0-10 scale;
-    #    a period's score is the average of its scored cells across all 9 columns.
-    _STATUS_SCORE = {
-        'Validated 🟢':   10.0,
-        'Partial 🟡':      6.0,
-        'Too Early ⏳':    3.0,
-        'Invalidated 🔴':  0.0,
-    }
-
-    def cell_score(row_idx, col_idx):
-        data = NEWS_OVERLAY.get(cell_key(row_idx, col_idx))
-        return _STATUS_SCORE.get(data.get('status', '')) if data else None
-
-    def period_score(row_idx, row):
-        scored = [s for s in (cell_score(row_idx, i) for i in range(len(row['cells'])))
-                  if s is not None]
-        return round(sum(scored) / len(scored), 1) if scored else None
-
-    def score_badge(score):
-        if score is None:
-            return '#F1EFE8', '#888480', '—/10'
-        if score >= 7.5:
-            return '#EAF3DE', '#27500A', f'{score:g}/10'
-        if score >= 4:
-            return '#FFF8E8', '#854F0B', f'{score:g}/10'
-        return '#FCEBEB', '#791F1F', f'{score:g}/10'
-
-    st.markdown("""
-    <div style='display:grid;grid-template-columns:150px 60px 1fr 60px;
-                gap:5px;margin-bottom:4px;'>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>Period</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>Score</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'>9-Column Active Signals Overview</span>
-      <span style='font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;'></span>
-    </div>""", unsafe_allow_html=True)
-
-    _now = pd.Timestamp.now().normalize()
-    for row_idx, row in enumerate(TIMELINE_ROWS):
-        score = period_score(row_idx, row)
-        bg, fg, score_label = score_badge(score)
-        period_display = row['period'].replace('\n', ' · ')
-        
-        is_current = (
-            'start' in row and 'end' in row
-            and pd.to_datetime(row['start']) <= _now <= pd.to_datetime(row['end'])
-        )
-        if is_current:
-            period_display += ' · TODAY'
-
-        head = st.columns([1.7, 0.8, 3.6, 0.9])
-        with head[0]:
-            alert_dot = '🔴' if (row['alert'] or is_current) else '⚪'
-            st.markdown(f"<div style='font-size:12px;font-weight:500;color:#1A1A18;"
-                        f"padding-top:6px;'>{alert_dot} {period_display}</div>",
-                        unsafe_allow_html=True)
-        with head[1]:
-            st.markdown(f"<div style='display:inline-block;padding:3px 9px;border-radius:5px;"
-                        f"background:{bg};color:{fg};font-size:11px;font-weight:600;"
-                        f"margin-top:4px;'>{score_label}</div>", unsafe_allow_html=True)
-        with head[2]:
-            chips = ''.join(
-                f"<span class='tl-cell {cls}' style='display:inline-block;padding:3px 8px;"
-                f"margin-right:4px;margin-top:2px;'><b style='font-size:10px;'>{title}</b></span>"
-                for cls, title, desc in row['cells']
-            )
-            st.markdown(f"<div>{chips}</div>", unsafe_allow_html=True)
-        with head[3]:
-            show_detail = st.checkbox("Detail", key=f"tl_detail_{row_idx}")
-
-        if show_detail:
-            # 9-Column Detail View Rendering
-            col_headers_html = ''.join(
-                f"<div style='font-size:9.5px;font-weight:600;color:#6b7280;text-transform:uppercase;padding:2px 4px;'>"
-                f"{col_name}</div>"
-                for col_name, _ in TIMELINE_COLUMNS
-            )
-            
-            cells_html = ''
-            for col_idx, (cls, title, desc) in enumerate(row['cells']):
-                overlay     = news_overlay_html(row_idx, col_idx)
-                cells_html += (f"<div class='tl-cell {cls}'>"
-                               f"<b>{title}</b><span>{desc}</span>{overlay}</div>")
-
-            st.markdown(f"""
-            <div style='margin:8px 0 12px;overflow-x:auto;'>
-              <div style='display:grid;grid-template-columns:repeat(9, minmax(130px, 1fr));gap:4px;margin-bottom:4px;'>
-                {col_headers_html}
-              </div>
-              <div style='display:grid;grid-template-columns:repeat(9, minmax(130px, 1fr));gap:4px;'>
-                {cells_html}
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown("<div style='border-bottom:0.5px solid #ECEAE4;margin:2px 0 10px;'></div>",
-                    unsafe_allow_html=True)
-
-    # ── 401k destruction ──────────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>401(k) destruction mechanism — why it amplifies everything</div>",
-                unsafe_allow_html=True)
-    st.markdown("""
-    <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;'>
-      <div class='tl-cell cell-401k' style='min-height:72px;'>
-        <b>Concentration risk</b>
-        <span>Top 10 S&P stocks = ~40% of index. All AI bets. Fidelity avg $141K already ↓4% in Q1 2026.</span>
-      </div>
-      <div class='tl-cell cell-401k' style='min-height:72px;'>
-        <b>Forced selling amplifier</b>
-        <span>Boomers near retirement cannot wait for recovery. Each withdrawal accelerates the crash.</span>
-      </div>
-      <div class='tl-cell cell-401k' style='min-height:72px;'>
-        <b>Policy response = inflationary</b>
-        <span>Political pressure for 401(k) bailout = money printing. 65M boomers = electoral force.</span>
-      </div>
-    </div>""", unsafe_allow_html=True)
-
-    # ── Crude section ─────────────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Crude oil — the physical world variable</div>",
-                unsafe_allow_html=True)
-    st.markdown("""
-    <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;'>
-      <div class='tl-cell cell-macro' style='min-height:72px;'>
-        <b>Iran / Hormuz factor</b>
-        <span>Strait still effectively closed. ~20% of global oil supply.</span>
-      </div>
-      <div class='tl-cell cell-macro' style='min-height:72px;'>
-        <b>Front-end rate killer</b>
-        <span>High oil = inflation = Fed can't cut. Oil up = front-end up = deficit explodes 6→10%.</span>
-      </div>
-      <div class='tl-cell cell-danger' style='min-height:72px;'>
-        <b>Tank bottom signal</b>
-        <span>Groman: "sometime between now and Labor Day, people start hitting tank bottoms."</span>
-      </div>
-      <div class='tl-cell cell-gold' style='min-height:72px;'>
-        <b>India inflation channel</b>
-        <span>India imports ~85% of oil. High crude = imported inflation = INR weakness = gold INR higher.</span>
-      </div>
-    </div>""", unsafe_allow_html=True)
-
-    # ── Footer ────────────────────────────────────────────────────────────────
-    st.markdown("""
-    <div class='note-box' style='margin-top:20px;'>
-    <b>Data sources:</b> Gold historical: datasets/gold-prices (GitHub/LBMA). S&amp;P 500: vega-datasets.
-    Crude oil, INR, equities: estimated from known anchor points, updated live where a feed exists.
-    Food security: FAO/WFP reporting via ReliefWeb (live, no key). Monsoon: India Meteorological
-    Department via data.gov.in (needs a key). Conflict tracking: UCDP GED (live, open) and ACLED
-    (needs a key). River levels: Central Water Commission via data.gov.in (needs a key).
-    IPO and 401(k) figures reflect the most recent disclosures available and age out of date over time —
-    treat older-looking entries as historical context rather than current fact. All projections are
-    analytical scenario estimates, not investment advice. <br />
-    <p style='color:red'>news.llmprompt upload to claude for collecting news and then write the output to outputs/news.json file.</a>
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown(
-        f"<p style='font-size:10px;color:#374151;margin-top:8px;'>"
-        f"Last refreshed: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')} "
-        f"· Data auto-refreshes every 5 minutes</p>",
-        unsafe_allow_html=True,
-    )
+    c1, c2, c3, c4 = st.columns([4, 2, 2, 2])
+    period = c1.radio("Period (colours, sparklines & ranking)", PERIODS, horizontal=True, key='period')
+    mode = c2.radio("Change shown as", ['%', 'Absolute'], horizontal=True, key='mode')
+    auto = c3.toggle("Auto-refresh (5 min)", value=True, key='auto')
+    thr = c4.number_input("Alert at 1D move ≥ %", 0.5, 20.0, 2.0, 0.5, key='thr',
+                          help="Yields/spreads alert at 10 bps; VIX at 4× this value.")
+    (_body_live if auto else _body_static)(period, mode, thr)

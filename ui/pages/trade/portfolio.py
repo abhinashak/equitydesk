@@ -138,6 +138,53 @@ INDEX_TICKER = "NIFTYBEES"
 # HISTORICAL DATA HELPERS
 # ==============================================================================
 
+def _log_sql(label: str, sql: str, df: "pd.DataFrame | None" = None,
+             elapsed_ms: float | None = None, error: str | None = None) -> None:
+    """Record an executed SQL statement (plus result stats) for the debug panel."""
+    entry = {"label": label, "sql": sql.strip(),
+             "elapsed_ms": elapsed_ms, "error": error,
+             "rows": None, "date_min": None, "date_max": None, "per_ticker_last": None}
+    if df is not None:
+        entry["rows"] = len(df)
+        if "date" in df.columns and len(df):
+            entry["date_min"] = str(pd.to_datetime(df["date"]).min().date())
+            entry["date_max"] = str(pd.to_datetime(df["date"]).max().date())
+            if "ticker" in df.columns:
+                last = (df.assign(date=pd.to_datetime(df["date"]))
+                          .groupby("ticker")["date"].max().dt.date.astype(str))
+                entry["per_ticker_last"] = last.reset_index().rename(
+                    columns={"ticker": "ticker", "date": "last_date"})
+    st.session_state.setdefault("_sql_log", []).append(entry)
+
+
+def _render_sql_log(slot) -> None:
+    """Draw every SQL executed during this run into the given placeholder."""
+    log = st.session_state.get("_sql_log", [])
+    with slot.container():
+        with st.expander(f"🧾 Executed SQL ({len(log)})", expanded=False):
+            if not log:
+                st.caption("No SQL executed in this run.")
+            for i, e in enumerate(log, 1):
+                st.markdown(f"**{i}. {e['label']}**")
+                st.code(e["sql"], language="sql")
+                bits = []
+                if e["rows"] is not None:
+                    bits.append(f"rows: **{e['rows']}**")
+                if e["date_min"]:
+                    bits.append(f"dates: **{e['date_min']} → {e['date_max']}**")
+                if e["elapsed_ms"] is not None:
+                    bits.append(f"{e['elapsed_ms']:.0f} ms")
+                if bits:
+                    st.caption("  ·  ".join(bits))
+                if e["error"]:
+                    st.error(e["error"])
+                if e["per_ticker_last"] is not None:
+                    # (no nested expander: Streamlit doesn't allow it)
+                    st.caption("Last date per ticker")
+                    st.dataframe(e["per_ticker_last"], hide_index=True,
+                                 use_container_width=True, height=180)
+
+
 def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = False) -> pd.DataFrame:
     """
     Pull close prices from DuckDB `ticker_prices` using nse_symbol column.
@@ -147,12 +194,14 @@ def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = Fa
     if not _HAS_COMMON or not nse_symbols:
         return pd.DataFrame()
 
+    table_name = "benchmark_prices" if is_benchmark else "ticker_prices"
+    query = ""
+    t0 = time.perf_counter()
     try:
         conn = get_duckdb_connection()
         initialize_views_or_mock(conn)
 
         sym_list = ", ".join(f"'{s}'" for s in nse_symbols)
-        table_name = "benchmark_prices" if is_benchmark else "ticker_prices"
         query = f"""
             SELECT Date       AS date,
                    nse_symbol AS ticker,
@@ -164,11 +213,27 @@ def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = Fa
         """
         df = conn.execute(query).df()
         df["date"] = pd.to_datetime(df["date"])
+        _log_sql(f"get_price_history → {table_name} ({len(nse_symbols)} symbols, {days} days)",
+                 query, df, (time.perf_counter() - t0) * 1000)
         return df
     except Exception as exc:
         # Keep the dashboard resilient, but log the underlying query/schema issue.
         print(f"[Portfolio] Price history query failed ({table_name}): {exc}")
+        _log_sql(f"get_price_history → {table_name} (FAILED)", query or "-- query not built",
+                 None, (time.perf_counter() - t0) * 1000, str(exc))
         return pd.DataFrame()
+
+
+def _carry_forward(s: pd.Series, target_index) -> pd.Series:
+    """Extend series `s` to the dates in `target_index` that are newer than its
+    last point, repeating the last known value. Used because benchmark_prices
+    (hence the index SMA50/SMA200) lags ~3 days behind ticker_prices."""
+    if s is None or s.empty or target_index is None or len(target_index) == 0:
+        return s
+    extra = target_index[target_index > s.index.max()]
+    if len(extra) == 0:
+        return s
+    return pd.concat([s, pd.Series(s.iloc[-1], index=extra)])
 
 
 def compute_portfolio_value_series(holdings_qty: dict,
@@ -215,6 +280,10 @@ def compute_period_return(port_series: pd.Series) -> float:
 
 def render():
     st.set_page_config(page_title="Portfolio", layout="wide", page_icon="📊")
+
+    # ── SQL debug log: reset each run, drawn into this slot at the end ───────
+    st.session_state["_sql_log"] = []
+    _sql_slot = st.empty()
 
     # ── CSS tweaks ────────────────────────────────────────────────────────────
     st.markdown("""
@@ -396,7 +465,10 @@ def render():
                 WHERE nse_symbol IN ({", ".join(f"'{s.upper()}'" for s in ticker_data.keys())})
             """
             print(sql_stmt)
+            _t0 = time.perf_counter()
             meta_df = conn.execute(sql_stmt).df()
+            _log_sql("ticker metadata → tickers", sql_stmt, meta_df,
+                     (time.perf_counter() - _t0) * 1000)
             print ( f"Total found : {len(meta_df)}")
             for _, r in meta_df.iterrows():
                 key = str(r["matched_symbol"]).strip().upper()
@@ -408,6 +480,8 @@ def render():
                     "dividend_yield":r.get("dividend_yield", 0) or 0,
                 }
         except Exception as e:
+            _log_sql("ticker metadata → tickers (FAILED)", locals().get("sql_stmt", "-- query not built"),
+                     None, None, str(e))
             st.caption(f"⚠️ Metadata load error: {e}")
 
     with st.expander("🐛 Metadata Debug", expanded=False):
@@ -608,28 +682,40 @@ def render():
         else:
             idx_pivot = pd.Series(dtype=float)
 
-        # ── SMA50 for INDEX_TICKER (NIFTYBEES) ────────────────────────────────
-        # Always fetch at least 200 days so SMA50 is well-seeded, regardless of
-        # the period the user chose for the portfolio movement chart.
-        _sma_days = max(days, 200)
-        YAHOO_SYMBOL = INDEX_TICKER + ".NS"
-        _sma_ph   = get_price_history([INDEX_TICKER], _sma_days, True)
+        # ── SMA50 / SMA200 for INDEX_TICKER (Nifty50) ─────────────────────────
+        # SMA200 needs 200 *trading* days before the first plotted date, so fetch
+        # the chart window + ~320 calendar days, compute on the full series, then
+        # slice to the chart window.
+        _sma_lookback = days + 320
+        _sma_ph = get_price_history([INDEX_TICKER], _sma_lookback, True)
+        _sma50_chart  = pd.Series(dtype=float)
+        _sma200_chart = pd.Series(dtype=float)
+        _idx_last    = None
+        _sma50_last  = None
         if not _sma_ph.empty:
             _idx_full = (_sma_ph[_sma_ph["ticker"] == INDEX_TICKER]
                          .set_index("date")["close"]
                          .pipe(lambda s: s[~s.index.duplicated(keep="last")])
                          .sort_index())
-            _sma50_full = _idx_full.rolling(window=50, min_periods=50).mean()
-            # Slice to the same date window as the chart
-            _sma50_chart = _sma50_full[_sma50_full.index >= idx_pivot.index[0]] if not idx_pivot.empty else _sma50_full
-            _idx_last   = _idx_full.iloc[-1]  if not _idx_full.empty  else None
+            _sma50_full  = _idx_full.rolling(window=50,  min_periods=50).mean()
+            _sma200_full = _idx_full.rolling(window=200, min_periods=200).mean()
+            _chart_start = idx_pivot.index[0] if not idx_pivot.empty else _idx_full.index[0]
+            _sma50_chart  = _sma50_full[_sma50_full.index   >= _chart_start].dropna()
+            _sma200_chart = _sma200_full[_sma200_full.index >= _chart_start].dropna()
+            _idx_last    = _idx_full.iloc[-1]   if not _idx_full.empty   else None
             _sma50_last  = _sma50_full.iloc[-1] if not _sma50_full.empty else None
-        else:
-            _sma50_chart = pd.Series(dtype=float)
-            _idx_last   = None
-            _sma50_last  = None
-        
-        print ( _sma50_last ) 
+            # benchmark_prices lags ~3 days. Best effort: if ticker_prices has
+            # newer closes for the index, use the latest one for the banner
+            # (SMA50 itself stays at its last computed value).
+            try:
+                _live = get_price_history([INDEX_TICKER], 15)
+                if not _live.empty and not _idx_full.empty:
+                    _live = _live[_live["date"] > _idx_full.index.max()].sort_values("date")
+                    if not _live.empty:
+                        _idx_last = _live["close"].iloc[-1]
+            except Exception:
+                pass
+
 
         # Only pass holding tickers to portfolio value (exclude index)
         ph_holdings = ph_df[ph_df["ticker"] != INDEX_TICKER] if not ph_df.empty else ph_df
@@ -639,9 +725,37 @@ def render():
         if not port_ser.empty:
             port_ser = port_ser[~port_ser.index.duplicated(keep="last")].sort_index()
 
+        # benchmark table lags ~3 days: skip the missing days by carrying the
+        # last known index SMA50/SMA200 forward to today's date
+        if not port_ser.empty:
+            _today = pd.Timestamp.today().normalize()
+            _carry_idx = port_ser.index.union(
+                pd.bdate_range(port_ser.index.max(), _today))
+            _sma50_chart  = _carry_forward(_sma50_chart,  _carry_idx)
+            _sma200_chart = _carry_forward(_sma200_chart, _carry_idx)
+
         # Align index pivot to port_ser dates to guarantee clean % returns
         if not idx_pivot.empty and not port_ser.empty:
             idx_pivot = idx_pivot.reindex(port_ser.index).ffill().bfill()
+
+        # ── Portfolio SMA50 / SMA200 ───────────────────────────────────────────
+        # Same idea as the index: build the portfolio value series over the
+        # extended lookback, take rolling means, then slice to the chart window.
+        _port_sma50_chart  = pd.Series(dtype=float)
+        _port_sma200_chart = pd.Series(dtype=float)
+        if not port_ser.empty:
+            _full_syms = [s for s in tickers_all if s in holdings_qty_hist]
+            _port_full_ph = get_price_history(_full_syms, _sma_lookback)
+            if not _port_full_ph.empty:
+                _port_full_ph = (_port_full_ph
+                                 .sort_values(["ticker", "date"])
+                                 .drop_duplicates(subset=["date", "ticker"], keep="last"))
+                _port_full = compute_portfolio_value_series(holdings_qty_hist, _port_full_ph)
+                _port_full = _port_full[~_port_full.index.duplicated(keep="last")].sort_index()
+                _p50  = _port_full.rolling(window=50,  min_periods=50).mean()
+                _p200 = _port_full.rolling(window=200, min_periods=200).mean()
+                _port_sma50_chart  = _p50[_p50.index   >= port_ser.index[0]].dropna()
+                _port_sma200_chart = _p200[_p200.index >= port_ser.index[0]].dropna()
 
     # ── EXIT PANIC BANNER ─────────────────────────────────────────────────────
     if _idx_last is not None and _sma50_last is not None:
@@ -728,55 +842,70 @@ def render():
                        f"{(_idx_last - _sma50_last) / _sma50_last * 100:+.2f}% vs price",
                        delta_color="normal" if _idx_last >= _sma50_last else "inverse")
 
-        # Normalised line chart
-        fig_trend = go.Figure()
+        # ── Build normalised series (all rebased to 100 at window start) ──────
         port_norm = port_ser / port_ser.iloc[0] * 100 if port_ser.iloc[0] else port_ser
-        fig_trend.add_trace(go.Scatter(
-            x=port_norm.index, y=port_norm.values,
-            name="Portfolio", line=dict(color=COLORS[0], width=2),
-            #fill="tonexty", fillcolor="rgba(37,99,235,0.07)"
-            fill = None
-        ))
+
         idx_norm = pd.Series(dtype=float)
         idx_aligned = pd.Series(dtype=float)
         if not idx_pivot.empty:
-            # Align only after both series are loaded and ensure a valid base.
             _idx_for_chart = idx_pivot.reindex(port_ser.index).ffill().bfill()
             if not _idx_for_chart.empty and pd.notna(_idx_for_chart.iloc[0]) and _idx_for_chart.iloc[0] != 0:
                 idx_aligned = _idx_for_chart
                 idx_norm = idx_aligned / idx_aligned.iloc[0] * 100
-                fig_trend.add_trace(go.Scatter(
-                    x=idx_norm.index, y=idx_norm.values,
-                    name=INDEX_TICKER,
-                    line=dict(color=COLORS[1], width=1.5, dash="dash")
-                ))
-        # SMA50 line — normalise to the same base as the benchmark index.
-        _sma50_norm = pd.Series(dtype=float)
-        if not _sma50_chart.empty and not idx_norm.empty:
-            _sma50_aligned = _sma50_chart.reindex(port_ser.index).ffill().dropna()
-            _idx_base      = idx_aligned.iloc[0] if not idx_aligned.empty and pd.notna(idx_aligned.iloc[0]) and idx_aligned.iloc[0] != 0 else None
-            if _idx_base:
-                _sma50_norm = _sma50_aligned / _idx_base * 100
-                fig_trend.add_trace(go.Scatter(
-                    x=_sma50_norm.index, y=_sma50_norm.values,
-                    name=f"{INDEX_TICKER} SMA50",
-                    line=dict(color="#f59e0b", width=1.5, dash="dot"),
-                    opacity=0.85,
-                ))
 
-        # ── Y-axis floor = min drawdown across all three normalised series ──
-        _y_mins = []
-        if not port_norm.empty:
-            _y_mins.append(port_norm.min())
-        if not idx_pivot.empty:
-            _y_mins.append(idx_norm.min())
-        if not _sma50_norm.empty:
-            _y_mins.append(_sma50_norm.min())
-        _y_floor = min(_y_mins) * 0.995 if _y_mins else 0   # small padding below
+        # Index SMAs share the index's base value so they sit on the same scale.
+        _idx_base = (idx_aligned.iloc[0]
+                     if not idx_aligned.empty and pd.notna(idx_aligned.iloc[0]) and idx_aligned.iloc[0] != 0
+                     else None)
+        def _norm_sma(sma: pd.Series, base) -> pd.Series:
+            if sma.empty or not base:
+                return pd.Series(dtype=float)
+            return sma.reindex(port_ser.index).ffill().dropna() / base * 100
+
+        _port_base = port_ser.iloc[0] if port_ser.iloc[0] else None
+        port_sma50_norm  = _norm_sma(_port_sma50_chart,  _port_base)
+        port_sma200_norm = _norm_sma(_port_sma200_chart, _port_base)
+        idx_sma50_norm   = _norm_sma(_sma50_chart,       _idx_base)
+        idx_sma200_norm  = _norm_sma(_sma200_chart,      _idx_base)
+
+        # (label, series, colour, dash, width, checkbox key)
+        _series_defs = [
+            ("Portfolio",        port_norm,        COLORS[0], "solid",   2.0, "mv_port"),
+            ("Portfolio SMA50",  port_sma50_norm,  "#38bdf8", "dot",     1.5, "mv_port_sma50"),
+            ("Portfolio SMA200", port_sma200_norm, "#1e3a8a", "dashdot", 1.5, "mv_port_sma200"),
+            ("Nifty50",          idx_norm,         COLORS[1], "dash",    1.5, "mv_idx"),
+            ("Nifty50 SMA50",    idx_sma50_norm,   "#f59e0b", "dot",     1.5, "mv_idx_sma50"),
+            ("Nifty50 SMA200",   idx_sma200_norm,  "#92400e", "dashdot", 1.5, "mv_idx_sma200"),
+        ]
+
+        # ── Show / hide checkboxes ─────────────────────────────────────────────
+        _chk_cols = st.columns(len(_series_defs))
+        _visible = []
+        for _col, (_label, _ser, _clr, _dash, _w, _key) in zip(_chk_cols, _series_defs):
+            _no_data = _ser.empty
+            _on = _col.checkbox(
+                _label, value=True, key=_key, disabled=_no_data,
+                help="Not enough history in the database for this line." if _no_data else None,
+            )
+            if _on and not _no_data:
+                _visible.append((_label, _ser, _clr, _dash, _w))
+
+        fig_trend = go.Figure()
+        for _label, _ser, _clr, _dash, _w in _visible:
+            fig_trend.add_trace(go.Scatter(
+                x=_ser.index, y=_ser.values, name=_label,
+                line=dict(color=_clr, width=_w, dash=_dash),
+                hovertemplate=f"{_label}: %{{y:.2f}}<extra></extra>",
+            ))
+
+        # Y-axis floor = lowest value among the lines currently shown
+        _y_mins = [s.min() for _, s, *_ in _visible if not s.empty]
+        _y_floor = min(_y_mins) * 0.995 if _y_mins else 0
 
         fig_trend.update_layout(
-            height=320, margin=dict(l=0, r=0, t=10, b=0),
-            legend=dict(orientation="h", y=1.05),
+            height=360, margin=dict(l=0, r=0, t=10, b=0),
+            legend=dict(orientation="h", y=1.08),
+            hovermode="x unified",
             xaxis=dict(showgrid=False),
             yaxis=dict(title="Indexed (base=100)", showgrid=True, gridcolor="#f0f0f0", range=[_y_floor, None]),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)"
@@ -1136,3 +1265,5 @@ def render():
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
+    # ── Executed SQL (debug) ──────────────────────────────────────────────────
+    _render_sql_log(_sql_slot)

@@ -6,12 +6,14 @@ Data sources:
   • Yahoo  — gentle fetch with 5-s gap between batches to avoid throttling
 """
 
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 # ── Inline CSS ────────────────────────────────────────────────────────────────
@@ -94,15 +96,11 @@ MACRO_OVERLAYS = {
     "GOLD":        dict(ticker="GOLDBEES.NS",     color="yellow",  dash="dash"),
 }
 
+# Financial-year rows are generated dynamically from the available price history
+# (see _financial_year_periods) — only events / live rows are listed here.
+_YAHOO_HISTORY_START = "2000-01-01"
+
 EVENT_PERIODS = [
-    {"name": "FY2018", "section": "Financial Years", "start": "2018-04-01", "end": "2019-03-31"},
-    {"name": "FY2019", "section": "Financial Years", "start": "2019-04-01", "end": "2020-03-31"},
-    {"name": "FY2020", "section": "Financial Years", "start": "2020-04-01", "end": "2021-03-31"},
-    {"name": "FY2021", "section": "Financial Years", "start": "2021-04-01", "end": "2022-03-31"},
-    {"name": "FY2022", "section": "Financial Years", "start": "2022-04-01", "end": "2023-03-31"},
-    {"name": "FY2023", "section": "Financial Years", "start": "2023-04-01", "end": "2024-03-31"},
-    {"name": "FY2024", "section": "Financial Years", "start": "2024-04-01", "end": "2025-03-31"},
-    {"name": "FY2025", "section": "Financial Years", "start": "2025-04-01", "end": "2026-03-31"},
     {"name": "Covid Crash",         "section": "Critical Events", "start": "2020-01-17", "end": "2020-03-23"},
     {"name": "Covid V-Recovery",    "section": "Critical Events", "start": "2020-03-23", "end": "2020-08-31"},
     {"name": "Russia-Ukraine War",  "section": "Critical Events", "start": "2022-02-24", "end": "2022-09-30"},
@@ -112,6 +110,37 @@ EVENT_PERIODS = [
     {"name": "Live (YTD FY26)",     "section": "Live",
      "start": "2026-04-01", "end": date.today().strftime("%Y-%m-%d")},
 ]
+
+
+def _financial_year_periods(first_date, today: date | None = None) -> list[dict]:
+    """
+    Indian FYs (1 Apr → 31 Mar, named by start year, e.g. FY2018 = Apr-18 → Mar-19)
+    for every *complete* year covered by the data, i.e. from the first FY that
+    starts on/after the first available price up to the last FY already ended.
+    """
+    today = today or date.today()
+    first = pd.Timestamp(first_date)
+    y = first.year - 1
+    while pd.Timestamp(year=y, month=4, day=1) < first - pd.Timedelta(days=10):
+        y += 1
+    out = []
+    while date(y + 1, 3, 31) < today:
+        out.append({"name": f"FY{y}", "section": "Financial Years",
+                    "start": f"{y}-04-01", "end": f"{y + 1}-03-31"})
+        y += 1
+    return out
+
+
+def _earliest_history_start(parquet_dir: str, use_local: bool) -> str:
+    """Earliest date we should load so the period table can show every year."""
+    if use_local and Path(parquet_dir).exists():
+        years = [
+            int(p.name.split("=")[1]) for p in Path(parquet_dir).glob("year=*")
+            if p.name.split("=")[-1].isdigit()
+        ]
+        if years:
+            return f"{min(years)}-01-01"
+    return _YAHOO_HISTORY_START
 
 
 # ── Ticker helpers ────────────────────────────────────────────────────────────
@@ -372,6 +401,65 @@ def _pct_return(s: pd.Series) -> float:
     return (s.iloc[-1] / s.iloc[0] - 1) * 100
 
 
+# ── JS: rebase all traces to 100 at the start of the visible x-range ─────────
+_REBASE_JS = r"""
+(function () {
+  var gd = document.getElementById('{plot_id}');
+  var ORIG = __ORIG__;
+  ORIG.forEach(function (t) {
+    t.ts = t.x.map(function (d) { return Date.parse(d + 'T00:00:00Z'); });
+  });
+
+  function toMs(v) {
+    if (typeof v === 'number') return v;
+    var s = String(v).replace(' ', 'T');
+    if (s.length === 10) s += 'T00:00:00';
+    if (!/[zZ]$|[+-]\d\d:?\d\d$/.test(s)) s += 'Z';
+    return Date.parse(s);
+  }
+
+  function firstValid(t, from) {
+    for (var k = 0; k < t.ts.length; k++) {
+      if (t.ts[k] >= from && t.y[k] !== null && t.y[k] !== 0) return t.y[k];
+    }
+    return null;
+  }
+
+  function rebase(startMs, endMs, auto) {
+    var ys = [], idx = [], lo = Infinity, hi = -Infinity;
+    ORIG.forEach(function (t, i) {
+      var b = firstValid(t, startMs);
+      if (b === null) b = firstValid(t, -Infinity);
+      if (b === null) return;
+      var ny = t.y.map(function (v) { return v === null ? null : v / b * 100; });
+      ys.push(ny); idx.push(i);
+      for (var k = 0; k < ny.length; k++) {
+        if (ny[k] === null || t.ts[k] < startMs || t.ts[k] > endMs) continue;
+        if (ny[k] < lo) lo = ny[k];
+        if (ny[k] > hi) hi = ny[k];
+      }
+    });
+    Plotly.restyle(gd, {y: ys}, idx);
+    if (auto || !isFinite(lo)) {
+      Plotly.relayout(gd, {'yaxis.autorange': true});
+    } else {
+      var pad = (hi - lo) * 0.05 || 1;
+      Plotly.relayout(gd, {'yaxis.range': [lo - pad, hi + pad]});
+    }
+  }
+
+  gd.on('plotly_relayout', function (ev) {
+    if (ev['xaxis.autorange'] === true) { rebase(-Infinity, Infinity, true); return; }
+    var r0, r1;
+    if (ev['xaxis.range[0]'] !== undefined) { r0 = ev['xaxis.range[0]']; r1 = ev['xaxis.range[1]']; }
+    else if (ev['xaxis.range']) { r0 = ev['xaxis.range'][0]; r1 = ev['xaxis.range'][1]; }
+    else return;
+    rebase(toMs(r0), toMs(r1), false);
+  });
+})();
+"""
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # render()
 # ═════════════════════════════════════════════════════════════════════════════
@@ -500,13 +588,28 @@ def render():
         _p1_ta_kwargs = {} if "p1_text" in st.session_state else {
             "value": st.session_state.get("_p1_text_val", "")
         }
+
+        _p1_default = (
+            "GOLDBEES.NS:45\n"
+            "NIFTYBEES.NS:25\n"
+            "NIFTYMIDCAP150.NS:15\n"
+            "0P0001B9ZU.BO:10\n"
+            "0P0000AF09.BO:5"
+        )
+
+        _p1_ta_kwargs = {} if "p1_text" in st.session_state else {
+            "value": st.session_state.get("_p1_text_val", _p1_default)
+        }
+
         p1_text = st.text_area(
             "Tickers & weights  (TICKER: weight, one per line)",
-            height=200, key="p1_text",
-            placeholder="RELIANCE: 2.0\nINFY: 1.5\nHDFCBANK: 1.0",
+            height=200,
+            key="p1_text",
             **_p1_ta_kwargs,
         )
+
         st.session_state["_p1_text_val"] = p1_text
+
         st.markdown('</div>', unsafe_allow_html=True)
 
     with p2_col:
@@ -689,6 +792,10 @@ def render():
     macro_tickers  = tuple(v["ticker"] for v in MACRO_OVERLAYS.values())
     bench_and_macro = tuple(dict.fromkeys([benchmark_ticker] + list(macro_tickers)))
 
+    # Load the full available history (for the period table); the chart /
+    # scorecard are sliced back to the selected start date further below.
+    fetch_start_str = min(_earliest_history_start(parquet_dir, use_local), start_str)
+
     if use_local:
         # Local: single DuckDB query for everything — macros / bench may be
         # absent from local store (indices, FX) so we note that gracefully.
@@ -696,7 +803,7 @@ def render():
             list(weights1) + list(weights2) + list(bench_and_macro)
         ))
         with st.spinner("Reading local parquet data…"):
-            prices = _fetch_local(all_tickers, start_str, end_str, parquet_dir)
+            prices = _fetch_local(all_tickers, fetch_start_str, end_str, parquet_dir)
 
         if prices.empty:
             st.error(
@@ -714,7 +821,7 @@ def render():
             try:
                 import yfinance as yf, time
                 with st.spinner(f"Fetching {len(yf_needed)} index/FX tickers from Yahoo…"):
-                    extra = _fetch_yahoo_single_batch(tuple(yf_needed), start_str, end_str)
+                    extra = _fetch_yahoo_single_batch(tuple(yf_needed), fetch_start_str, end_str)
                 if not extra.empty:
                     for c in extra.columns:
                         if c not in prices.columns:
@@ -732,15 +839,28 @@ def render():
 
         p1_tickers = tuple(weights1.keys())
         p2_tickers = tuple(weights2.keys())
-        prices = _fetch_yahoo(p1_tickers, p2_tickers, bench_and_macro, start_str, end_str)
+        prices = _fetch_yahoo(p1_tickers, p2_tickers, bench_and_macro, fetch_start_str, end_str)
 
         if prices.empty:
             st.error("Could not fetch any price data from Yahoo Finance.")
             return
 
+    # Full-history frame feeds the period table; `prices` is the selected window.
+    prices_full = prices
+    prices      = prices_full.loc[pd.Timestamp(start_str):]
+    if prices.empty:
+        st.error("No price data available from the selected start date.")
+        return
+
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION 4 — Build series + scorecard
     # ══════════════════════════════════════════════════════════════════════════
+    full_series1, _ = _build_series(weights1, prices_full)
+    full_series2, _ = _build_series(weights2, prices_full)
+    full_bench = None
+    if benchmark_ticker in prices_full.columns and not prices_full[benchmark_ticker].dropna().empty:
+        full_bench = prices_full[benchmark_ticker].ffill().dropna()
+
     portfolio_series1, missing1 = _build_series(weights1, prices)
     portfolio_series2, missing2 = _build_series(weights2, prices)
 
@@ -821,7 +941,8 @@ def render():
         xaxis=dict(
             gridcolor="#1a1a1a", showline=True, linecolor="#2a2a2a", tickformat="%b '%y",
             rangeslider=dict(visible=True, bgcolor="#0d0d0d", bordercolor="#2a2a2a",
-                             borderwidth=1, thickness=0.10),
+                             borderwidth=1, thickness=0.10,
+                             yaxis=dict(rangemode="auto")),
             rangeselector=dict(
                 buttons=[
                     dict(count=1,  label="1M", step="month", stepmode="backward"),
@@ -841,7 +962,29 @@ def render():
                         font=dict(color="#e8e0d0", family="DM Mono, monospace")),
         height=560, margin=dict(l=10, r=10, t=40, b=10),
     )
-    st.plotly_chart(fig, use_container_width=True)
+
+    # Rebase-on-zoom: Streamlit's plotly_chart can't react to range-slider /
+    # range-selector changes, so render via plotly.js directly and rebase every
+    # line to 100 at the start of whichever window is selected.
+    payload = []
+    for tr in fig.data:
+        xs = pd.to_datetime(np.asarray(tr.x)).strftime("%Y-%m-%d").tolist()
+        ys = [None if (v is None or np.isnan(v)) else round(float(v), 4)
+              for v in np.asarray(tr.y, dtype=float)]
+        payload.append({"x": xs, "y": ys})
+
+    chart_html = fig.to_html(
+        full_html=False, include_plotlyjs="cdn", div_id="pf_chart",
+        default_height="560px", default_width="100%",
+        config={"displaylogo": False, "responsive": True},
+        post_script=_REBASE_JS.replace("__ORIG__", json.dumps(payload)),
+    )
+    components.html(
+        "<style>html,body{margin:0;background:transparent;}</style>" + chart_html,
+        height=580, scrolling=False,
+    )
+    st.caption("Drag the range slider (or use 1M / 3M / 6M / 1Y) — all lines rebase to 100 "
+               "at the start of the selected window.")
 
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION 6 — Event period table, full width
@@ -869,8 +1012,18 @@ def render():
     last_section = None
     today_str    = date.today().strftime("%Y-%m-%d")
 
-    for evt in EVENT_PERIODS:
+    # Table uses the full available history (independent of the chart's start date)
+    first_dates = [x.index[0] for x in (full_series1, full_series2, full_bench)
+                   if x is not None and not x.empty]
+    fy_periods  = _financial_year_periods(min(first_dates) if first_dates else start_date)
+
+    for evt in fy_periods + EVENT_PERIODS:
         if evt["start"] > today_str:
+            continue
+        r1 = _period_ret(full_series1, evt["start"], evt["end"])
+        r2 = _period_ret(full_series2, evt["start"], evt["end"])
+        rb = _period_ret(full_bench,   evt["start"], evt["end"])
+        if evt["section"] == "Financial Years" and r1 is None and r2 is None and rb is None:
             continue
         if evt["section"] != last_section:
             rows_html += (
@@ -879,9 +1032,6 @@ def render():
                 f"</tr>"
             )
             last_section = evt["section"]
-        r1 = _period_ret(portfolio_series1, evt["start"], evt["end"])
-        r2 = _period_ret(portfolio_series2, evt["start"], evt["end"])
-        rb = _period_ret(bench_series,      evt["start"], evt["end"])
         d  = (r1 - r2) if (r1 is not None and r2 is not None) else None
         rows_html += (
             f"<tr>"

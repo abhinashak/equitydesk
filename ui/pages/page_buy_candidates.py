@@ -65,7 +65,11 @@ def _get_con(db_path: str):
 
 
 def _q(con, sql: str, params=None) -> pd.DataFrame:
-    return con.cursor().execute(sql, params or []).df()
+    cur = con.cursor()
+    try:
+        return cur.execute(sql, params or []).df()
+    finally:
+        cur.close()
 
 
 def _views_ready(con) -> bool:
@@ -151,6 +155,96 @@ def _apply_params(con, p: dict) -> None:
 
 def _load_screen(con) -> pd.DataFrame:
     return _q(con, "SELECT * FROM abinash_screen")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Table <-> line chart toggle (reusable)
+# ══════════════════════════════════════════════════════════════════════════════
+
+_DATE_HINTS = ("date", "time", "_dt", "day", "month", "year", "period")
+
+
+def _date_columns(df: pd.DataFrame) -> list[str]:
+    """Columns that are datetimes, or text columns that look like (and parse as) dates."""
+    out = []
+    for c in df.columns:
+        s = df[c]
+        if pd.api.types.is_datetime64_any_dtype(s):
+            out.append(c)
+        elif s.dtype == object and any(h in str(c).lower() for h in _DATE_HINTS):
+            sample = s.dropna().head(200)
+            if len(sample) and pd.to_datetime(sample, errors="coerce").notna().mean() >= 0.8:
+                out.append(c)
+    return out
+
+
+def _line_chart(df: pd.DataFrame, key: str) -> None:
+    if df.empty:
+        st.info("Nothing to chart.")
+        return
+
+    date_cols = _date_columns(df)
+    other_cols = [c for c in df.columns if c not in date_cols]
+    num_cols = [c for c in df.columns
+                if pd.api.types.is_numeric_dtype(df[c]) and not pd.api.types.is_bool_dtype(df[c])]
+    if not num_cols:
+        st.info("No numeric columns to plot.")
+        return
+
+    x_options = date_cols + other_cols
+    c1, c2, c3, c4 = st.columns([1.3, 2, 1.3, 1])
+    x = c1.selectbox("X axis / date column", x_options, key=f"{key}_x",
+                     format_func=lambda c: f"📅 {c}" if c in date_cols else c,
+                     help="Date columns are listed first.")
+    y_choices = [c for c in num_cols if c != x]
+    y = c2.multiselect("Y (numeric)", y_choices, default=y_choices[:1], key=f"{key}_y")
+
+    split_choices = [c for c in df.columns
+                     if c != x and c not in y_choices
+                     and 1 < df[c].nunique() <= 25 and not pd.api.types.is_float_dtype(df[c])]
+    split = c3.selectbox("One line per…", ["(none)"] + split_choices, key=f"{key}_split")
+    agg = c4.selectbox("If rows share X", ["mean", "median", "sum", "last", "max", "min"],
+                       key=f"{key}_agg")
+
+    if not y:
+        st.info("Pick at least one Y column.")
+        return
+    if split != "(none)" and len(y) > 1:
+        st.info("Splitting into lines works with one Y column — pick just one.")
+        return
+
+    d = df[[x, *y] + ([split] if split != "(none)" else [])].copy()
+    if x in date_cols:
+        d[x] = pd.to_datetime(d[x], errors="coerce")
+    d = d.dropna(subset=[x])
+    if d[x].nunique() < 2:
+        st.info(f"`{x}` has only one distinct value here, so there is no line to draw. "
+                "Pick another X column — or use the SQL tab to query a time series "
+                "(e.g. a price/momentum history table).")
+        return
+
+    try:
+        if split == "(none)":
+            plot = d.groupby(x)[y].agg(agg).sort_index()
+        else:
+            plot = (d.groupby([x, split])[y[0]].agg(agg).unstack(split).sort_index())
+    except Exception as e:
+        st.error(f"Could not build chart: {type(e).__name__}: {str(e)[:300]}")
+        return
+
+    st.line_chart(plot, use_container_width=True)
+    if x not in date_cols:
+        st.caption(f"`{x}` is not a date column – the line connects values in sorted order.")
+
+
+def _table_or_chart(df: pd.DataFrame, key: str, render_table) -> None:
+    """Radio toggle: Table (render_table() callback) or Line chart of df."""
+    mode = st.radio("View as", ["📋 Table", "📈 Line chart"], horizontal=True,
+                    key=f"{key}_mode", label_visibility="collapsed")
+    if mode.startswith("📋"):
+        render_table()
+    else:
+        _line_chart(df, key)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -269,7 +363,8 @@ def _shortlist_tab(sl: pd.DataFrame):
             "rsi", "ret_6m", "current_price"]
     cols = [c for c in cols if c in show.columns]
 
-    st.dataframe(
+    def _table():
+      st.dataframe(
         show[cols], hide_index=True, use_container_width=True, height=520,
         column_config={
             "tier": st.column_config.TextColumn("Tier", width="small"),
@@ -291,6 +386,8 @@ def _shortlist_tab(sl: pd.DataFrame):
         },
     )
 
+    _table_or_chart(sl[[c for c in cols if c in sl.columns]], "bc_sl", _table)
+
     d1, d2 = st.columns([1, 5])
     d1.download_button(
         "⬇ Export CSV", sl.to_csv(index=False).encode(),
@@ -301,7 +398,7 @@ def _shortlist_tab(sl: pd.DataFrame):
 
 
 def _lens_badge(v) -> str:
-    if v is None or (isinstance(v, float) and pd.isna(v)):
+    if v is None or pd.isna(v):
         return "➖ n/a"
     return "✅ pass" if bool(v) else "❌ fail"
 
@@ -319,7 +416,9 @@ def _drilldown_tab(screen: pd.DataFrame, candidates: pd.DataFrame):
     r = screen[screen["ticker"] == ticker].iloc[0]
 
     st.subheader(f"{r['company_name']}  ·  {ticker}")
-    st.caption(f"{r['sector'] or '—'}  |  Gate: {r['gate_rec'] or '—'}"
+    sector = r["sector"] if pd.notna(r["sector"]) else "—"
+    gate = r["gate_rec"] if pd.notna(r["gate_rec"]) else "—"
+    st.caption(f"{sector}  |  Gate: {gate}"
                + (f"  |  Tier {r['tier']}" if pd.notna(r["tier"]) else "  |  Not shortlisted"))
 
     # lens verdicts
@@ -333,8 +432,9 @@ def _drilldown_tab(screen: pd.DataFrame, candidates: pd.DataFrame):
     lc[2].metric("3 · Momentum", _lens_badge(r["l_momentum"]),
                  f"{r['mom_tests']:.0f}/4 tests" if pd.notna(r["mom_tests"]) else None,
                  delta_color="off")
+    algo_side = r["algo_side"] if pd.notna(r["algo_side"]) else "–"
     lc[3].metric("4 · Algo", _lens_badge(r["l_algo"]),
-                 f"{r['algo_composite']:+.2f} ({r['algo_side'] or '–'})"
+                 f"{r['algo_composite']:+.2f} ({algo_side})"
                  if pd.notna(r["algo_composite"]) else None, delta_color="off")
 
     if pd.notna(r["why"]):
@@ -352,8 +452,10 @@ def _drilldown_tab(screen: pd.DataFrame, candidates: pd.DataFrame):
                       r["dcf_mos_price"], r["dcf_price"]],
             }, index=["Bear", "Base", "Bull", "MoS price", "Price"])
             st.bar_chart(dcf)
-            st.caption(f"DCF verdict: **{r['dcf_verdict'] or '—'}**  ·  "
-                       f"P/E verdict: **{r['dcf_pe_verdict'] or '—'}**"
+            dcf_verdict = r["dcf_verdict"] if pd.notna(r["dcf_verdict"]) else "—"
+            pe_verdict = r["dcf_pe_verdict"] if pd.notna(r["dcf_pe_verdict"]) else "—"
+            st.caption(f"DCF verdict: **{dcf_verdict}**  ·  "
+                       f"P/E verdict: **{pe_verdict}**"
                        + (f"  ·  Terminal value {r['dcf_tv_pct']:.0f}% of value"
                           if pd.notna(r["dcf_tv_pct"]) else ""))
         else:
@@ -392,7 +494,8 @@ def _screen_tab(screen: pd.DataFrame):
                "(abinash_screen).")
     only_short = st.toggle("Shortlisted only", value=False, key="bc_only_sl")
     df = screen[screen["shortlisted"] == True] if only_short else screen  # noqa: E712
-    st.dataframe(df, hide_index=True, use_container_width=True, height=560)
+    _table_or_chart(df, "bc_scr", lambda: st.dataframe(
+        df, hide_index=True, use_container_width=True, height=560))
     st.download_button("⬇ Export full screen CSV",
                        df.to_csv(index=False).encode(),
                        file_name="abinash_screen.csv", mime="text/csv")
@@ -406,9 +509,14 @@ def _sql_tab(con):
     q = st.text_area("SQL", value=default, height=100, key="bc_sql")
     if st.button("▶ Run", key="bc_run"):
         try:
-            st.dataframe(_q(con, q), use_container_width=True, hide_index=True)
+            st.session_state["bc_sql_result"] = _q(con, q)
         except Exception as e:
+            st.session_state.pop("bc_sql_result", None)
             st.error(f"{type(e).__name__}: {str(e)[:400]}")
+    res = st.session_state.get("bc_sql_result")
+    if res is not None:
+        _table_or_chart(res, "bc_sqlres", lambda: st.dataframe(
+            res, use_container_width=True, hide_index=True))
     if p:
         with st.expander("View buy_candidates.sql"):
             st.code(p.read_text(encoding="utf-8"), language="sql")
