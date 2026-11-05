@@ -333,13 +333,23 @@ SILVERBEES,SILVERBEES.NS,SILVER,Large-cap,100.0,10.0,10.0
 NSEI,^NSEI,NIFTY_500,Large-cap,100.0,10.0,10.0
 KRBL,KRBL.NS,NIFTY_FMCG,Small-cap,100.0,1.0,1.0
 AZAD,AZAD.NS,Defence_ETF,Small-cap,100.0,1.0,1.0
-MTARTECH,MTARTECH.NS,Defence_ETF,Small-cap,100.0,1.0,1.0
-NBCC,NBCC.NS,Realty,Mid-cap,100.0,1.0,1.0
-JSLL,JSLL.NS,NIFTY_Pharma_Index,Small-cap,100.0,1.0,
-NEPHROPLUS,NEPHROPLUS.NS,NIFTY_Pharma_Index,Small-cap,100.0,1.0,1.0
-VAML,VAML.NS,NIFTY_Metal,Large-cap,100.0,1.0,1.0
-LLOYDSME,LLOYDSME.NS,NIFTY_Metal,Large-cap,100.0,1.0,1.0
-NIFTYMIDCAP150,NIFTYMIDCAP150.NS,Index,Mid-cap,100.0,1.0,1.0
-NIFTYSMLCAP100,NIFTYSMLCAP100.NS,Index,Small-cap,100.0,1.0,1.0
-0P0001B9ZU,0P0001B9ZU.BO,Index,Small-cap,100.0,1.0,1.0
-0P0000AF09,0P0000AF09.BO,Index,Large-cap,100.0,1.0,1.0
+MTAR Technologies Limited,MTARTECH.NS,Defence_ETF,Small-cap,100.0,1.0,1.0
+NBCC India Limited,NBCC.NS,Realty,Mid-cap,100.0,1.0,1.0
+Jeena Sikho Lifecare Limited ,JSLL.NS,NIFTY_Pharma_Index,Small-cap,100.0,1.0,
+Nephrocare Health Services Limited,NEPHROPLUS.NS,NIFTY_Pharma_Index,Small-cap,100.0,1.0,1.0
+Vedanta Aluminium Metal Limited,VAML.NS,NIFTY_Metal,Large-cap,100.0,1.0,1.0
+Lloyds Metals and Energy Limited,LLOYDSME.NS,NIFTY_Metal,Large-cap,100.0,1.0,1.0
+NIFTY MIDCAP 150,NIFTYMIDCAP150.NS,Index,Mid-cap,100.0,1.0,1.0
+NIFTY SMLCAP 250,NIFTYSMLCAP250.NS,Index,Small-cap,100.0,1.0,1.0
+DSP Small Cap Dir IDCW-R,0P0001B9ZU.BO,Index,Small-cap,100.0,1.0,1.0
+HDFC Arbitrage Growth,0P0000AF09.BO,Index,Large-cap,100.0,1.0,1.0
+Bajaj Nivesh Limited,MAHSCOOTER.NS,NIFTY_Auto_Index,Small-cap,100.0,1.0,1.0
+Lenskart,LENSKART.NS,NIFTY_Pharma_Index,Small-cap,100.0,1.0,1.0
+R R Kabel Limited ,RRKABEL.NS,NIFTY_Infrastructure,Small-cap,100.0,1.0,1.0
+Ethos Limited,ETHOSLTD.NS,NIFTY_Consumption,Small-cap,100.0,1.0,1.0
+Shadowfax Technologies Limited,SHADOWFAX.NS,Index,Small-cap,100.0,1.0,1.0
+Travel Food Services Limited,TRAVELFOOD.NS,Index,Small-cap,100.0,1.0,1.0
+REDTAPE Limited,REDTAPE.NS,Index,Small-cap,100.0,1.0,1.0
+Neuland Laboratories Limited,NEULANDLAB.NS,Index,Small-cap,100.0,1.0,1.0
+Netweb Technologies India Limited,NETWEB.NS,Index,Small-cap,100.0,1.0,1.0
+Sterlite Technologies Limited,STLTECH.NS,Index,Small-cap,100.0,1.0,1.0

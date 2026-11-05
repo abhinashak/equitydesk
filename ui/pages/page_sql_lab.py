@@ -4,8 +4,10 @@ ui/pages/page_sql_lab.py
 SQL Lab — Write, preview, and publish SQL screeners as dashboard panels.
 
 Flow:
-  1. Each DB operation opens a fresh in-memory DuckDB, runs init.sql to
-     set up views, executes the query, then closes immediately.
+  1. A shared in-memory DuckDB is built once per server process by running the
+     SQL pipeline (init_raw → init → quality_gates → dcf → algo_momentum →
+     buy_candidates), so views like abinash_screen exist. Each operation uses
+     its own cursor. Use "Rebuild DB" to re-run the pipeline.
   2. Schema browser shows CREATE statements + live sample rows (collapsible).
   3. Editor: write SQL → Run → preview result.
   4. Assign a visualisation type (Table / Line / Bar / Area).
@@ -39,39 +41,134 @@ VIZ_ICONS: dict[str, str] = {
 
 # ── DuckDB ─────────────────────────────────────────────────────────────────────
 
+# Same build order as page_buy_candidates._PIPELINE. Scripts that don't exist
+# are skipped; reorder here if your build order differs.
+_PIPELINE: list[str] = [
+    "init_raw.sql",
+    "init.sql",
+    "quality_gates.sql",
+    "dcf.sql",
+    "algo_momentum.sql",
+    "buy_candidates.sql|abinash_recommendations.sql",   # creates abinash_params / abinash_screen / abinash_recommendations
+]                                                       # ("a|b" = first file that exists wins)
+
+try:                                   # same app-wide base dir the Buy Candidates page uses
+    from bll import agent as _ag
+    _BASE = str(_ag.BASE)
+except Exception:
+    _BASE = os.path.abspath(os.path.join(_SQLS_DIR, ".."))
+
+def _raise_fd_limit(want: int = 4096) -> None:
+    """macOS defaults to 256 open files, which a multi-parquet pipeline can exceed."""
+    try:
+        import resource
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if hard != resource.RLIM_INFINITY:
+            want = min(want, hard)
+        if soft < want:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (want, hard))
+    except Exception:
+        pass                                   # Windows / restricted env
+
+
+_raise_fd_limit()
+
+_READ_ONLY_STARTS = ("select", "with", "from", "describe", "show", "summarize", "explain", "pragma", "table")
+
+
+def _find_script(name: str) -> str | None:
+    for d in (os.path.join(_BASE, "sqls"), _BASE, _SQLS_DIR):
+        p = os.path.join(d, name)
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def _clean_script(text: str) -> str:
+    """Drop DuckDB-CLI dot-commands (.mode, .output ...) that the Python API rejects."""
+    return "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("."))
+
+
+@st.cache_resource(show_spinner="Building SQL Lab database (init → quality → dcf → momentum → buy candidates)…")
+def _lab_db() -> tuple[duckdb.DuckDBPyConnection, list[dict]]:
+    """
+    Build ONE shared in-memory DuckDB by running the whole pipeline, once per
+    server process. Returns (connection, build_log). Stops at the first failing
+    script (later ones depend on earlier ones) but keeps what was built so far.
+    Clear with `_lab_db.clear()` to rebuild.
+    """
+    con = duckdb.connect(":memory:")
+    con.execute("SET threads = 4")
+    log: list[dict] = []
+    cwd = os.getcwd()
+    try:
+        os.chdir(_BASE)                       # relative parquet paths resolve from BASE
+        for name in _PIPELINE:
+            path = next((p for p in map(_find_script, name.split("|")) if p), None)
+            if path is not None:
+                name = os.path.basename(path)
+            if path is None:
+                log.append({"script": name, "status": "skipped", "error": None})
+                continue
+            try:
+                with open(path, encoding="utf-8") as f:
+                    con.execute(_clean_script(f.read()))
+                log.append({"script": name, "status": "ok", "error": None})
+            except Exception as exc:
+                log.append({"script": name, "status": "failed",
+                            "error": f"{type(exc).__name__}: {str(exc)[:400]}"})
+                break
+    finally:
+        os.chdir(cwd)
+
+    # Final sanity check: the build must actually have produced abinash_screen
+    if not any(e["error"] for e in log):
+        try:
+            con.execute("SELECT 1 FROM abinash_screen LIMIT 1")
+        except Exception as exc:
+            ran     = [e["script"] for e in log if e["status"] == "ok"]
+            skipped = [e["script"] for e in log if e["status"] == "skipped"]
+            log.append({"script": "(check) abinash_screen", "status": "failed",
+                        "error": f"{type(exc).__name__}: {str(exc)[:200]} — ran: {ran}; "
+                                 f"not found: {skipped}; looked in: {os.path.join(_BASE, 'sqls')}"})
+    return con, log
+
+
+def _rebuild_lab_db() -> None:
+    """Close the shared connection (releasing its file handles) and drop the cache."""
+    try:
+        con, _ = _lab_db()
+        con.close()
+    except Exception:
+        pass
+    _lab_db.clear()
+
+
 @contextlib.contextmanager
 def _db():
     """
-    Open a fresh in-memory DuckDB connection, run init.sql, yield it,
-    then close it — guaranteed even on exception.
+    Yield a cursor on the shared pipeline-built DuckDB; closed on exit.
     Usage:
         with _db() as con:
             df = con.execute(sql).df()
     """
-    con = duckdb.connect(":memory:")
+    con, _ = _lab_db()
+    cur = con.cursor()
     try:
-        if os.path.exists(INIT_SQL_PATH):
-            with open(INIT_SQL_PATH) as f:
-                con.execute(f.read())
-        yield con
+        yield cur
     finally:
-        con.close()
+        cur.close()
 
 
 def _check_init_sql() -> str | None:
-    """Return an error string if init.sql is missing or fails, else None."""
-    if not os.path.exists(INIT_SQL_PATH):
-        return f"init.sql not found at: {os.path.abspath(INIT_SQL_PATH)}"
-    with open(INIT_SQL_PATH) as f:
-        sql = f.read()
-    con = duckdb.connect(":memory:")
-    try:
-        con.execute(sql)
-        return None
-    except Exception as exc:
-        return str(exc)
-    finally:
-        con.close()
+    """Return an error string if the pipeline failed (or init.sql is missing), else None."""
+    _, log = _lab_db()
+    for entry in log:
+        if entry["error"]:
+            return f"{entry['script']}: {entry['error']}"
+    if not any(e["script"] == "init.sql" and e["status"] == "ok" for e in log):
+        return f"init.sql not found under: {os.path.abspath(os.path.join(_BASE, 'sqls'))}"
+    return None
 
 
 # ── Schema helpers ─────────────────────────────────────────────────────────────
@@ -111,6 +208,10 @@ def _sample_rows(table: str, n: int = 5) -> pd.DataFrame:
 
 def _run_sql(sql: str) -> tuple[pd.DataFrame | None, str | None]:
     """Execute arbitrary SQL. Returns (dataframe, None) or (None, error_str)."""
+    first = sql.lstrip().lstrip("(").split(None, 1)[0].lower() if sql.strip() else ""
+    if first not in _READ_ONLY_STARTS:
+        return None, ("Only read-only queries are allowed in SQL Lab "
+                      "(SELECT / WITH / DESCRIBE / SHOW …) — the database is shared.")
     try:
         with _db() as con:
             df = con.execute(sql).df()
@@ -198,6 +299,93 @@ def _highlight_portfolio(df: pd.DataFrame, portfolio_syms: list[str]) -> pd.io.f
     return df.style.apply(_row_style, axis=1)
 
 
+
+# ── Editor-load callbacks ──────────────────────────────────────────────────────
+# Widgets with a `key` ignore `value=` after first render, so the editor's
+# widget keys must be written directly. Callbacks run BEFORE the script reruns,
+# which is the only point where writing those keys is allowed.
+
+def _load_into_editor(sql: str, name: str) -> None:
+    st.session_state["sqllab_sql"]              = sql
+    st.session_state["sqllab_panel_name"]       = name
+    st.session_state["sqllab_sql_input"]        = sql    # text_area widget key
+    st.session_state["sqllab_panel_name_input"] = name   # text_input widget key
+    st.session_state["sqllab_result_df"]        = None
+    st.session_state["sqllab_run_error"]        = None
+    st.session_state["sqllab_toast"]            = f"✏️ Loaded “{name}” — open the **Editor** tab."
+
+
+def _clear_editor() -> None:
+    _load_into_editor("", "")
+    st.session_state.pop("sqllab_toast", None)
+
+# ── Column filters ─────────────────────────────────────────────────────────────
+
+_MAX_CHOICES = 100      # above this many distinct values, use a "contains" text box instead
+
+
+def _filter_df(df: pd.DataFrame, key: str) -> pd.DataFrame:
+    """
+    Per-table column filters. Pick columns in the expander, then filter each by:
+      numeric  → range slider          datetime → date range
+      text/low-cardinality → multiselect of values
+      text/high-cardinality → case-insensitive "contains"
+    Widget keys include the column set, so editing a query never reuses stale state.
+    """
+    if df is None or df.empty:
+        return df
+    sig = abs(hash(tuple(df.columns))) % 10**8
+    k   = f"flt_{key}_{sig}"
+
+    with st.expander("🔎 Filters", expanded=False):
+        cols = st.multiselect("Filter on columns", list(df.columns), key=f"{k}_cols",
+                              placeholder="Choose one or more columns…")
+        mask = pd.Series(True, index=df.index)
+
+        for col in cols:
+            ser, wkey = df[col], f"{k}_{col}"
+            if pd.api.types.is_bool_dtype(ser):
+                sel = st.multiselect(col, [True, False], key=wkey)
+                if sel:
+                    mask &= ser.isin(sel)
+            elif pd.api.types.is_numeric_dtype(ser):
+                clean = ser.dropna()
+                if clean.empty:
+                    st.caption(f"{col}: no values"); continue
+                mn, mx = clean.min(), clean.max()
+                if mn == mx:
+                    st.caption(f"{col}: all rows = {mn}"); continue
+                is_int = pd.api.types.is_integer_dtype(ser)
+                mn, mx = (int(mn), int(mx)) if is_int else (float(mn), float(mx))
+                lo, hi = st.slider(col, mn, mx, (mn, mx), key=wkey)
+                if (lo, hi) != (mn, mx):
+                    mask &= ser.between(lo, hi)
+            elif pd.api.types.is_datetime64_any_dtype(ser):
+                clean = ser.dropna()
+                if clean.empty:
+                    st.caption(f"{col}: no values"); continue
+                mn, mx = clean.min().date(), clean.max().date()
+                rng = st.date_input(col, (mn, mx), min_value=mn, max_value=mx, key=wkey)
+                if isinstance(rng, (tuple, list)) and len(rng) == 2:
+                    mask &= ser.dt.date.between(rng[0], rng[1])
+            else:
+                as_text = ser.astype("string")
+                uniq = as_text.dropna().unique().tolist()
+                if len(uniq) <= _MAX_CHOICES:
+                    sel = st.multiselect(col, sorted(uniq), key=wkey)
+                    if sel:
+                        mask &= as_text.isin(sel)
+                else:
+                    txt = st.text_input(f"{col} contains", key=wkey)
+                    if txt:
+                        mask &= as_text.str.contains(txt, case=False, na=False, regex=False)
+
+        out = df[mask]
+        if cols:
+            st.caption(f"Showing **{len(out):,}** of {len(df):,} rows")
+    return out
+
+
 # ── Panel rendering ────────────────────────────────────────────────────────────
 
 def _render_viz(
@@ -205,8 +393,13 @@ def _render_viz(
         viz: str,
         height: int = 280,
         portfolio_syms: list[str] | None = None,
+        key: str = "tbl",
+        max_rows: int | None = None,
 ) -> None:
     if viz == "Table":
+        df = _filter_df(df, key)
+        if max_rows:
+            df = df.head(max_rows)
         has_ticker = "ticker" in df.columns
         port_syms  = portfolio_syms or []
         if has_ticker and port_syms:
@@ -267,13 +460,13 @@ def _render_single_panel(panel: dict, idx: int, portfolio_syms: list[str] | None
     if err:
         st.error(f"SQL error: {err}")
     elif df is not None:
-        _render_viz(df, panel["viz"], portfolio_syms=portfolio_syms)
+        _render_viz(df, panel["viz"], portfolio_syms=portfolio_syms, key=f"panel_{idx}")
 
     act1, act2, act3 = st.columns(3)
-    if act1.button("✏️ Edit", key=f"panel_edit_{idx}", use_container_width=True):
-        st.session_state["sqllab_sql"]        = panel["sql"]
-        st.session_state["sqllab_panel_name"] = panel["name"]
-        st.rerun()
+    act1.button(
+        "✏️ Edit", key=f"panel_edit_{idx}", use_container_width=True,
+        on_click=_load_into_editor, args=(panel["sql"], panel["name"]),
+    )
     if act2.button("🗑 Remove", key=f"panel_del_{idx}", use_container_width=True):
         _remove_panel(panel["name"])
         st.rerun()
@@ -370,10 +563,24 @@ def render() -> None:
 
 
     init_error = _check_init_sql()
+    _, _build_log = _lab_db()
+    stat_col, rebuild_col = st.columns([5, 1])
     if init_error:
-        st.error(f"⚠️ **init.sql failed** — {init_error}")
+        stat_col.error(f"⚠️ **DB build failed** — {init_error}")
     else:
-        st.success("✅ DB initialised from `init.sql`", icon="🦆")
+        built = [e["script"] for e in _build_log if e["status"] == "ok"]
+        has_screen = "abinash_screen" in _list_tables()
+        stat_col.success(
+            f"DB built: {' → '.join(built)}"
+            + ("  ·  `abinash_screen` ✔" if has_screen else "  ·  ⚠️ `abinash_screen` not found"),
+            icon="🦆",
+        )
+    if rebuild_col.button("🔄 Rebuild DB", use_container_width=True,
+                          help="Re-run the whole SQL pipeline"):
+        _rebuild_lab_db()
+        st.rerun()
+    with st.expander("Build log", expanded=bool(init_error)):
+        st.dataframe(pd.DataFrame(_build_log), hide_index=True, use_container_width=True)
 
     st.markdown(
         '<div class="topbar">'
@@ -382,6 +589,10 @@ def render() -> None:
         '</div>',
         unsafe_allow_html=True,
     )
+
+    _toast = st.session_state.pop("sqllab_toast", None)
+    if _toast:
+        st.toast(_toast)
 
     tab_dashboard, tab_editor, tab_schema  = st.tabs(
         ["📊 Dashboard","✏️ Editor", "🗄️ Schema Browser" ]
@@ -414,14 +625,7 @@ def render() -> None:
 
             btn_col1, btn_col2, _ = st.columns([1, 1, 4])
             run_clicked   = btn_col1.button("▶ Run",   type="primary", use_container_width=True)
-            clear_clicked = btn_col2.button("✕ Clear", use_container_width=True)
-
-            if clear_clicked:
-                st.session_state["sqllab_sql"]        = ""
-                st.session_state["sqllab_panel_name"] = ""
-                st.session_state["sqllab_result_df"]  = None
-                st.session_state["sqllab_run_error"]  = None
-                st.rerun()
+            btn_col2.button("✕ Clear", use_container_width=True, on_click=_clear_editor)
 
             if run_clicked:
                 st.session_state["sqllab_sql"]        = sql_input
@@ -466,7 +670,7 @@ def render() -> None:
                     _publish_panel(current_name, current_sql, current_viz, result_df)
                     st.success(f"✅ Published **{current_name}** → `sqls/panels.json`")
 
-            _render_viz(result_df.head(200), st.session_state.get("sqllab_viz_type", "Table"), height=420, portfolio_syms=portfolio_syms)
+            _render_viz(result_df, st.session_state.get("sqllab_viz_type", "Table"), height=420, portfolio_syms=portfolio_syms, key="editor", max_rows=200)
 
             with st.expander("Column info"):
                 col_info = pd.DataFrame({
@@ -506,14 +710,15 @@ def render() -> None:
                         sample_df = _sample_rows(table, n=5)
                         if not sample_df.empty:
                             st.markdown("**Sample rows**")
-                            st.dataframe(sample_df, use_container_width=True, hide_index=True)
+                            st.dataframe(_filter_df(sample_df, f"schema_{table}"), use_container_width=True, hide_index=True)
                         else:
                             st.caption("(No rows available)")
 
-                        if st.button("Open in Editor →", key=f"schema_open_{table}"):
-                            st.session_state["sqllab_sql"]        = f"SELECT *\nFROM {table}\nLIMIT 50"
-                            st.session_state["sqllab_panel_name"] = table
-                            st.rerun()
+                        st.button(
+                            "Open in Editor →", key=f"schema_open_{table}",
+                            on_click=_load_into_editor,
+                            args=(f"SELECT *\nFROM {table}\nLIMIT 50", table),
+                        )
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 3 — DASHBOARD

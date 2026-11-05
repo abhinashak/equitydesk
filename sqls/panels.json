@@ -1,68 +1,5 @@
 [
   {
-    "name": "Consistent Sales Growth",
-    "sql": "WITH sales AS (\n    SELECT\n        ticker,\n        dt,\n        val AS sales\n    FROM quarterly_results\n    WHERE metric = 'Sales'\n),\nranked AS (\n    SELECT\n        *,\n        LAG(sales, 1) OVER (PARTITION BY ticker ORDER BY dt) AS q1,\n        LAG(sales, 2) OVER (PARTITION BY ticker ORDER BY dt) AS q2,\n        LAG(sales, 3) OVER (PARTITION BY ticker ORDER BY dt) AS q3,\n        LAG(sales, 4) OVER (PARTITION BY ticker ORDER BY dt) AS q4,\n        LAG(sales, 5) OVER (PARTITION BY ticker ORDER BY dt) AS q5\n    FROM sales\n), Final AS\n(SELECT\n    ticker,\n    ROUND(100.0 * (sales - q1) / q1, 2)  AS \u0394q1,\n    ROUND(100.0 * (q1 - q2) / q2, 2) AS \u0394q2,\n    ROUND(100.0 * (q2 - q3) / q3, 2) AS \u0394q3,\n    ROUND(100.0 * (q3 - q4) / q4, 2)  AS \u0394q4,\n    ROUND(100.0 * (q4 - q5) / q5, 2)  AS \u0394q5\n   \nFROM ranked\nQUALIFY\n    ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n    AND sales > q1\n    AND q1 > q2\n    AND q2 > q3\n    AND q3 > q4\n    AND q4 > q5)\nselect f.ticker, stock_p_e, \u0394q1 || '%'  as \u0394q1,  \u0394q2 || '%'  as \u0394q2,  \u0394q3 || '%'  as \u0394q3,  \u0394q4 || '%'  as \u0394q4, \u0394q5 || '%'  as \u0394q5\n  from Final f, general_info g where f.ticker = g.ticker order by(\u0394q1 + \u0394q2 +\u0394q3 +\u0394q4 +\u0394q5 ) desc,  \u0394q1  desc, \u0394q2 desc,\u0394q3 desc,\u0394q4 desc,\u0394q5 desc;",
-    "viz": "Table",
-    "published_at": "2026-06-01 11:39",
-    "row_count": 25,
-    "columns": [
-      "ticker",
-      "stock_p_e",
-      "\u0394q1",
-      "\u0394q2",
-      "\u0394q3",
-      "\u0394q4",
-      "\u0394q5"
-    ]
-  },
-  {
-    "name": "Growth AT Value",
-    "sql": "SELECT\n    f.ticker,\n    f.market_cap AS \"Mkt Cap (Cr)\",\n    f.stock_p_e AS \"Stock P/E\",\n    f.roce AS \"ROCE %\",\n    pg.val AS \"3Y Profit Growth %\",\n    ROUND(f.stock_p_e / pg.val, 2) AS \"PEG Ratio\"\nFROM general_info f\nJOIN compounded_profit_growth pg\n    ON f.ticker = pg.ticker\nWHERE\n    f.market_cap > 1000\n    AND f.roce > 15\n    AND pg.val > 0\n    AND (f.stock_p_e / pg.val) < 1\nORDER BY (f.stock_p_e / pg.val);",
-    "viz": "Table",
-    "published_at": "2026-06-01 11:56",
-    "row_count": 172,
-    "columns": [
-      "ticker",
-      "Mkt Cap (Cr)",
-      "Stock P/E",
-      "ROCE %",
-      "3Y Profit Growth %",
-      "PEG Ratio"
-    ]
-  },
-  {
-    "name": "Consistent Profit Growth",
-    "sql": "WITH profits AS (\n    SELECT\n        ticker,\n        dt,\n        val AS profit\n    FROM quarterly_results\n    WHERE metric = 'Net Profit'\n),\nranked AS (\n    SELECT\n        *,\n        LAG(profit, 1) OVER (PARTITION BY ticker ORDER BY dt) AS q1,\n        LAG(profit, 2) OVER (PARTITION BY ticker ORDER BY dt) AS q2,\n        LAG(profit, 3) OVER (PARTITION BY ticker ORDER BY dt) AS q3,\n        LAG(profit, 4) OVER (PARTITION BY ticker ORDER BY dt) AS q4,\n        LAG(profit, 5) OVER (PARTITION BY ticker ORDER BY dt) AS q5\n    FROM profits\n), Final AS\n(SELECT\n    ticker,\n    ROUND(100.0 * (profit - q1) / q1, 2)  AS \u0394q1,\n    ROUND(100.0 * (q1 - q2) / q2, 2) AS \u0394q2,\n    ROUND(100.0 * (q2 - q3) / q3, 2) AS \u0394q3,\n    ROUND(100.0 * (q3 - q4) / q4, 2)  AS \u0394q4,\n    ROUND(100.0 * (q4 - q5) / q5, 2)  AS \u0394q5\n\nFROM ranked\nQUALIFY\n    ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n    AND q5 > 0\n    AND profit > q1\n    AND q1 > q2\n    AND q2 > q3\n    AND q3 > q4\n    AND q4 > q5)\nselect f.ticker, stock_p_e, \u0394q1 || '%'  as \u0394q1,  \u0394q2 || '%'  as \u0394q2,  \u0394q3 || '%'  as \u0394q3,  \u0394q4 || '%'  as \u0394q4, \u0394q5 || '%'  as \u0394q5\n  from Final f, general_info g where f.ticker = g.ticker order by(\u0394q1 + \u0394q2 +\u0394q3 +\u0394q4 +\u0394q5 ) desc,  \u0394q1  desc, \u0394q2 desc,\u0394q3 desc,\u0394q4 desc,\u0394q5 desc;\n ",
-    "viz": "Table",
-    "published_at": "2026-06-01 12:05",
-    "row_count": 13,
-    "columns": [
-      "ticker",
-      "stock_p_e",
-      "\u0394q1",
-      "\u0394q2",
-      "\u0394q3",
-      "\u0394q4",
-      "\u0394q5"
-    ]
-  },
-  {
-    "name": "High Quality Growth",
-    "sql": "WITH base AS (\n    SELECT\n        ticker,\n        dt,\n        metric,\n        val\n    FROM quarterly_results\n    WHERE metric IN ('Sales', 'Net Profit', 'OPM %')\n),\n\npivoted AS (\n    SELECT\n        ticker,\n        dt,\n        MAX(CASE WHEN metric='Sales' THEN val END) AS sales,\n        MAX(CASE WHEN metric='Net Profit' THEN val END) AS profit,\n        MAX(CASE WHEN metric='OPM %' THEN val END) AS opm\n    FROM base\n    GROUP BY ticker, dt\n),\nranked AS (\n    SELECT\n        *,\n        LAG(sales, 4)  OVER (PARTITION BY ticker ORDER BY dt) AS sales_yoy,\n        LAG(profit, 4) OVER (PARTITION BY ticker ORDER BY dt) AS profit_yoy,\n        LAG(opm, 4)    OVER (PARTITION BY ticker ORDER BY dt) AS opm_yoy\n    FROM pivoted\n),\nHighQualityGrowth AS (\n    SELECT\n        ticker,\n        ROUND(100.0 * (sales  - sales_yoy)  / NULLIF(sales_yoy, 0), 2) AS sales_growth_pct,\n        ROUND(100.0 * (profit - profit_yoy) / NULLIF(profit_yoy, 0), 2) AS profit_growth_pct,\n        ROUND(opm - opm_yoy, 2) AS opm_improvement\n    FROM ranked\n    QUALIFY\n        ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n        AND profit > 0\n        AND sales_yoy > 0\n        AND profit_yoy > 0\n        AND sales > sales_yoy\n        AND profit > profit_yoy\n        AND opm > opm_yoy\n),\nscored AS (\nSELECT\n    h.*,\n    g.roce,\n    g.stock_p_e,\n    PERCENT_RANK() OVER (ORDER BY profit_growth_pct) AS profit_rank,\n    PERCENT_RANK() OVER (ORDER BY sales_growth_pct) AS sales_rank,\n    PERCENT_RANK() OVER (ORDER BY opm_improvement) AS opm_rank,\n    PERCENT_RANK() OVER (ORDER BY g.roce) AS roce_rank\n\nFROM HighQualityGrowth h\nJOIN general_info g USING (ticker)\n)\n\nSELECT ticker,sales_growth_pct as 'Sales Growth %',profit_growth_pct as 'Profit Growth %',opm_improvement as 'OPM Improvement %',roce as 'Roce',stock_p_e as 'P/E',\n       ROUND(\n           0.50 * profit_rank +\n           0.25 * sales_rank +\n           0.15 * opm_rank +\n           0.10 * roce_rank\n       ,4) AS quality_score\nFROM scored\nORDER BY quality_score DESC;",
-    "viz": "Table",
-    "published_at": "2026-06-01 12:19",
-    "row_count": 100,
-    "columns": [
-      "ticker",
-      "Sales Growth %",
-      "Profit Growth %",
-      "OPM Improvement %",
-      "Roce",
-      "P/E",
-      "quality_score"
-    ]
-  },
-  {
     "name": "Balancesheet - Latest",
     "sql": "WITH\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n-- 1. LATEST BALANCE SHEET SNAPSHOT ONLY\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nbs_latest AS (\n    SELECT *\n    FROM balance_sheet\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker, metric ORDER BY dt DESC) = 1\n),\n\nbalance_metrics AS (\n    SELECT\n        ticker,\n        MAX(CASE WHEN metric = 'Borrowings'        THEN val END) AS borrowings,\n        MAX(CASE WHEN metric = 'Reserves'          THEN val END) AS reserves,\n        MAX(CASE WHEN metric = 'Equity Capital'    THEN val END) AS equity,\n        MAX(CASE WHEN metric = 'Total Assets'      THEN val END) AS total_assets,\n        MAX(CASE WHEN metric = 'Fixed Assets'      THEN val END) AS fixed_assets,\n        MAX(CASE WHEN metric = 'CWIP'              THEN val END) AS cwip,\n        MAX(CASE WHEN metric = 'Investments'       THEN val END) AS investments,\n        MAX(CASE WHEN metric = 'Total Liabilities' THEN val END) AS total_liabilities,\n        MAX(CASE WHEN metric = 'Deposits'          THEN val END) AS deposits,\n        MAX(CASE WHEN metric = 'Other Assets'      THEN val END) AS other_assets,\n        MAX(CASE WHEN metric = 'Other Liabilities' THEN val END) AS other_liabilities\n    FROM bs_latest\n    GROUP BY ticker\n),\n\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n-- 2. LATEST INTEREST COVERAGE\n--    From most recent annual profit_loss row\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\npl_latest AS (\n    SELECT *\n    FROM profit_loss\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker, metric ORDER BY dt DESC) = 1\n),\n\npl_metrics AS (\n    SELECT\n        ticker,\n        MAX(CASE WHEN metric = 'Operating Profit' THEN val END) AS operating_profit,\n        MAX(CASE WHEN metric = 'Interest'         THEN val END) AS interest,\n        MAX(CASE WHEN metric = 'OPM %'            THEN val END) AS opm_pct,\n        MAX(CASE WHEN metric = 'Net Profit'       THEN val END) AS net_profit\n    FROM pl_latest\n    GROUP BY ticker\n),\n\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n-- 3. DERIVED RATIOS \u2014 POINT IN TIME ONLY\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nratios AS (\n    SELECT\n        bm.ticker,\n\n        -- Leverage\n        COALESCE(bm.borrowings, 0)\n            / NULLIF(COALESCE(bm.reserves,0) + COALESCE(bm.equity,0), 0)\n                                                            AS debt_to_equity,\n\n        COALESCE(bm.borrowings, 0)\n            / NULLIF(bm.total_assets, 0)                   AS debt_to_assets,\n\n        -- Interest Coverage (point-in-time)\n        COALESCE(pl.operating_profit, 0)\n            / NULLIF(pl.interest, 0)                       AS interest_coverage,\n\n        -- Asset Composition\n        (COALESCE(bm.fixed_assets,0) + COALESCE(bm.cwip,0))\n            / NULLIF(bm.total_assets, 0)                   AS fixed_asset_intensity,\n\n        COALESCE(bm.investments, 0)\n            / NULLIF(bm.total_assets, 0)                   AS investment_ratio,\n\n        -- Liquid / non-tangible buffer\n        COALESCE(bm.other_assets, 0)\n            / NULLIF(bm.total_assets, 0)                   AS other_assets_ratio,\n\n        -- Liability Structure\n        COALESCE(bm.deposits, 0)\n            / NULLIF(bm.total_liabilities, 0)              AS deposits_ratio,\n\n        COALESCE(bm.other_liabilities, 0)\n            / NULLIF(bm.total_liabilities, 0)              AS other_liabilities_ratio,\n\n        -- Net Worth (Reserves + Equity Capital)\n        COALESCE(bm.reserves,0) + COALESCE(bm.equity,0)   AS net_worth,\n\n        -- Profitability margin (point-in-time signal)\n        COALESCE(pl.opm_pct, 0)                            AS opm_pct,\n\n        -- Raw for display\n        bm.borrowings,\n        bm.total_assets,\n        pl.operating_profit,\n        pl.interest,\n        pl.net_profit\n\n    FROM balance_metrics bm\n    LEFT JOIN pl_metrics pl USING (ticker)\n)\n\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n-- 4. SCORE & OUTPUT\n-- \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nSELECT\n    r.ticker,\n    g.sector,\n    g.stock_p_e                                     AS pe_ratio,\n\n    -- Diagnostics\n    ROUND(r.net_worth,          2)                  AS net_worth,\n    ROUND(r.borrowings,         2)                  AS borrowings,\n    ROUND(r.debt_to_equity,     3)                  AS debt_to_equity,\n    ROUND(r.debt_to_assets,     3)                  AS debt_to_assets,\n    ROUND(r.interest_coverage,  2)                  AS interest_coverage,\n    ROUND(r.fixed_asset_intensity, 3)               AS fixed_asset_intensity,\n    ROUND(r.investment_ratio,   3)                  AS investment_ratio,\n    ROUND(r.opm_pct,            2)                  AS opm_pct,\n\n    ROUND(\n        -- \u2500\u2500 SOLVENCY 40% \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n        -- Debt-to-Equity: 0 = 100pts, >=1 = 0pts\n          0.20 * GREATEST(0, 100 - LEAST(100, r.debt_to_equity * 100))\n\n        -- Interest Coverage: 1x=20pts, 5x=100pts, capped\n        + 0.20 * LEAST(100, GREATEST(0, (r.interest_coverage - 1) * 25))\n\n        -- \u2500\u2500 ASSET QUALITY 30% \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n        -- Lower fixed asset intensity = more asset flexibility\n        + 0.15 * GREATEST(0, 100 - LEAST(100, r.fixed_asset_intensity * 100))\n\n        -- Higher investment buffer = more liquidity\n        + 0.15 * LEAST(100, r.investment_ratio * 300)\n\n        -- \u2500\u2500 LIABILITY STRUCTURE 20% \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n        -- Lower deposits reliance (penalises risky funding mix)\n        + 0.10 * GREATEST(0, 100 - LEAST(100, r.deposits_ratio * 100))\n\n        -- Lower opaque other-liabilities = cleaner balance sheet\n        + 0.10 * GREATEST(0, 100 - LEAST(100, r.other_liabilities_ratio * 200))\n\n        -- \u2500\u2500 CURRENT PROFITABILITY SUPPORT 10% \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n        -- OPM as evidence earnings support the balance sheet\n        + 0.10 * LEAST(100, GREATEST(0, r.opm_pct) * 2.5)\n\n    , 2) AS balance_sheet_strength_score\n\nFROM ratios r\nJOIN general_info g USING (ticker)\n\nWHERE\n    r.debt_to_equity    < 1.0       -- must not be over-leveraged\n    AND r.interest_coverage > 3.0   -- must comfortably cover interest\n    AND r.net_worth     > 0         -- must have positive net worth\n\nORDER BY balance_sheet_strength_score DESC;",
     "viz": "Table",
@@ -103,57 +40,6 @@
       "reserve_cagr_pct",
       "dilution_factor",
       "balance_sheet_strength_score"
-    ]
-  },
-  {
-    "name": "Hyper Growth",
-    "sql": "WITH pivoted AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Sales'       THEN val END) AS sales,\n        MAX(CASE WHEN metric = 'Net Profit'  THEN val END) AS net_profit,\n        MAX(CASE WHEN metric = 'EPS in Rs'   THEN val END) AS eps,\n        MAX(CASE WHEN metric = 'OPM %'       THEN val END) AS opm_pct\n    FROM profit_loss\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nranked AS (\n    SELECT *,\n        LAG(sales,      1) OVER w AS sales_1y,\n        LAG(net_profit, 1) OVER w AS profit_1y,\n        LAG(eps,        1) OVER w AS eps_1y,\n        LAG(sales,      2) OVER w AS sales_2y,\n        LAG(net_profit, 2) OVER w AS profit_2y,\n        LAG(eps,        2) OVER w AS eps_2y,\n        LAG(sales,      3) OVER w AS sales_3y,\n        LAG(net_profit, 3) OVER w AS profit_3y,\n        LAG(eps,        3) OVER w AS eps_3y,\n        LAG(opm_pct,    1) OVER w AS opm_pct_1y\n    FROM pivoted\n    WINDOW w AS (PARTITION BY ticker ORDER BY dt)\n),\n\nlatest AS (\n    SELECT *\n    FROM ranked\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n),\n\ngrowth AS (\n    SELECT\n        ticker,\n        sales, net_profit, eps, opm_pct,\n        sales_1y, profit_1y, eps_1y,\n        sales_2y, profit_2y, eps_2y,\n        sales_3y, profit_3y, eps_3y,\n        opm_pct_1y,\n\n        ROUND(((sales       - sales_1y)  / NULLIF(sales_1y, 0))  * 100, 2) AS sales_growth_1y,\n        ROUND(((net_profit  - profit_1y) / NULLIF(profit_1y, 0)) * 100, 2) AS profit_growth_1y,\n        ROUND(((eps         - eps_1y)    / NULLIF(eps_1y, 0))    * 100, 2) AS eps_growth_1y,\n\n        ROUND(((sales_1y    - sales_2y)  / NULLIF(sales_2y, 0))  * 100, 2) AS sales_growth_prev,\n        ROUND(((profit_1y   - profit_2y) / NULLIF(profit_2y, 0)) * 100, 2) AS profit_growth_prev,\n\n        ROUND((POWER(sales      / NULLIF(sales_3y, 0),  1.0/3) - 1) * 100, 2) AS sales_cagr_3y,\n        ROUND((POWER(net_profit / NULLIF(profit_3y, 0), 1.0/3) - 1) * 100, 2) AS profit_cagr_3y,\n        ROUND((POWER(eps        / NULLIF(eps_3y, 0),    1.0/3) - 1) * 100, 2) AS eps_cagr_3y,\n\n        ROUND(opm_pct - opm_pct_1y, 2) AS opm_expansion\n\n    FROM latest\n),\n\nscored AS (\n    SELECT\n        g.ticker,\n        g.company_name,\n        g.sector,\n        TRY_CAST(g.stock_p_e AS DOUBLE) AS pe_ratio,   -- \u2190 added here\n        gr.*,\n\n        ROUND(\n              0.20 * LEAST(100, GREATEST(0, gr.sales_growth_1y)   * (100.0/60))\n            + 0.20 * LEAST(100, GREATEST(0, gr.profit_growth_1y)  * (100.0/80))\n            + 0.10 * LEAST(100, GREATEST(0, gr.sales_growth_prev)  * (100.0/60))\n            + 0.10 * LEAST(100, GREATEST(0, gr.profit_growth_prev) * (100.0/80))\n            + 0.15 * LEAST(100, GREATEST(0, gr.sales_cagr_3y)     * (100.0/40))\n            + 0.10 * LEAST(100, GREATEST(0, gr.profit_cagr_3y)    * (100.0/50))\n            + 0.10 * LEAST(100, GREATEST(0, gr.opm_expansion * 10 + 50))\n            + 0.05 * LEAST(100, GREATEST(0, gr.eps_growth_1y)     * (100.0/80))\n        , 2) AS hyper_growth_score\n\n    FROM growth gr\n    JOIN general_info g USING (ticker)\n\n    WHERE\n        gr.sales_1y          > 100\n        AND gr.profit_1y     > 0\n        AND gr.profit_2y     > 0\n        AND gr.sales_growth_1y   > 25\n        AND gr.profit_growth_1y  > 35\n        AND gr.eps_growth_1y     > 25\n        AND gr.sales_growth_prev  > 15\n        AND gr.profit_growth_prev > 15\n        AND gr.sales_cagr_3y    > 20\n        AND gr.profit_cagr_3y   > 25\n)\n\nSELECT\n    ticker,\n    company_name,\n    sector,\n    pe_ratio,                  -- \u2190 appears here\n\n    sales_growth_1y,\n    profit_growth_1y,\n    eps_growth_1y,\n    sales_growth_prev,\n    profit_growth_prev,\n    sales_cagr_3y,\n    profit_cagr_3y,\n    opm_expansion,\n\n    hyper_growth_score\n\nFROM scored\nORDER BY hyper_growth_score DESC;",
-    "viz": "Table",
-    "published_at": "2026-06-01 13:41",
-    "row_count": 13,
-    "columns": [
-      "ticker",
-      "company_name",
-      "sector",
-      "pe_ratio",
-      "sales_growth_1y",
-      "profit_growth_1y",
-      "eps_growth_1y",
-      "sales_growth_prev",
-      "profit_growth_prev",
-      "sales_cagr_3y",
-      "profit_cagr_3y",
-      "opm_expansion",
-      "hyper_growth_score"
-    ]
-  },
-  {
-    "name": "Red Flags",
-    "sql": "WITH pl_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Net Profit'    THEN val END) AS net_profit,\n        MAX(CASE WHEN metric = 'Other Income'  THEN val END) AS other_income,\n        MAX(CASE WHEN metric = 'Sales'         THEN val END) AS sales,\n        MAX(CASE WHEN metric = 'Tax %'         THEN val END) AS tax_pct,\n        MAX(CASE WHEN metric = 'Interest'      THEN val END) AS interest,\n        MAX(CASE WHEN metric = 'Operating Profit' THEN val END) AS op\n    FROM profit_loss\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\ncf_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Cash from Operating Activity' THEN val END) AS cfo,\n        MAX(CASE WHEN metric = 'Free Cash Flow'               THEN val END) AS fcf\n    FROM cash_flows\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nbs_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric IN ('Borrowing','Borrowings') THEN val END) AS debt,\n        MAX(CASE WHEN metric = 'Equity Capital'            THEN val END) AS equity_capital,\n        MAX(CASE WHEN metric = 'Reserves'                  THEN val END) AS reserves\n    FROM balance_sheet\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nratio_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Debtor Days' THEN val END) AS debtor_days\n    FROM ratios\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nmerged AS (\n    SELECT\n        p.*,\n        c.cfo, c.fcf,\n        b.debt, b.equity_capital, b.reserves,\n        r.debtor_days\n    FROM pl_pivot p\n    LEFT JOIN cf_pivot  c USING (ticker, dt)\n    LEFT JOIN bs_pivot  b USING (ticker, dt)\n    LEFT JOIN ratio_pivot r USING (ticker, dt)\n),\n\nranked AS (\n    SELECT *,\n        -- 1 year ago\n        LAG(debt,             1) OVER w AS debt_1y,\n        LAG(reserves,         1) OVER w AS reserves_1y,\n        LAG(equity_capital,   1) OVER w AS equity_capital_1y,\n        LAG(debtor_days,  1) OVER w AS debtor_days_1y,\n        LAG(fcf,          1) OVER w AS fcf_1y,\n        LAG(sales,        1) OVER w AS sales_1y,\n        -- 2 years ago (streak checks)\n        LAG(fcf,          2) OVER w AS fcf_2y,\n        LAG(debtor_days,  2) OVER w AS debtor_days_2y\n    FROM merged\n    WINDOW w AS (PARTITION BY ticker ORDER BY dt)\n),\n\nlatest AS (\n    SELECT *\n    FROM ranked\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n),\n\nflags AS (\n    SELECT\n        ticker,\n        net_profit, cfo, fcf, debt, debtor_days,\n        sales, other_income, tax_pct, interest, op,\n        reserves, equity_capital,\n        debt_1y, reserves_1y, equity_capital_1y, debtor_days_1y,\n        fcf_1y, fcf_2y, sales_1y, debtor_days_2y,\n\n        -- \u2500\u2500 FLAG 1: Earnings Quality (CFO vs Net Profit) \u2500\u2500 20pts\n        -- Proportional: CFO < profit is bad; CFO negative when profit positive is worse\n        CASE\n            WHEN net_profit > 0 AND cfo IS NOT NULL\n            THEN CASE\n                WHEN cfo < 0                        THEN 20   -- profit exists, cash doesn't\n                WHEN cfo < net_profit * 0.3         THEN 15   -- very poor conversion\n                WHEN cfo < net_profit * 0.6         THEN 8    -- weak conversion\n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_earnings_quality,\n\n        -- \u2500\u2500 FLAG 2: Debtor Days \u2014 Level + Trend \u2500\u2500 20pts\n        -- Absolute level AND YoY deterioration both matter\n        CASE\n            WHEN debtor_days IS NOT NULL\n            THEN CASE\n                WHEN debtor_days > 180                            THEN 20  -- alarming absolute level\n                WHEN debtor_days > 120                            THEN 10  -- high absolute level\n                WHEN debtor_days_1y IS NOT NULL\n                 AND debtor_days > debtor_days_1y * 1.30          THEN 15  -- sharp spike\n                WHEN debtor_days_1y IS NOT NULL\n                 AND debtor_days > debtor_days_1y * 1.15\n                 AND debtor_days_2y IS NOT NULL\n                 AND debtor_days_1y > debtor_days_2y * 1.15      THEN 15  -- 2yr worsening trend\n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_debtor_days,\n\n        -- \u2500\u2500 FLAG 3: Debt Surge with Context \u2500\u2500 20pts\n        -- Penalise more if debt rising AND interest coverage is weak\n        CASE\n            WHEN debt_1y IS NOT NULL AND debt_1y > 0\n            THEN CASE\n                WHEN debt > debt_1y * 1.40                       THEN 20  -- >40% surge\n                WHEN debt > debt_1y * 1.20\n                 AND op IS NOT NULL\n                 AND interest > 0\n                 AND op / NULLIF(interest, 0) < 3                THEN 20  -- moderate rise + low coverage\n                WHEN debt > debt_1y * 1.20                       THEN 10  -- rise but coverage ok\n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_debt_surge,\n\n        -- \u2500\u2500 FLAG 4: Equity Dilution via Reserves \u2500\u2500 15pts\n        -- Use reserves (not paid-up capital) to avoid bonus issue false positives\n        CASE\n                    WHEN equity_capital IS NOT NULL\n                     AND equity_capital_1y IS NOT NULL\n                     AND equity_capital_1y > 0\n                     AND equity_capital > equity_capital_1y * 1.10\n                    THEN 15\n                    ELSE 0\n                END AS flag_dilution,\n\n        -- \u2500\u2500 FLAG 4 (simpler, avoids subquery): reserves not growing with profit \u2500\u2500\n        -- If company is profitable but reserves barely grew, profits may not be real\n        CASE\n            WHEN net_profit > 0\n             AND reserves IS NOT NULL\n             AND reserves_1y IS NOT NULL\n             AND (reserves - reserves_1y) < net_profit * 0.30   -- reserves grew < 30% of reported profit\n            THEN 15\n            ELSE 0\n        END AS flag_profit_not_in_reserves,\n\n        -- \u2500\u2500 FLAG 5: FCF Streak \u2500\u2500 15pts\n        -- Worse if negative for 3 consecutive years\n        CASE\n            WHEN fcf < 0 AND fcf_1y < 0 AND fcf_2y < 0 THEN 15  -- 3yr streak\n            WHEN fcf < 0 AND fcf_1y < 0                THEN 8   -- 2yr streak\n            ELSE 0\n        END AS flag_fcf_streak,\n\n        -- \u2500\u2500 FLAG 6: Abnormal Tax Rate \u2500\u2500 10pts\n        -- Tighter upper bound; very low tax is a stronger signal than very high\n        CASE\n            WHEN tax_pct IS NOT NULL\n            THEN CASE\n                WHEN tax_pct < 1                    THEN 10  -- near-zero tax suspicious\n                WHEN tax_pct < 5                    THEN 6\n                WHEN tax_pct > 55                   THEN 4   -- high but less suspicious\n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_tax_anomaly,\n\n        -- \u2500\u2500 FLAG 7: Other Income Dependency \u2500\u2500 15pts\n        -- Also check absolute size \u2014 avoid false flags on tiny amounts\n        CASE\n            WHEN net_profit > 0\n             AND other_income IS NOT NULL\n             AND other_income > 50                          -- at least meaningful in absolute terms\n            THEN CASE\n                WHEN other_income > net_profit * 0.75      THEN 15  -- core business barely matters\n                WHEN other_income > net_profit * 0.50      THEN 8\n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_other_income\n\n    FROM latest\n)\n\nSELECT\n    f.ticker,\n    g.company_name,\n    --g.sector,\n    TRY_CAST(g.stock_p_e AS DOUBLE)     AS pe_ratio,\n    -- Verdict band\n    CASE\n        WHEN (flag_earnings_quality + flag_debtor_days + flag_debt_surge\n            + flag_profit_not_in_reserves + flag_fcf_streak\n            + flag_tax_anomaly + flag_other_income) >= 50 THEN '\ud83d\udd34 High Risk'\n        WHEN (flag_earnings_quality + flag_debtor_days + flag_debt_surge\n            + flag_profit_not_in_reserves + flag_fcf_streak\n            + flag_tax_anomaly + flag_other_income) >= 25 THEN '\ud83d\udfe1 Watch'\n        ELSE '\ud83d\udfe2 Clean'\n    END AS verdict,\n-- Human readable reasons\n        (\n            CONCAT_WS(' \n ',\n            CASE WHEN flag_earnings_quality >= 15\n                THEN 'CFO severely lags profit (earnings may not be real)'\n                WHEN flag_earnings_quality >= 8\n                THEN 'CFO weakly converting from reported profit'\n                ELSE NULL END,\n\n            CASE WHEN flag_debtor_days >= 20\n                THEN 'Debtor days at alarming level (>180 days)'\n                WHEN flag_debtor_days >= 15\n                THEN 'Debtor days spiked sharply or worsening 2yr trend'\n                WHEN flag_debtor_days >= 10\n                THEN 'Debtor days elevated (>120 days)'\n                ELSE NULL END,\n\n            CASE WHEN flag_debt_surge >= 20\n                THEN 'Debt surged >40% YoY or rising with weak interest coverage'\n                WHEN flag_debt_surge >= 10\n                THEN 'Debt rose >20% YoY'\n                ELSE NULL END,\n\n            CASE WHEN flag_profit_not_in_reserves >= 15\n                THEN 'Reserves not growing in line with reported profits'\n                ELSE NULL END,\n\n            CASE WHEN flag_fcf_streak >= 15\n                THEN 'Negative free cash flow for 3 consecutive years'\n                WHEN flag_fcf_streak >= 8\n                THEN 'Negative free cash flow for 2 consecutive years'\n                ELSE NULL END,\n\n            CASE WHEN flag_tax_anomaly >= 10\n                THEN 'Near-zero tax rate \u2014 suspicious earnings quality'\n                WHEN flag_tax_anomaly >= 6\n                THEN 'Unusually low tax rate (<5%)'\n                WHEN flag_tax_anomaly >= 4\n                THEN 'Unusually high tax rate (>55%)'\n                ELSE NULL END,\n\n            CASE WHEN flag_other_income >= 15\n                THEN 'Other income >75% of net profit \u2014 core business barely contributing'\n                WHEN flag_other_income >= 8\n                THEN 'Other income >50% of net profit \u2014 profit quality weak'\n                ELSE NULL END\n        )\n    ) AS flag_reasons,\n    -- Raw signals for transparency\n    ROUND(f.net_profit, 2)              AS net_profit,\n    ROUND(f.cfo, 2)                     AS cfo,\n    ROUND(f.fcf, 2)                     AS fcf,\n    ROUND(f.debt, 2)                    AS debt,\n    ROUND(f.debtor_days, 1)             AS debtor_days,\n    ROUND(f.other_income, 2)            AS other_income,\n    ROUND(f.tax_pct, 1)                 AS tax_pct,\n\n    -- Total red flag score (higher = more red flags)\n    ROUND(\n          flag_earnings_quality\n        + flag_debtor_days\n        + flag_debt_surge\n        + flag_profit_not_in_reserves\n        + flag_fcf_streak\n        + flag_tax_anomaly\n        + flag_other_income\n    , 2) AS red_flag_score,\n    -- Individual flag scores (for explainability)\n    flag_earnings_quality,\n    flag_debtor_days,\n    flag_debt_surge,\n    flag_profit_not_in_reserves,\n    flag_fcf_streak,\n    flag_tax_anomaly,\n    flag_other_income\n\nFROM flags f\nJOIN general_info g USING (ticker)\n\nORDER BY red_flag_score DESC;",
-    "viz": "Table",
-    "published_at": "2026-06-01 13:59",
-    "row_count": 375,
-    "columns": [
-      "ticker",
-      "company_name",
-      "pe_ratio",
-      "verdict",
-      "flag_reasons",
-      "net_profit",
-      "cfo",
-      "fcf",
-      "debt",
-      "debtor_days",
-      "other_income",
-      "tax_pct",
-      "red_flag_score",
-      "flag_earnings_quality",
-      "flag_debtor_days",
-      "flag_debt_surge",
-      "flag_profit_not_in_reserves",
-      "flag_fcf_streak",
-      "flag_tax_anomaly",
-      "flag_other_income"
     ]
   },
   {
@@ -275,6 +161,150 @@
     "columns": [
       "ticker",
       "de_trend"
+    ]
+  },
+  {
+    "name": "Consistent Sales Growth",
+    "sql": "WITH profits AS (\n    SELECT\n        ticker,\n        dt,\n        val AS profit\n    FROM quarterly_results\n    WHERE metric = 'Net Profit'\n),\nranked AS (\n    SELECT\n        *,\n        LAG(profit, 1) OVER (PARTITION BY ticker ORDER BY dt) AS q1,\n        LAG(profit, 2) OVER (PARTITION BY ticker ORDER BY dt) AS q2,\n        LAG(profit, 3) OVER (PARTITION BY ticker ORDER BY dt) AS q3,\n        LAG(profit, 4) OVER (PARTITION BY ticker ORDER BY dt) AS q4,\n        LAG(profit, 5) OVER (PARTITION BY ticker ORDER BY dt) AS q5\n    FROM profits\n), Final AS\n(SELECT\n    ticker,\n    ROUND(100.0 * (profit - q1) / q1, 2)  AS \u0394q1,\n    ROUND(100.0 * (q1 - q2) / q2, 2) AS \u0394q2,\n    ROUND(100.0 * (q2 - q3) / q3, 2) AS \u0394q3,\n    ROUND(100.0 * (q3 - q4) / q4, 2)  AS \u0394q4,\n    ROUND(100.0 * (q4 - q5) / q5, 2)  AS \u0394q5\n\nFROM ranked\nQUALIFY\n    ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n    AND q5 > 0\n    AND profit > q1\n    AND q1 > q2\n    AND q2 > q3\n    AND q3 > q4\n    AND q4 > q5)\nselect f.ticker, round( r.conviction,0) as conviction, r.dcf_verdict, r.dcf_pe_verdict,r.why, r.cautions,  r.stock_p_e, \u0394q1 || '%'  as \u0394q1,  \u0394q2 || '%'  as \u0394q2,  \u0394q3 || '%'  as \u0394q3,  \u0394q4 || '%'  as \u0394q4, \u0394q5 || '%'  as \u0394q5\n  from Final f, general_info g, abinash_screen r \n  where r.ticker = f.ticker AND f.ticker = g.ticker \n   order by(\u0394q1 + \u0394q2 +\u0394q3 +\u0394q4 +\u0394q5 ) desc,  \u0394q1  desc, \u0394q2 desc,\u0394q3 desc,\u0394q4 desc,\u0394q5 desc;\n",
+    "viz": "Table",
+    "published_at": "2026-10-29 12:49",
+    "row_count": 12,
+    "columns": [
+      "ticker",
+      "conviction",
+      "dcf_verdict",
+      "dcf_pe_verdict",
+      "why",
+      "cautions",
+      "stock_p_e",
+      "\u0394q1",
+      "\u0394q2",
+      "\u0394q3",
+      "\u0394q4",
+      "\u0394q5"
+    ]
+  },
+  {
+    "name": "Growth AT Value",
+    "sql": "SELECT distinct\n    f.ticker, round(r.conviction,0) as confidence , r.dcf_verdict, r.dcf_pe_verdict,r.why, r.cautions,  \n    f.market_cap AS \"Mkt Cap (Cr)\",\n    f.stock_p_e AS \"Stock P/E\",\n    f.roce AS \"ROCE %\",\n    pg.val AS \"3Y Profit Growth %\",\n    ROUND(f.stock_p_e / pg.val, 2) AS \"PEG Ratio\"\nFROM general_info f, abinash_screen r , compounded_profit_growth pg\n    WHERE f.ticker = pg.ticker AND r.ticker = f.ticker\n    AND f.market_cap > 1000\n    AND f.roce > 15\n    AND pg.val > 0\n    AND (f.stock_p_e / pg.val) < 1\nORDER BY (f.stock_p_e / pg.val);",
+    "viz": "Table",
+    "published_at": "2026-10-29 17:55",
+    "row_count": 128,
+    "columns": [
+      "ticker",
+      "confidence",
+      "dcf_verdict",
+      "dcf_pe_verdict",
+      "why",
+      "cautions",
+      "Mkt Cap (Cr)",
+      "Stock P/E",
+      "ROCE %",
+      "3Y Profit Growth %",
+      "PEG Ratio"
+    ]
+  },
+  {
+    "name": "Consistent Profit Growth",
+    "sql": "WITH profits AS (\n    SELECT\n        ticker,\n        dt,\n        val AS profit\n    FROM quarterly_results\n    WHERE metric = 'Net Profit'\n),\nranked AS (\n    SELECT\n        *,\n        LAG(profit, 1) OVER (PARTITION BY ticker ORDER BY dt) AS q1,\n        LAG(profit, 2) OVER (PARTITION BY ticker ORDER BY dt) AS q2,\n        LAG(profit, 3) OVER (PARTITION BY ticker ORDER BY dt) AS q3,\n        LAG(profit, 4) OVER (PARTITION BY ticker ORDER BY dt) AS q4,\n        LAG(profit, 5) OVER (PARTITION BY ticker ORDER BY dt) AS q5\n    FROM profits\n), Final AS\n(SELECT\n    ticker,\n    ROUND(100.0 * (profit - q1) / q1, 2)  AS \u0394q1,\n    ROUND(100.0 * (q1 - q2) / q2, 2) AS \u0394q2,\n    ROUND(100.0 * (q2 - q3) / q3, 2) AS \u0394q3,\n    ROUND(100.0 * (q3 - q4) / q4, 2)  AS \u0394q4,\n    ROUND(100.0 * (q4 - q5) / q5, 2)  AS \u0394q5\n\nFROM ranked\nQUALIFY\n    ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n    AND q5 > 0\n    AND profit > q1\n    AND q1 > q2\n    AND q2 > q3\n    AND q3 > q4\n    AND q4 > q5)\nselect f.ticker, round(r. conviction,0) as confidence , r.dcf_verdict, r.dcf_pe_verdict,r.why, r.cautions,  r.stock_p_e, \n \u0394q1 || '%'  as \u0394q1,  \u0394q2 || '%'  as \u0394q2,  \u0394q3 || '%'  as \u0394q3,  \u0394q4 || '%'  as \u0394q4, \u0394q5 || '%'  as \u0394q5\n  from Final f, general_info g, abinash_screen r \n  where r.ticker = f.ticker AND f.ticker = g.ticker order by(\u0394q1 + \u0394q2 +\u0394q3 +\u0394q4 +\u0394q5 ) desc,  \u0394q1  desc, \u0394q2 desc,\u0394q3 desc,\u0394q4 desc,\u0394q5 desc;\n ",
+    "viz": "Table",
+    "published_at": "2026-10-29 19:07",
+    "row_count": 12,
+    "columns": [
+      "ticker",
+      "confidence",
+      "dcf_verdict",
+      "dcf_pe_verdict",
+      "why",
+      "cautions",
+      "stock_p_e",
+      "\u0394q1",
+      "\u0394q2",
+      "\u0394q3",
+      "\u0394q4",
+      "\u0394q5"
+    ]
+  },
+  {
+    "name": "High Quality Growth",
+    "sql": "WITH base AS (\n    SELECT\n        ticker,\n        dt,\n        metric,\n        val\n    FROM quarterly_results\n    WHERE metric IN ('Sales', 'Net Profit', 'OPM %')\n),\n\npivoted AS (\n    SELECT\n        ticker,\n        dt,\n        MAX(CASE WHEN metric='Sales' THEN val END) AS sales,\n        MAX(CASE WHEN metric='Net Profit' THEN val END) AS profit,\n        MAX(CASE WHEN metric='OPM %' THEN val END) AS opm\n    FROM base\n    GROUP BY ticker, dt\n),\nranked AS (\n    SELECT\n        *,\n        LAG(sales, 4)  OVER (PARTITION BY ticker ORDER BY dt) AS sales_yoy,\n        LAG(profit, 4) OVER (PARTITION BY ticker ORDER BY dt) AS profit_yoy,\n        LAG(opm, 4)    OVER (PARTITION BY ticker ORDER BY dt) AS opm_yoy\n    FROM pivoted\n),\nHighQualityGrowth AS (\n    SELECT\n        ticker,\n        ROUND(100.0 * (sales  - sales_yoy)  / NULLIF(sales_yoy, 0), 2) AS sales_growth_pct,\n        ROUND(100.0 * (profit - profit_yoy) / NULLIF(profit_yoy, 0), 2) AS profit_growth_pct,\n        ROUND(opm - opm_yoy, 2) AS opm_improvement\n    FROM ranked\n    QUALIFY\n        ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n        AND profit > 0\n        AND sales_yoy > 0\n        AND profit_yoy > 0\n        AND sales > sales_yoy\n        AND profit > profit_yoy\n        AND opm > opm_yoy\n),\nscored AS (\nSELECT\n    h.*,\n    g.roce,\n    g.stock_p_e,\n    PERCENT_RANK() OVER (ORDER BY profit_growth_pct) AS profit_rank,\n    PERCENT_RANK() OVER (ORDER BY sales_growth_pct) AS sales_rank,\n    PERCENT_RANK() OVER (ORDER BY opm_improvement) AS opm_rank,\n    PERCENT_RANK() OVER (ORDER BY g.roce) AS roce_rank\n\nFROM HighQualityGrowth h\nJOIN general_info g USING (ticker)\n)\n\nSELECT s.ticker, round(r. conviction,0) as conviction , r.dcf_verdict, r.dcf_pe_verdict,r.why, r.cautions, r.stock_p_e,\n sales_growth_pct as 'Sales Growth %',profit_growth_pct as 'Profit Growth %',opm_improvement as 'OPM Improvement %',\n   s.roce as 'Roce',\n       ROUND(\n           0.50 * profit_rank +\n           0.25 * sales_rank +\n           0.15 * opm_rank +\n           0.10 * roce_rank\n       ,4) AS quality_score\nFROM scored s, abinash_screen r \n  where r.ticker = s.ticker\nORDER BY quality_score DESC;",
+    "viz": "Table",
+    "published_at": "2026-10-29 19:16",
+    "row_count": 100,
+    "columns": [
+      "ticker",
+      "conviction",
+      "dcf_verdict",
+      "dcf_pe_verdict",
+      "why",
+      "cautions",
+      "stock_p_e",
+      "Sales Growth %",
+      "Profit Growth %",
+      "OPM Improvement %",
+      "Roce",
+      "quality_score"
+    ]
+  },
+  {
+    "name": "Hyper Growth",
+    "sql": "WITH pivoted AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Sales'       THEN val END) AS sales,\n        MAX(CASE WHEN metric = 'Net Profit'  THEN val END) AS net_profit,\n        MAX(CASE WHEN metric = 'EPS in Rs'   THEN val END) AS eps,\n        MAX(CASE WHEN metric = 'OPM %'       THEN val END) AS opm_pct\n    FROM profit_loss\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nranked AS (\n    SELECT *,\n        LAG(sales,      1) OVER w AS sales_1y,\n        LAG(net_profit, 1) OVER w AS profit_1y,\n        LAG(eps,        1) OVER w AS eps_1y,\n        LAG(sales,      2) OVER w AS sales_2y,\n        LAG(net_profit, 2) OVER w AS profit_2y,\n        LAG(eps,        2) OVER w AS eps_2y,\n        LAG(sales,      3) OVER w AS sales_3y,\n        LAG(net_profit, 3) OVER w AS profit_3y,\n        LAG(eps,        3) OVER w AS eps_3y,\n        LAG(opm_pct,    1) OVER w AS opm_pct_1y\n    FROM pivoted\n    WINDOW w AS (PARTITION BY ticker ORDER BY dt)\n),\n\nlatest AS (\n    SELECT *\n    FROM ranked\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n),\n\ngrowth AS (\n    SELECT\n        ticker,\n        sales, net_profit, eps, opm_pct,\n        sales_1y, profit_1y, eps_1y,\n        sales_2y, profit_2y, eps_2y,\n        sales_3y, profit_3y, eps_3y,\n        opm_pct_1y,\n\n        ROUND(((sales       - sales_1y)  / NULLIF(sales_1y, 0))  * 100, 2) AS sales_growth_1y,\n        ROUND(((net_profit  - profit_1y) / NULLIF(profit_1y, 0)) * 100, 2) AS profit_growth_1y,\n        ROUND(((eps         - eps_1y)    / NULLIF(eps_1y, 0))    * 100, 2) AS eps_growth_1y,\n\n        ROUND(((sales_1y    - sales_2y)  / NULLIF(sales_2y, 0))  * 100, 2) AS sales_growth_prev,\n        ROUND(((profit_1y   - profit_2y) / NULLIF(profit_2y, 0)) * 100, 2) AS profit_growth_prev,\n\n        ROUND((POWER(sales      / NULLIF(sales_3y, 0),  1.0/3) - 1) * 100, 2) AS sales_cagr_3y,\n        ROUND((POWER(net_profit / NULLIF(profit_3y, 0), 1.0/3) - 1) * 100, 2) AS profit_cagr_3y,\n        ROUND((POWER(eps        / NULLIF(eps_3y, 0),    1.0/3) - 1) * 100, 2) AS eps_cagr_3y,\n\n        ROUND(opm_pct - opm_pct_1y, 2) AS opm_expansion\n\n    FROM latest\n),\n\nscored AS (\n    SELECT\n        g.ticker,\n        g.company_name,\n        g.sector,\n        TRY_CAST(g.stock_p_e AS DOUBLE) AS pe_ratio,\n        gr.*,\n\n        ROUND(\n              0.20 * LEAST(100, GREATEST(0, gr.sales_growth_1y)   * (100.0/60))\n            + 0.20 * LEAST(100, GREATEST(0, gr.profit_growth_1y)  * (100.0/80))\n            + 0.10 * LEAST(100, GREATEST(0, gr.sales_growth_prev)  * (100.0/60))\n            + 0.10 * LEAST(100, GREATEST(0, gr.profit_growth_prev) * (100.0/80))\n            + 0.15 * LEAST(100, GREATEST(0, gr.sales_cagr_3y)     * (100.0/40))\n            + 0.10 * LEAST(100, GREATEST(0, gr.profit_cagr_3y)    * (100.0/50))\n            + 0.10 * LEAST(100, GREATEST(0, gr.opm_expansion * 10 + 50))\n            + 0.05 * LEAST(100, GREATEST(0, gr.eps_growth_1y)     * (100.0/80))\n        , 2) AS hyper_growth_score\n\n    FROM growth gr\n    JOIN general_info g USING (ticker)\n\n    WHERE\n        gr.sales_1y          > 100\n        AND gr.profit_1y     > 0\n        AND gr.profit_2y     > 0\n        AND gr.sales_growth_1y   > 25\n        AND gr.profit_growth_1y  > 35\n        AND gr.eps_growth_1y     > 25\n        AND gr.sales_growth_prev  > 15\n        AND gr.profit_growth_prev > 15\n        AND gr.sales_cagr_3y    > 20\n        AND gr.profit_cagr_3y   > 25\n)\n\nSELECT DISTINCT\n    s.ticker, \n    ROUND(r.conviction, 0) AS conviction, \n    r.dcf_verdict, \n    r.dcf_pe_verdict, \n    r.why, \n    r.cautions,  \n    r.stock_p_e,\n    r.company_name,\n    r.sector,\n    s.sales_growth_1y,\n    s.profit_growth_1y,\n    s.eps_growth_1y,\n    s.sales_growth_prev,\n    s.profit_growth_prev,\n    s.sales_cagr_3y,\n    s.profit_cagr_3y,\n    s.opm_expansion,\n    s.hyper_growth_score\nFROM scored s\nLEFT OUTER JOIN abinash_screen r \n  ON s.ticker = r.ticker \nORDER BY hyper_growth_score DESC;",
+    "viz": "Table",
+    "published_at": "2026-10-29 19:25",
+    "row_count": 4,
+    "columns": [
+      "ticker",
+      "conviction",
+      "dcf_verdict",
+      "dcf_pe_verdict",
+      "why",
+      "cautions",
+      "stock_p_e",
+      "company_name",
+      "sector",
+      "sales_growth_1y",
+      "profit_growth_1y",
+      "eps_growth_1y",
+      "sales_growth_prev",
+      "profit_growth_prev",
+      "sales_cagr_3y",
+      "profit_cagr_3y",
+      "opm_expansion",
+      "hyper_growth_score"
+    ]
+  },
+  {
+    "name": "Red Flags",
+    "sql": "WITH pl_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Net Profit'    THEN val END) AS net_profit,\n        MAX(CASE WHEN metric = 'Other Income'  THEN val END) AS other_income,\n        MAX(CASE WHEN metric = 'Sales'         THEN val END) AS sales,\n        MAX(CASE WHEN metric = 'Tax %'         THEN val END) AS tax_pct,\n        MAX(CASE WHEN metric = 'Interest'      THEN val END) AS interest,\n        MAX(CASE WHEN metric = 'Operating Profit' THEN val END) AS op\n    FROM profit_loss\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\ncf_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Cash from Operating Activity' THEN val END) AS cfo,\n        MAX(CASE WHEN metric = 'Free Cash Flow'                THEN val END) AS fcf\n    FROM cash_flows\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nbs_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric IN ('Borrowing','Borrowings') THEN val END) AS debt,\n        MAX(CASE WHEN metric = 'Equity Capital'             THEN val END) AS equity_capital,\n        MAX(CASE WHEN metric = 'Reserves'                   THEN val END) AS reserves\n    FROM balance_sheet\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nratio_pivot AS (\n    SELECT\n        ticker, dt,\n        MAX(CASE WHEN metric = 'Debtor Days' THEN val END) AS debtor_days\n    FROM ratios\n    WHERE dt IS NOT NULL\n    GROUP BY ticker, dt\n),\n\nmerged AS (\n    SELECT\n        p.*,\n        c.cfo, c.fcf,\n        b.debt, b.equity_capital, b.reserves,\n        r.debtor_days\n    FROM pl_pivot p\n    LEFT JOIN cf_pivot  c USING (ticker, dt)\n    LEFT JOIN bs_pivot  b USING (ticker, dt)\n    LEFT JOIN ratio_pivot r USING (ticker, dt)\n),\n\nranked AS (\n    SELECT *,\n        -- 1 year ago\n        LAG(debt,           1) OVER w AS debt_1y,\n        LAG(reserves,       1) OVER w AS reserves_1y,\n        LAG(equity_capital, 1) OVER w AS equity_capital_1y,\n        LAG(debtor_days,  1) OVER w AS debtor_days_1y,\n        LAG(fcf,          1) OVER w AS fcf_1y,\n        LAG(sales,        1) OVER w AS sales_1y,\n        -- 2 years ago (streak checks)\n        LAG(fcf,          2) OVER w AS fcf_2y,\n        LAG(debtor_days,  2) OVER w AS debtor_days_2y\n    FROM merged\n    WINDOW w AS (PARTITION BY ticker ORDER BY dt)\n),\n\nlatest AS (\n    SELECT *\n    FROM ranked\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1\n),\n\nflags AS (\n    SELECT\n        ticker,\n        net_profit, cfo, fcf, debt, debtor_days,\n        sales, other_income, tax_pct, interest, op,\n        reserves, equity_capital,\n        debt_1y, reserves_1y, equity_capital_1y, debtor_days_1y,\n        fcf_1y, fcf_2y, sales_1y, debtor_days_2y,\n\n        -- \u2500\u2500 FLAG 1: Earnings Quality (CFO vs Net Profit) \u2500\u2500 20pts\n        CASE\n            WHEN net_profit > 0 AND cfo IS NOT NULL\n            THEN CASE\n                WHEN cfo < 0                    THEN 20   \n                WHEN cfo < net_profit * 0.3     THEN 15   \n                WHEN cfo < net_profit * 0.6     THEN 8    \n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_earnings_quality,\n\n        -- \u2500\u2500 FLAG 2: Debtor Days \u2014 Level + Trend \u2500\u2500 20pts\n        CASE\n            WHEN debtor_days IS NOT NULL\n            THEN CASE\n                WHEN debtor_days > 180                        THEN 20  \n                WHEN debtor_days > 120                        THEN 10  \n                WHEN debtor_days_1y IS NOT NULL\n                 AND debtor_days > debtor_days_1y * 1.30      THEN 15  \n                WHEN debtor_days_1y IS NOT NULL\n                 AND debtor_days > debtor_days_1y * 1.15\n                 AND debtor_days_2y IS NOT NULL\n                 AND debtor_days_1y > debtor_days_2y * 1.15   THEN 15  \n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_debtor_days,\n\n        -- \u2500\u2500 FLAG 3: Debt Surge with Context \u2500\u2500 20pts\n        CASE\n            WHEN debt_1y IS NOT NULL AND debt_1y > 0\n            THEN CASE\n                WHEN debt > debt_1y * 1.40                    THEN 20  \n                WHEN debt > debt_1y * 1.20\n                 AND op IS NOT NULL\n                 AND interest > 0\n                 AND op / NULLIF(interest, 0) < 3             THEN 20  \n                WHEN debt > debt_1y * 1.20                    THEN 10  \n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_debt_surge,\n\n        -- \u2500\u2500 FLAG 4: Reserves growth vs profit \u2500\u2500\n        CASE\n            WHEN net_profit > 0\n             AND reserves IS NOT NULL\n             AND reserves_1y IS NOT NULL\n             AND (reserves - reserves_1y) < net_profit * 0.30   \n            THEN 15\n            ELSE 0\n        END AS flag_profit_not_in_reserves,\n\n        -- \u2500\u2500 FLAG 5: FCF Streak \u2500\u2500 15pts\n        CASE\n            WHEN fcf < 0 AND fcf_1y < 0 AND fcf_2y < 0 THEN 15  \n            WHEN fcf < 0 AND fcf_1y < 0                THEN 8   \n            ELSE 0\n        END AS flag_fcf_streak,\n\n        -- \u2500\u2500 FLAG 6: Abnormal Tax Rate \u2500\u2500 10pts\n        CASE\n            WHEN tax_pct IS NOT NULL\n            THEN CASE\n                WHEN tax_pct < 1                    THEN 10  \n                WHEN tax_pct < 5                    THEN 6\n                WHEN tax_pct > 55                   THEN 4   \n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_tax_anomaly,\n\n        -- \u2500\u2500 FLAG 7: Other Income Dependency \u2500\u2500 15pts\n        CASE\n            WHEN net_profit > 0\n             AND other_income IS NOT NULL\n             AND other_income > 50                        \n            THEN CASE\n                WHEN other_income > net_profit * 0.75       THEN 15  \n                WHEN other_income > net_profit * 0.50       THEN 8\n                ELSE 0\n            END\n            ELSE 0\n        END AS flag_other_income\n\n    FROM latest\n)\n\nSELECT\n    COALESCE(f.ticker, r.ticker) AS ticker,\n    COALESCE(g.company_name, 'Unknown') AS company_name,\n    TRY_CAST(g.stock_p_e AS DOUBLE) AS pe_ratio,\n    \n    -- Verdict band based on red flag scores\n    CASE\n        WHEN (COALESCE(flag_earnings_quality, 0) + COALESCE(flag_debtor_days, 0) + COALESCE(flag_debt_surge, 0)\n            + COALESCE(flag_profit_not_in_reserves, 0) + COALESCE(flag_fcf_streak, 0)\n            + COALESCE(flag_tax_anomaly, 0) + COALESCE(flag_other_income, 0)) >= 50 THEN '\ud83d\udd34 High Risk'\n        WHEN (COALESCE(flag_earnings_quality, 0) + COALESCE(flag_debtor_days, 0) + COALESCE(flag_debt_surge, 0)\n            + COALESCE(flag_profit_not_in_reserves, 0) + COALESCE(flag_fcf_streak, 0)\n            + COALESCE(flag_tax_anomaly, 0) + COALESCE(flag_other_income, 0)) >= 25 THEN '\ud83d\udfe1 Watch'\n        ELSE '\ud83d\udfe2 Clean'\n    END AS verdict,\n\n    -- Abinash Screen qualitative/DCF fields\n    ROUND(r.conviction, 0) AS conviction,\n    r.dcf_verdict,\n    r.dcf_pe_verdict,\n    r.why,\n    r.cautions,\n\n    -- Human readable reasons\n    (\n        CONCAT_WS('\n',\n            CASE WHEN flag_earnings_quality >= 15\n                THEN 'CFO severely lags profit (earnings may not be real)'\n                WHEN flag_earnings_quality >= 8\n                THEN 'CFO weakly converting from reported profit'\n                ELSE NULL END,\n\n            CASE WHEN flag_debtor_days >= 20\n                THEN 'Debtor days at alarming level (>180 days)'\n                WHEN flag_debtor_days >= 15\n                THEN 'Debtor days spiked sharply or worsening 2yr trend'\n                WHEN flag_debtor_days >= 10\n                THEN 'Debtor days elevated (>120 days)'\n                ELSE NULL END,\n\n            CASE WHEN flag_debt_surge >= 20\n                THEN 'Debt surged >40% YoY or rising with weak interest coverage'\n                WHEN flag_debt_surge >= 10\n                THEN 'Debt rose >20% YoY'\n                ELSE NULL END,\n\n            CASE WHEN flag_profit_not_in_reserves >= 15\n                THEN 'Reserves not growing in line with reported profits'\n                ELSE NULL END,\n\n            CASE WHEN flag_fcf_streak >= 15\n                THEN 'Negative free cash flow for 3 consecutive years'\n                WHEN flag_fcf_streak >= 8\n                THEN 'Negative free cash flow for 2 consecutive years'\n                ELSE NULL END,\n\n            CASE WHEN flag_tax_anomaly >= 10\n                THEN 'Near-zero tax rate \u2014 suspicious earnings quality'\n                WHEN flag_tax_anomaly >= 6\n                THEN 'Unusually low tax rate (<5%)'\n                WHEN flag_tax_anomaly >= 4\n                THEN 'Unusually high tax rate (>55%)'\n                ELSE NULL END,\n\n            CASE WHEN flag_other_income >= 15\n                THEN 'Other income >75% of net profit \u2014 core business barely contributing'\n                WHEN flag_other_income >= 8\n                THEN 'Other income >50% of net profit \u2014 profit quality weak'\n                ELSE NULL END\n        )\n    ) AS flag_reasons,\n\n    -- Raw signals for transparency\n    ROUND(f.net_profit, 2)              AS net_profit,\n    ROUND(f.cfo, 2)                     AS cfo,\n    ROUND(f.fcf, 2)                     AS fcf,\n    ROUND(f.debt, 2)                    AS debt,\n    ROUND(f.debtor_days, 1)             AS debtor_days,\n    ROUND(f.other_income, 2)            AS other_income,\n    ROUND(f.tax_pct, 1)                 AS tax_pct,\n\n    -- Total red flag score\n    ROUND(\n          COALESCE(flag_earnings_quality, 0)\n        + COALESCE(flag_debtor_days, 0)\n        + COALESCE(flag_debt_surge, 0)\n        + COALESCE(flag_profit_not_in_reserves, 0)\n        + COALESCE(flag_fcf_streak, 0)\n        + COALESCE(flag_tax_anomaly, 0)\n        + COALESCE(flag_other_income, 0)\n    , 2) AS red_flag_score,\n\n    -- Individual flag scores\n    flag_earnings_quality,\n    flag_debtor_days,\n    flag_debt_surge,\n    flag_profit_not_in_reserves,\n    flag_fcf_streak,\n    flag_tax_anomaly,\n    flag_other_income\n\nFROM flags f\nLEFT JOIN general_info g ON f.ticker = g.ticker\nFULL OUTER JOIN abinash_screen r ON COALESCE(f.ticker, g.ticker) = r.ticker\n\nORDER BY red_flag_score DESC NULLS LAST;",
+    "viz": "Table",
+    "published_at": "2026-10-30 16:26",
+    "row_count": 377,
+    "columns": [
+      "ticker",
+      "company_name",
+      "pe_ratio",
+      "verdict",
+      "conviction",
+      "dcf_verdict",
+      "dcf_pe_verdict",
+      "why",
+      "cautions",
+      "flag_reasons",
+      "net_profit",
+      "cfo",
+      "fcf",
+      "debt",
+      "debtor_days",
+      "other_income",
+      "tax_pct",
+      "red_flag_score",
+      "flag_earnings_quality",
+      "flag_debtor_days",
+      "flag_debt_surge",
+      "flag_profit_not_in_reserves",
+      "flag_fcf_streak",
+      "flag_tax_anomaly",
+      "flag_other_income"
     ]
   }
 ]
