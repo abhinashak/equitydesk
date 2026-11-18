@@ -52,7 +52,6 @@ def initialize_database():
 
 
 def load_market_data(con):
-    # If cache exists but lacks 'open_price', remove it so it rebuilds fresh
     if Path(MARKET_CACHE_FILE).exists():
         try:
             cached_df = pd.read_parquet(MARKET_CACHE_FILE)
@@ -112,8 +111,8 @@ def load_market_data(con):
             low_price,
             avg_volume,
             prev_close,
-            ret_1w AS current_month_ret,
-            lag(ret_1w, 1) OVER (PARTITION BY ticker ORDER BY w_date) AS prior_month_ret
+            ret_1w AS current_week_ret,
+            lag(ret_1w, 1) OVER (PARTITION BY ticker ORDER BY w_date) AS prior_week_ret
         FROM weekly_ret
     ),
     ranked_momentum AS (
@@ -124,9 +123,9 @@ def load_market_data(con):
             close_price,
             low_price,
             avg_volume,
-            current_month_ret,
-            prior_month_ret,
-            row_number() OVER (PARTITION BY w_date ORDER BY prior_month_ret DESC) AS rn
+            current_week_ret,
+            prior_week_ret,
+            row_number() OVER (PARTITION BY w_date ORDER BY prior_week_ret DESC) AS rn
         FROM with_prior_ret
     )
     SELECT
@@ -136,11 +135,11 @@ def load_market_data(con):
         close_price,
         low_price,
         avg_volume,
-        current_month_ret,
-        CASE WHEN current_month_ret < 0 THEN 'L' ELSE 'P' END AS bucket_char
+        current_week_ret,
+        CASE WHEN current_week_ret < 0 THEN 'L' ELSE 'P' END AS bucket_char
     FROM ranked_momentum
     WHERE w_date BETWEEN '{START_DATE}' AND '2026-10-01'
-      AND prior_month_ret IS NOT NULL
+      AND prior_week_ret IS NOT NULL
     ORDER BY ticker, w_date ASC;
     """
     df = con.execute(sql).fetchdf()
@@ -229,7 +228,7 @@ def get_recency_ngram_prediction(train_str, n, decay_factor=DECAY_FACTOR):
 
 
 def run_simulation(df):
-    """Simulation with intra-week low price check for strict -0.20% stop-loss execution."""
+    """Simulation ensuring Monday entry uses strictly historical completed week patterns (no look-ahead)."""
     trades = []
     current_week_picks = []
     
@@ -272,14 +271,19 @@ def run_simulation(df):
                 continue
             i = idx_match[0]
 
+            # Require enough history and strictly use past completed weeks up to i-1
             if i < MIN_HISTORY_PERIODS or len(chars[:i]) < 5:
                 continue
 
+            # TRAINING STRING STRICTLY ENDS AT WEEK i-1 (Past completed weeks only)
             train_str = "".join(chars[:i])
             pred_char, prob = get_recency_ngram_prediction(train_str, n=4)
             confidence_pct = round(prob * 100, 2)
             curr_volume = volumes[i]
 
+            was_in_shadow = ticker in stock_in_shadow  # status BEFORE this week's stop-loss can change it
+
+            # Monday Open Entry Price
             buy_price = opens[i] if not np.isnan(opens[i]) else closes[i]
             buy_date = pd.to_datetime(dates[i])
             
@@ -306,9 +310,9 @@ def run_simulation(df):
                     exit_reason = "STOCK_STOP_LOSS"
                     stock_in_shadow.add(ticker)
 
-            if ticker in stock_in_shadow:
+            if was_in_shadow:
                 if pnl_pct > 0.0:
-                    stock_in_shadow.remove(ticker)
+                    stock_in_shadow.discard(ticker)
                 else:
                     continue
 
@@ -378,7 +382,7 @@ def main():
     
     output_lines = []
     output_lines.append("="*115)
-    output_lines.append(f"  WEEKLY ROTATION TRADING LOG (Intra-Week {STOCK_STOP_LOSS_PCT}% Stop-Loss Check)")
+    output_lines.append(f"  WEEKLY ROTATION TRADING LOG (Monday Entry, Strict Past-Only N-Gram Features)")
     output_lines.append("="*115)
     
     if not trades_df.empty:
@@ -411,7 +415,6 @@ def main():
             
             print(f"--- Week: {week} --- -> Portfolio PnL = {week_pnl:+.2f}% | Nifty 50 = {nifty_ret_val:+.2f}%")
             
-        # Quarterly Summary
         output_lines.append("\n" + "="*115)
         output_lines.append("  QUARTERLY PERFORMANCE SUMMARY (Portfolio vs Nifty 50)")
         output_lines.append("="*115)
@@ -425,7 +428,6 @@ def main():
             output_lines.append(q_line)
             print(q_line)
 
-        # Yearly Summary
         output_lines.append("\n" + "="*115)
         output_lines.append("  YEARLY PERFORMANCE SUMMARY (Portfolio vs Nifty 50)")
         output_lines.append("="*115)
