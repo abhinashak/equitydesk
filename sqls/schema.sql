@@ -1,0 +1,1374 @@
+-- DuckDB schema reference for SQL generation (dialect: DuckDB).
+-- * ENUM(...) lists are COMPLETE: the column has fewer than 48 distinct non-NULL values,
+--   so use these exact spellings/casing in filters.
+-- * "samples:" are just 3 example values of a column with 48+ distinct values; NOT exhaustive.
+-- * min/max are over non-NULL values. nulls=N appears only when the column has NULLs.
+-- * Table sample rows are the first 3 rows; illustrative only.
+
+-- ===== TABLE abinash_params — 1 rows =====
+CREATE TABLE abinash_params(quality_min INTEGER, quality_strong INTEGER, dcf_upside_min_pct DOUBLE, valuation_min INTEGER, momentum_tests_min INTEGER, rsi_lo DOUBLE, rsi_hi DOUBLE, algo_composite_min DOUBLE, tv_pct_caution DOUBLE, lenses_min INTEGER);
+-- Columns:
+--   quality_min INTEGER | 1 distinct | min=40, max=40 | ENUM(40)
+--   quality_strong INTEGER | 1 distinct | min=70, max=70 | ENUM(70)
+--   dcf_upside_min_pct DOUBLE | 1 distinct | min=-10, max=-10 | ENUM(-10)
+--   valuation_min INTEGER | 1 distinct | min=40, max=40 | ENUM(40)
+--   momentum_tests_min INTEGER | 1 distinct | min=2, max=2 | ENUM(2)
+--   rsi_lo DOUBLE | 1 distinct | min=40, max=40 | ENUM(40)
+--   rsi_hi DOUBLE | 1 distinct | min=75, max=75 | ENUM(75)
+--   algo_composite_min DOUBLE | 1 distinct | min=0, max=0 | ENUM(0)
+--   tv_pct_caution DOUBLE | 1 distinct | min=75, max=75 | ENUM(75)
+--   lenses_min INTEGER | 1 distinct | min=2, max=2 | ENUM(2)
+-- Sample rows (1):
+--   {quality_min: 40, quality_strong: 70, dcf_upside_min_pct: -10, valuation_min: 40, momentum_tests_min: 2, rsi_lo: 40, rsi_hi: 75, algo_composite_min: 0, tv_pct_caution: 75, lenses_min: 2}
+
+-- ===== TABLE dcf_assumptions — 0 rows =====
+CREATE TABLE dcf_assumptions(ticker VARCHAR, g1 DOUBLE, g2 DOUBLE, tg DOUBLE, dr DOUBLE, mos DOUBLE, zscore_thresh DOUBLE, oi_structural BOOLEAN, decay_lambda DOUBLE);
+-- Columns:
+--   ticker VARCHAR | no rows
+--   g1 DOUBLE | no rows
+--   g2 DOUBLE | no rows
+--   tg DOUBLE | no rows
+--   dr DOUBLE | no rows
+--   mos DOUBLE | no rows
+--   zscore_thresh DOUBLE | no rows
+--   oi_structural BOOLEAN | no rows
+--   decay_lambda DOUBLE | no rows
+
+-- ===== TABLE dcf_policy — 0 rows =====
+CREATE TABLE dcf_policy(rf DOUBLE, erp DOUBLE, anchor_growth DOUBLE, shrink DOUBLE, g1_cap DOUBLE, tg_max DOUBLE, fade DOUBLE, dr_min DOUBLE, dr_max DOUBLE, mos_base DOUBLE, mos_k DOUBLE, mos_min DOUBLE, mos_max DOUBLE, mos_sd_default DOUBLE, zscore_thresh DOUBLE, decay_lambda DOUBLE, beta_window_days INTEGER, benchmark_ticker VARCHAR);
+-- Columns:
+--   rf DOUBLE | no rows
+--   erp DOUBLE | no rows
+--   anchor_growth DOUBLE | no rows
+--   shrink DOUBLE | no rows
+--   g1_cap DOUBLE | no rows
+--   tg_max DOUBLE | no rows
+--   fade DOUBLE | no rows
+--   dr_min DOUBLE | no rows
+--   dr_max DOUBLE | no rows
+--   mos_base DOUBLE | no rows
+--   mos_k DOUBLE | no rows
+--   mos_min DOUBLE | no rows
+--   mos_max DOUBLE | no rows
+--   mos_sd_default DOUBLE | no rows
+--   zscore_thresh DOUBLE | no rows
+--   decay_lambda DOUBLE | no rows
+--   beta_window_days INTEGER | no rows
+--   benchmark_ticker VARCHAR | no rows
+
+-- ===== TABLE fss_params — 1 rows =====
+CREATE TABLE fss_params("method" VARCHAR, min_per_sector INTEGER, top_pct DOUBLE, weighting VARCHAR);
+-- Columns:
+--   method VARCHAR | 1 distinct | ENUM('zscore')
+--   min_per_sector INTEGER | 1 distinct | min=4, max=4 | ENUM(4)
+--   top_pct DOUBLE | 1 distinct | min=0.25, max=0.25 | ENUM(0.25)
+--   weighting VARCHAR | 1 distinct | ENUM('equal')
+-- Sample rows (1):
+--   {method: 'zscore', min_per_sector: 4, top_pct: 0.25, weighting: 'equal'}
+
+-- ===== VIEW abinash_recommendations — 201 rows =====
+CREATE VIEW abinash_recommendations AS SELECT tier, ticker, company_name, sector, round(conviction, 1) AS conviction, lenses_passed, lenses_available, why, cautions, quality_score, valuation_score, timing_score, technical_score, gate_rec, dcf_price, dcf_bear, dcf_value, dcf_bull, round(dcf_upside_pct, 1) AS dcf_upside_pct, dcf_verdict, dcf_pe_verdict, ret_6m, ret_1y, round(sma200_dist, 1) AS sma200_dist, round(rsi, 1) AS rsi, mom_tests, round(algo_composite, 3) AS algo_composite, algo_side, algo_industry, market_cap, current_price, stock_p_e FROM abinash_screen WHERE shortlisted ORDER BY tier, conviction DESC, ticker;
+-- Columns:
+--   tier VARCHAR | 3 distinct | ENUM('A', 'B', 'C')
+--   ticker VARCHAR | 201 distinct | samples: 'TVSMOTOR', 'HEROMOTOCO', 'KRISHNADEF'
+--   company_name VARCHAR | 201 distinct | samples: 'Pfizer Ltd', 'Dr Lal Pathlabs Ltd', 'Multi Commodity Exchange of India Ltd'
+--   sector VARCHAR | 18 distinct | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Healthcare', 'Information Technology', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication')
+--   conviction DOUBLE | 165 distinct | min=23.8, max=85 | samples: 73.7, 67.5, 66.7
+--   lenses_passed INTEGER | 3 distinct | min=2, max=4 | ENUM(2, 3, 4)
+--   lenses_available INTEGER | 2 distinct | min=3, max=4 | ENUM(3, 4)
+--   why VARCHAR | 160 distinct | samples: 'Quality 80; DCF +49%; Momentum 4/4; Alg…', 'Quality 80; DCF +16%; Momentum 3/4', 'Quality 100; DCF -2%; Momentum 2/4; Alg…'
+--   cautions VARCHAR | 18 distinct | nulls=12 | ENUM('DCF says overvalued', 'DCF says overvalued; algo short-side', 'DCF says overvalued; high debt; promote…', 'DCF says overvalued; negative FCF', 'DCF says overvalued; promoter selling', 'RSI overbought', 'RSI overbought; DCF says overvalued', 'RSI overbought; DCF says overvalued; al…', 'RSI overbought; DCF says overvalued; ne…', 'RSI overbought; algo short-side', 'RSI overbought; below 200DMA', 'RSI overbought; below 200DMA; DCF says …', 'RSI overbought; below 200DMA; algo shor…', 'algo short-side', 'below 200DMA', 'below 200DMA; DCF says overvalued', 'below 200DMA; DCF says overvalued; algo…', 'below 200DMA; algo short-side')
+--   quality_score INTEGER | 6 distinct | min=40, max=100 | ENUM(40, 45, 60, 65, 80, 100)
+--   valuation_score INTEGER | 6 distinct | min=0, max=99 | ENUM(0, 13, 33, 46, 66, 99)
+--   timing_score INTEGER | 11 distinct | min=0, max=100 | ENUM(0, 5, 10, 25, 30, 40, 45, 60, 65, 80, 100)
+--   technical_score INTEGER | 6 distinct | min=0, max=75 | ENUM(0, 10, 25, 35, 50, 75)
+--   gate_rec VARCHAR | 4 distinct | ENUM('Accumulate', 'Buy', 'Overvalued', 'Watch')
+--   dcf_price DOUBLE | 201 distinct | min=37.19, max=128082 | samples: 3818.3, 3705.4, 191.09
+--   dcf_bear DOUBLE | 182 distinct | min=3, max=81642 | samples: 4676, 2475, 1534
+--   dcf_value DOUBLE | 186 distinct | min=3, max=127851 | samples: 527, 217, 4132
+--   dcf_bull DOUBLE | 196 distinct | min=4, max=192605 | samples: 1769, 316, 7162
+--   dcf_upside_pct DOUBLE | 193 distinct | min=-99.8, max=451 | samples: 61.7, 162.4, -66.8
+--   dcf_verdict VARCHAR | 4 distinct | ENUM('BUY (inside MoS)', 'OVERVALUED even vs bull', 'OVERVALUED vs base', 'UNDERVALUED')
+--   dcf_pe_verdict VARCHAR | 2 distinct | nulls=1 | ENUM('CHEAP vs own P/E history', 'RICH vs own P/E history')
+--   ret_6m DOUBLE | 199 distinct | min=-53.74226992, max=99.54470772 | nulls=2 | samples: 6.405905166, -16.87678936, 19.88649347
+--   ret_1y DOUBLE | 199 distinct | min=-58.34288926, max=150.0915174 | nulls=2 | samples: -16.98275252, 10.70733998, -35.31357947
+--   sma200_dist DOUBLE | 9 distinct | min=-0.5, max=0.5 | nulls=2 | ENUM(-0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5)
+--   rsi DOUBLE | 174 distinct | min=20.8, max=91.7 | nulls=2 | samples: 55.5, 69.4, 51.2
+--   mom_tests INTEGER | 5 distinct | min=0, max=4 | nulls=2 | ENUM(0, 1, 2, 3, 4)
+--   algo_composite DOUBLE | 177 distinct | min=-1.19, max=1.246 | nulls=11 | samples: -0.524, 0.386, -0.29
+--   algo_side VARCHAR | 2 distinct | nulls=110 | ENUM('L', 'S')
+--   algo_industry VARCHAR | 34 distinct | nulls=11 | ENUM('Aerospace & Defense', 'Agricultural Food & other Products', 'Agricultural, Commercial & Construction…', 'Auto Components', 'Automobiles', 'Banks', 'Beverages', 'Capital Markets', 'Cement & Cement Products', 'Chemicals & Petrochemicals', 'Commercial Services & Supplies', 'Construction', 'Consumer Durables', 'Electrical Equipment', 'Fertilizers & Agrochemicals', 'Finance', 'Food Products', 'Gas', 'Healthcare Services', 'IT - Services', 'IT - Software', 'Industrial Manufacturing', 'Industrial Products', 'Insurance', 'Leisure Services', 'Non - Ferrous Metals', 'Personal Products', 'Petroleum Products', 'Pharmaceuticals & Biotechnology', 'Power', 'Realty', 'Retailing', 'Telecom - Services', 'Transport Services')
+--   market_cap DOUBLE | 201 distinct | min=1257, max=1166350 | samples: 10802, 10413, 22087
+--   current_price DOUBLE | 198 distinct | min=40.6, max=133000 | samples: 434, 3241, 375
+--   stock_p_e DOUBLE | 180 distinct | min=6.16, max=222 | samples: 14.8, 47, 55.6
+-- Sample rows (3):
+--   {tier: 'A', ticker: 'PGHL', company_name: 'Procter & Gamble Health Ltd', sector: 'Healthcare', conviction: 85, lenses_passed: 4, lenses_available: 4, why: 'Quality 80; DCF +49%; Momentum 4/4; Alg…', cautions: NULL, quality_score: 80, valuation_score: 13, timing_score: 30, technical_score: 25, gate_rec: 'Overvalued', dcf_price: 5595.5, dcf_bear: 4858, dcf_value: 8316, dcf_bull: 13679, dcf_upside_pct: 48.6, dcf_verdict: 'UNDERVALUED', dcf_pe_verdict: 'CHEAP vs own P/E history', ret_6m: 6.405905166, ret_1y: -0.5133212811, sma200_dist: 0, rsi: 65.4, mom_tests: 4, algo_composite: 0.461, algo_side: 'L', algo_industry: 'Pharmaceuticals & Biotechnology', market_cap: 10802, current_price: 6508, stock_p_e: 33}
+--   {tier: 'A', ticker: 'PETRONET', company_name: 'Petronet LNG Ltd', sector: 'Oil, Gas & Consumable Fuels', conviction: 83, lenses_passed: 4, lenses_available: 4, why: 'Quality 80; DCF +62% (even bear case >=…', cautions: NULL, quality_score: 80, valuation_score: 66, timing_score: 30, technical_score: 50, gate_rec: 'Buy', dcf_price: 326, dcf_bear: 347, dcf_value: 527, dcf_bull: 765, dcf_upside_pct: 61.7, dcf_verdict: 'BUY (inside MoS)', dcf_pe_verdict: 'RICH vs own P/E history', ret_6m: 24.08722885, ret_1y: 24.19688702, sma200_dist: 0.2, rsi: 74.1, mom_tests: 4, algo_composite: 0.083, algo_side: NULL, algo_industry: 'Gas', market_cap: 42862, current_price: 286, stock_p_e: 10.4}
+--   {tier: 'A', ticker: 'TMCV', company_name: 'Tata Motors Ltd', sector: 'Capital Goods', conviction: 82.6, lenses_passed: 3, lenses_available: 3, why: 'Quality 80; DCF +131% (even bear case >…', cautions: NULL, quality_score: 80, valuation_score: 13, timing_score: 10, technical_score: 50, gate_rec: 'Overvalued', dcf_price: 445.65, dcf_bear: 536, dcf_value: 1030, dcf_bull: 1769, dcf_upside_pct: 131.1, dcf_verdict: 'BUY (inside MoS)', dcf_pe_verdict: 'RICH vs own P/E history', ret_6m: NULL, ret_1y: NULL, sma200_dist: NULL, rsi: NULL, mom_tests: NULL, algo_composite: 0.712, algo_side: 'L', algo_industry: 'Agricultural, Commercial & Construction…', market_cap: 160916, current_price: 437, stock_p_e: 27.4}
+
+-- ===== VIEW abinash_screen — 335 rows =====
+CREATE VIEW abinash_screen AS WITH j AS (SELECT q.*, d.dcf_price, d.dcf_bear, d.dcf_value, d.dcf_bull, d.dcf_mos_price, d.dcf_tv_pct, d.dcf_verdict, d.dcf_pe_verdict, m.mom_date, m.mom_close, m.ret_6m, m.ret_1y, m.sma50_dist, m.sma200_dist, m.rsi, m.macd_bullish, m.adx, a.algo_composite, a.algo_industry, a.algo_side FROM abinash_src_quality AS q LEFT JOIN abinash_src_dcf AS d ON ((d.ticker = q.ticker)) LEFT JOIN abinash_src_momentum AS m ON ((m.ticker = q.ticker)) LEFT JOIN abinash_src_algo AS a ON ((a.ticker = q.ticker))), t AS (SELECT j.*, CASE  WHEN (((dcf_price > 0) AND (dcf_value IS NOT NULL))) THEN ((((dcf_value / dcf_price) - 1) * 100)) ELSE NULL END AS dcf_upside_pct, CASE  WHEN ((mom_date IS NOT NULL)) THEN ((((CAST(COALESCE((sma200_dist > 0), CAST('f' AS BOOLEAN)) AS INTEGER) + CAST(COALESCE((ret_6m > 0), CAST('f' AS BOOLEAN)) AS INTEGER)) + CAST(COALESCE((rsi BETWEEN p.rsi_lo AND p.rsi_hi), CAST('f' AS BOOLEAN)) AS INTEGER)) + CAST(COALESCE((macd_bullish = 1), CAST('f' AS BOOLEAN)) AS INTEGER))) ELSE NULL END AS mom_tests FROM j CROSS JOIN abinash_params AS p), l AS (SELECT t.*, (quality_score >= p.quality_min) AS l_quality, CASE  WHEN ((dcf_upside_pct IS NOT NULL)) THEN (((dcf_upside_pct >= p.dcf_upside_min_pct) OR COALESCE((dcf_price <= dcf_mos_price), CAST('f' AS BOOLEAN)) OR (upper(COALESCE(dcf_verdict, '')) ~~ '%BUY%'))) ELSE (valuation_score >= p.valuation_min) END AS l_value, CASE  WHEN ((mom_tests IS NOT NULL)) THEN ((mom_tests >= p.momentum_tests_min)) ELSE NULL END AS l_momentum, CASE  WHEN ((algo_composite IS NOT NULL)) THEN (((algo_composite > p.algo_composite_min) OR COALESCE((algo_side = 'L'), CAST('f' AS BOOLEAN)))) ELSE NULL END AS l_algo FROM t CROSS JOIN abinash_params AS p), c AS (SELECT l.*, (((CAST(COALESCE(l_quality, CAST('f' AS BOOLEAN)) AS INTEGER) + CAST(COALESCE(l_value, CAST('f' AS BOOLEAN)) AS INTEGER)) + CAST(COALESCE(l_momentum, CAST('f' AS BOOLEAN)) AS INTEGER)) + CAST(COALESCE(l_algo, CAST('f' AS BOOLEAN)) AS INTEGER)) AS lenses_passed, (((CAST((l_quality IS NOT NULL) AS INTEGER) + CAST((l_value IS NOT NULL) AS INTEGER)) + CAST((l_momentum IS NOT NULL) AS INTEGER)) + CAST((l_algo IS NOT NULL) AS INTEGER)) AS lenses_available FROM l)SELECT c.ticker, c.company_name, c.sector, c.market_cap, c.stock_p_e, c.current_price, c.roce, c.de, c.profit_cagr, c.pe_discount_pct, c.quality_score, c.valuation_score, c.timing_score, c.technical_score, c.gate_rec, c.dcf_price, c.dcf_bear, c.dcf_value, c.dcf_bull, c.dcf_mos_price, c.dcf_upside_pct, c.dcf_tv_pct, c.dcf_verdict, c.dcf_pe_verdict, c.mom_date, c.ret_6m, c.ret_1y, c.sma50_dist, c.sma200_dist, c.rsi, c.macd_bullish, c.adx, c.mom_tests, c.algo_composite, c.algo_side, c.algo_industry, c.l_quality, c.l_value, c.l_momentum, c.l_algo, c.lenses_passed, c.lenses_available, (c.l_quality AND (c.lenses_passed >= p.lenses_min)) AS shortlisted, CASE  WHEN ((NOT (c.l_quality AND (c.lenses_passed >= p.lenses_min)))) THEN (NULL) WHEN (((c.lenses_passed >= 3) AND (c.quality_score >= p.quality_strong))) THEN ('A') WHEN ((c.lenses_passed >= 3)) THEN ('B') ELSE 'C' END AS tier, list_avg(main.list_value(CAST(c.quality_score AS "DOUBLE"), CASE  WHEN ((c.dcf_upside_pct IS NOT NULL)) THEN (least(100.0, greatest(0.0, (50 + c.dcf_upside_pct)))) ELSE CAST(c.valuation_score AS "DOUBLE") END, (c.mom_tests * 25.0), least(100.0, greatest(0.0, (50 + (25 * c.algo_composite)))))) AS conviction, "nullif"(concat_ws('; ', CASE  WHEN (c.l_quality) THEN (('Quality ' || c.quality_score)) ELSE NULL END, CASE  WHEN ((c.l_value AND (c.dcf_upside_pct IS NOT NULL))) THEN ((('DCF ' || printf('%+.0f%%', c.dcf_upside_pct)) || CASE  WHEN ((c.dcf_bear >= c.dcf_price)) THEN (' (even bear case >= price)') ELSE '' END)) WHEN (c.l_value) THEN (('Valuation score ' || c.valuation_score)) ELSE NULL END, CASE  WHEN (c.l_momentum) THEN ((('Momentum ' || c.mom_tests) || '/4')) ELSE NULL END, CASE  WHEN (c.l_algo) THEN ((('Algo ' || printf('%+.2f', c.algo_composite)) || COALESCE(((' (' || c.algo_side) || ')'), ''))) ELSE NULL END), '') AS why, "nullif"(concat_ws('; ', CASE  WHEN ((c.rsi > p.rsi_hi)) THEN ('RSI overbought') ELSE NULL END, CASE  WHEN ((c.sma200_dist < 0)) THEN ('below 200DMA') ELSE NULL END, CASE  WHEN ((upper(COALESCE(c.dcf_verdict, '')) ~~ '%OVERVALUED%')) THEN ('DCF says overvalued') ELSE NULL END, CASE  WHEN ((upper(COALESCE(c.dcf_pe_verdict, '')) ~~ '%OVERVALUED%')) THEN ('P/E says overvalued') ELSE NULL END, CASE  WHEN ((c.dcf_tv_pct > p.tv_pct_caution)) THEN ('DCF mostly terminal value') ELSE NULL END, CASE  WHEN (c.g1b_fcf_fail) THEN ('negative FCF') ELSE NULL END, CASE  WHEN (c.g1e_debt_fail) THEN ('high debt') ELSE NULL END, CASE  WHEN (c.g3d_promoter_fail) THEN ('promoter selling') ELSE NULL END, CASE  WHEN ((c.algo_side = 'S')) THEN ('algo short-side') ELSE NULL END), '') AS cautions FROM c CROSS JOIN abinash_params AS p;
+-- Columns:
+--   ticker VARCHAR | 335 distinct | samples: 'ACUTAAS', 'AIAENG', 'BHARATFORG'
+--   company_name VARCHAR | 335 distinct | samples: 'Apollo Hospitals Enterprise Ltd', 'Arvind Fashions Ltd', 'Bata India Ltd'
+--   sector VARCHAR | 21 distinct | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Forest Materials', 'Healthcare', 'Information Technology', 'Media, Entertainment & Publication', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication', 'Textiles')
+--   market_cap DOUBLE | 335 distinct | min=1257, max=1762680 | samples: 28339, 33681, 9781
+--   stock_p_e DOUBLE | 272 distinct | min=5.19, max=2238 | nulls=12 | samples: 33.6, 51.6, 16.1
+--   current_price DOUBLE | 317 distinct | min=21.8, max=133000 | samples: 2550, 3315, 291
+--   roce DOUBLE | 259 distinct | min=-32.3, max=157 | samples: 21.9, 20.2, 10.5
+--   de DOUBLE | 322 distinct | min=0, max=13.21233726 | nulls=1 | samples: 0, 0.1153632834, 2.01232493
+--   profit_cagr DOUBLE | 312 distinct | min=-65.89339696, max=184.624281 | nulls=22 | samples: 1.482050952, 28.49647443, 0.0363372125
+--   pe_discount_pct DOUBLE | 310 distinct | min=-9981.081081, max=78.15104167 | nulls=12 | samples: 0, 53.53535354, -89.24302789
+--   quality_score INTEGER | 11 distinct | min=0, max=100 | ENUM(0, 5, 10, 25, 30, 40, 45, 60, 65, 80, 100)
+--   valuation_score INTEGER | 6 distinct | min=0, max=99 | ENUM(0, 13, 33, 46, 66, 99)
+--   timing_score INTEGER | 12 distinct | min=0, max=100 | ENUM(0, 5, 10, 20, 25, 30, 40, 45, 60, 65, 80, 100)
+--   technical_score INTEGER | 6 distinct | min=0, max=75 | ENUM(0, 10, 25, 35, 50, 75)
+--   gate_rec VARCHAR | 5 distinct | ENUM('Accumulate', 'Avoid', 'Buy', 'Overvalued', 'Watch')
+--   dcf_price DOUBLE | 333 distinct | min=18.16, max=128082 | nulls=2 | samples: 208.07, 393.95, 9741
+--   dcf_bear DOUBLE | 263 distinct | min=0, max=81642 | nulls=2 | samples: 761, 24, 3937
+--   dcf_value DOUBLE | 277 distinct | min=0, max=127851 | nulls=2 | samples: 1836, 54, 200
+--   dcf_bull DOUBLE | 301 distinct | min=0, max=192605 | nulls=2 | samples: 3125, 37, 181
+--   dcf_mos_price DOUBLE | 267 distinct | min=0, max=76710 | nulls=2 | samples: 1406, 237, 177
+--   dcf_upside_pct DOUBLE | 333 distinct | min=-100, max=1748.881066 | nulls=2 | samples: -42.1267136, 25.68962282, -77.74499743
+--   dcf_tv_pct DOUBLE | 41 distinct | min=27, max=70 | nulls=2 | ENUM(27, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 70)
+--   dcf_verdict VARCHAR | 4 distinct | nulls=2 | ENUM('BUY (inside MoS)', 'OVERVALUED even vs bull', 'OVERVALUED vs base', 'UNDERVALUED')
+--   dcf_pe_verdict VARCHAR | 2 distinct | nulls=6 | ENUM('CHEAP vs own P/E history', 'RICH vs own P/E history')
+--   mom_date TIMESTAMP_NS | 6 distinct | min=2026-05-11T00:00:00, max=2026-11-17T00:00:00 | nulls=3 | ENUM(2026-05-11T00:00:00, 2026-05-12T00:00:00, 2026-07-16T00:00:00, 2026-09-28T00:00:00, 2026-11-16T00:00:00, 2026-11-17T00:00:00)
+--   ret_6m DOUBLE | 332 distinct | min=-53.74226992, max=128.0165516 | nulls=3 | samples: -8.289266246, -2.67263211, 24.18199242
+--   ret_1y DOUBLE | 332 distinct | min=-59.14037334, max=150.0915174 | nulls=3 | samples: 24.17018937, -5.359631051, -39.12045793
+--   sma50_dist DOUBLE | 332 distinct | min=-0.2904893166, max=0.380299283 | nulls=3 | samples: -0.2291712582, 0.145883995, 0.1236251776
+--   sma200_dist DOUBLE | 332 distinct | min=-0.4668306427, max=0.8334014436 | nulls=3 | samples: 0.06484736555, 0.007441043289, -0.04830476707
+--   rsi DOUBLE | 332 distinct | min=18.00331637, max=93.42988684 | nulls=3 | samples: 62.55437716, 63.24427329, 42.0926401
+--   macd_bullish BIGINT | 2 distinct | min=0, max=1 | nulls=3 | ENUM(0, 1)
+--   adx DOUBLE | 332 distinct | min=9.062870876, max=79.66448766 | nulls=3 | samples: 29.70047013, 24.08018889, 51.95437198
+--   mom_tests INTEGER | 5 distinct | min=0, max=4 | nulls=3 | ENUM(0, 1, 2, 3, 4)
+--   algo_composite DOUBLE | 312 distinct | min=-1.193431578, max=1.245949898 | nulls=23 | samples: 0.1512183383, 0.1983974194, 0.2561320594
+--   algo_side VARCHAR | 2 distinct | nulls=183 | ENUM('L', 'S')
+--   algo_industry VARCHAR | 34 distinct | nulls=23 | ENUM('Aerospace & Defense', 'Agricultural Food & other Products', 'Agricultural, Commercial & Construction…', 'Auto Components', 'Automobiles', 'Banks', 'Beverages', 'Capital Markets', 'Cement & Cement Products', 'Chemicals & Petrochemicals', 'Commercial Services & Supplies', 'Construction', 'Consumer Durables', 'Electrical Equipment', 'Fertilizers & Agrochemicals', 'Finance', 'Food Products', 'Gas', 'Healthcare Services', 'IT - Services', 'IT - Software', 'Industrial Manufacturing', 'Industrial Products', 'Insurance', 'Leisure Services', 'Non - Ferrous Metals', 'Personal Products', 'Petroleum Products', 'Pharmaceuticals & Biotechnology', 'Power', 'Realty', 'Retailing', 'Telecom - Services', 'Transport Services')
+--   l_quality BOOLEAN | 2 distinct | ENUM(false, true)
+--   l_value BOOLEAN | 2 distinct | ENUM(false, true)
+--   l_momentum BOOLEAN | 2 distinct | nulls=3 | ENUM(false, true)
+--   l_algo BOOLEAN | 2 distinct | nulls=23 | ENUM(false, true)
+--   lenses_passed INTEGER | 5 distinct | min=0, max=4 | ENUM(0, 1, 2, 3, 4)
+--   lenses_available INTEGER | 2 distinct | min=3, max=4 | ENUM(3, 4)
+--   shortlisted BOOLEAN | 2 distinct | ENUM(false, true)
+--   tier VARCHAR | 3 distinct | nulls=134 | ENUM('A', 'B', 'C')
+--   conviction DOUBLE | 333 distinct | min=11.61678858, max=85.03478897 | samples: 31.92981959, 50.96271213, 49.33311827
+--   why VARCHAR | 228 distinct | nulls=8 | samples: 'Quality 60; DCF +25%; Momentum 4/4', 'Momentum 2/4; Algo +0.59 (L)', 'Quality 60; Momentum 3/4; Algo +0.02'
+--   cautions VARCHAR | 43 distinct | nulls=13 | ENUM('DCF says overvalued', 'DCF says overvalued; algo short-side', 'DCF says overvalued; high debt', 'DCF says overvalued; high debt; promote…', 'DCF says overvalued; negative FCF', 'DCF says overvalued; negative FCF; algo…', 'DCF says overvalued; promoter selling', 'RSI overbought', 'RSI overbought; DCF says overvalued', 'RSI overbought; DCF says overvalued; al…', 'RSI overbought; DCF says overvalued; hi…', 'RSI overbought; DCF says overvalued; ne…', 'RSI overbought; DCF says overvalued; ne…', 'RSI overbought; DCF says overvalued; ne…', 'RSI overbought; algo short-side', 'RSI overbought; below 200DMA', 'RSI overbought; below 200DMA; DCF says …', 'RSI overbought; below 200DMA; DCF says …', 'RSI overbought; below 200DMA; DCF says …', 'RSI overbought; below 200DMA; DCF says …', 'RSI overbought; below 200DMA; DCF says …', 'RSI overbought; below 200DMA; algo shor…', 'RSI overbought; below 200DMA; negative …', 'RSI overbought; negative FCF', 'RSI overbought; negative FCF; algo shor…', 'RSI overbought; negative FCF; high debt', 'algo short-side', 'below 200DMA', 'below 200DMA; DCF says overvalued', 'below 200DMA; DCF says overvalued; algo…', 'below 200DMA; DCF says overvalued; high…', 'below 200DMA; DCF says overvalued; high…', 'below 200DMA; DCF says overvalued; nega…', 'below 200DMA; DCF says overvalued; nega…', 'below 200DMA; DCF says overvalued; nega…', 'below 200DMA; algo short-side', 'below 200DMA; high debt', 'below 200DMA; negative FCF', 'below 200DMA; negative FCF; algo short-…', 'below 200DMA; negative FCF; high debt', 'negative FCF', 'negative FCF; algo short-side', 'negative FCF; high debt')
+-- Sample rows (3):
+--   {ticker: 'ABCAPITAL', company_name: 'Aditya Birla Capital Ltd', sector: 'Financial Services', market_cap: 110130, stock_p_e: 33, current_price: 402, roce: 8.75, de: 4.831057069, profit_cagr: 4.267324998, pe_discount_pct: -48.64864865, quality_score: 0, valuation_score: 0, timing_score: 60, technical_score: 75, gate_rec: 'Avoid', dcf_price: 411.5, dcf_bear: 261, dcf_value: 380, dcf_bull: 530, dcf_mos_price: 228, dcf_upside_pct: -7.654921021, dcf_tv_pct: 47, dcf_verdict: 'OVERVALUED vs base', dcf_pe_verdict: 'RICH vs own P/E history', mom_date: 2026-11-17T00:00:00, ret_6m: 16.539222, ret_1y: 24.17018937, sma50_dist: 0.07081983764, sma200_dist: 0.1166203464, rsi: 80.71013629, macd_bullish: 1, adx: 34.40484454, mom_tests: 3, algo_composite: -0.4500528552, algo_side: 'S', algo_industry: 'Finance', l_quality: false, l_value: true, l_momentum: true, l_algo: false, lenses_passed: 2, lenses_available: 4, shortlisted: false, tier: NULL, conviction: 39.0234394, why: 'DCF -8%; Momentum 3/4', cautions: 'RSI overbought; DCF says overvalued; ne…'}
+--   {ticker: 'BALRAMCHIN', company_name: 'Balrampur Chini Mills Ltd', sector: 'Fast Moving Consumer Goods', market_cap: 14904, stock_p_e: 43.5, current_price: 704, roce: 9.06, de: 0.8144912641, profit_cagr: -7.472944617, pe_discount_pct: 3.54767184, quality_score: 0, valuation_score: 0, timing_score: 10, technical_score: 0, gate_rec: 'Avoid', dcf_price: 649.9, dcf_bear: 43, dcf_value: 60, dcf_bull: 82, dcf_mos_price: 36, dcf_upside_pct: -90.76781043, dcf_tv_pct: 55, dcf_verdict: 'OVERVALUED even vs bull', dcf_pe_verdict: 'RICH vs own P/E history', mom_date: 2026-11-16T00:00:00, ret_6m: 20.93073386, ret_1y: 52.31211851, sma50_dist: -0.02944635804, sma200_dist: 0.1490558988, rsi: 57.81618534, macd_bullish: 1, adx: 26.45400686, mom_tests: 4, algo_composite: 0.1525768743, algo_side: NULL, algo_industry: 'Agricultural Food & other Products', l_quality: false, l_value: false, l_momentum: true, l_algo: true, lenses_passed: 2, lenses_available: 4, shortlisted: false, tier: NULL, conviction: 38.45360546, why: 'Momentum 4/4; Algo +0.15', cautions: 'DCF says overvalued; negative FCF'}
+--   {ticker: 'BEL', company_name: 'Bharat Electronics Ltd', sector: 'Capital Goods', market_cap: 298678, stock_p_e: 48.7, current_price: 409, roce: 37, de: 0.002742847498, profit_cagr: 15.08822743, pe_discount_pct: 2.988047809, quality_score: 65, valuation_score: 0, timing_score: 0, technical_score: 25, gate_rec: 'Watch', dcf_price: 399.55, dcf_bear: 48, dcf_value: 86, dcf_bull: 142, dcf_mos_price: 60, dcf_upside_pct: -78.47578526, dcf_tv_pct: 58, dcf_verdict: 'OVERVALUED even vs bull', dcf_pe_verdict: 'RICH vs own P/E history', mom_date: 2026-11-17T00:00:00, ret_6m: -4.830540341, ret_1y: -5.359631051, sma50_dist: 0.03308827223, sma200_dist: -0.03377405881, rsi: 75.77486285, macd_bullish: 1, adx: 29.33796657, mom_tests: 1, algo_composite: -0.4912288654, algo_side: 'S', algo_industry: 'Aerospace & Defense', l_quality: true, l_value: false, l_momentum: false, l_algo: false, lenses_passed: 1, lenses_available: 4, shortlisted: false, tier: NULL, conviction: 31.92981959, why: 'Quality 65', cautions: 'RSI overbought; below 200DMA; DCF says …'}
+
+-- ===== VIEW abinash_src_algo — 344 rows =====
+CREATE VIEW abinash_src_algo AS SELECT "replace"(upper(s.ticker), '.NS', '') AS ticker, s.composite AS algo_composite, s.industry AS algo_industry, b.side AS algo_side FROM fss_scored AS s LEFT JOIN fss_book AS b ON ((b.ticker = s.ticker));
+-- Columns:
+--   ticker VARCHAR | 344 distinct | samples: 'RVNL', 'METROPOLIS', 'GOODLUCK'
+--   algo_composite DOUBLE | 344 distinct | min=-1.193431578, max=1.245949898 | samples: 0.6113302947, -0.2303968216, 1.093025278
+--   algo_industry VARCHAR | 34 distinct | ENUM('Aerospace & Defense', 'Agricultural Food & other Products', 'Agricultural, Commercial & Construction…', 'Auto Components', 'Automobiles', 'Banks', 'Beverages', 'Capital Markets', 'Cement & Cement Products', 'Chemicals & Petrochemicals', 'Commercial Services & Supplies', 'Construction', 'Consumer Durables', 'Electrical Equipment', 'Fertilizers & Agrochemicals', 'Finance', 'Food Products', 'Gas', 'Healthcare Services', 'IT - Services', 'IT - Software', 'Industrial Manufacturing', 'Industrial Products', 'Insurance', 'Leisure Services', 'Non - Ferrous Metals', 'Personal Products', 'Petroleum Products', 'Pharmaceuticals & Biotechnology', 'Power', 'Realty', 'Retailing', 'Telecom - Services', 'Transport Services')
+--   algo_side VARCHAR | 2 distinct | nulls=176 | ENUM('L', 'S')
+-- Sample rows (3):
+--   {ticker: 'TVSMOTOR', algo_composite: 0.6113302947, algo_industry: 'Automobiles', algo_side: 'L'}
+--   {ticker: 'HYUNDAI', algo_composite: -0.2606147206, algo_industry: 'Automobiles', algo_side: 'S'}
+--   {ticker: 'HEROMOTOCO', algo_composite: 0.4489239133, algo_industry: 'Automobiles', algo_side: 'L'}
+
+-- ===== VIEW abinash_src_dcf — 374 rows =====
+CREATE VIEW abinash_src_dcf AS SELECT "replace"(upper(ticker), '.NS', '') AS ticker, price AS dcf_price, iv_bear AS dcf_bear, iv_base AS dcf_value, iv_bull AS dcf_bull, mos_price AS dcf_mos_price, terminal_value_pct AS dcf_tv_pct, verdict AS dcf_verdict, pe_verdict AS dcf_pe_verdict FROM v_dcf_valuation QUALIFY (row_number() OVER (PARTITION BY "replace"(upper(ticker), '.NS', '') ORDER BY ticker) = 1);
+-- Columns:
+--   ticker VARCHAR | 374 distinct | samples: '530643', 'ABSLAMC', 'AMBER'
+--   dcf_price DOUBLE | 374 distinct | min=18.16, max=128082 | samples: 1375, 208.07, 99.8
+--   dcf_bear DOUBLE | 281 distinct | min=0, max=81642 | samples: 761, 24, 3937
+--   dcf_value DOUBLE | 300 distinct | min=0, max=127851 | samples: 12529, 287, 144
+--   dcf_bull DOUBLE | 323 distinct | min=0, max=192605 | samples: 52, 30, 96
+--   dcf_mos_price DOUBLE | 284 distinct | min=0, max=76710 | samples: 867, 109, 1220
+--   dcf_tv_pct DOUBLE | 41 distinct | min=27, max=70 | ENUM(27, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 70)
+--   dcf_verdict VARCHAR | 4 distinct | ENUM('BUY (inside MoS)', 'OVERVALUED even vs bull', 'OVERVALUED vs base', 'UNDERVALUED')
+--   dcf_pe_verdict VARCHAR | 2 distinct | nulls=45 | ENUM('CHEAP vs own P/E history', 'RICH vs own P/E history')
+-- Sample rows (3):
+--   {ticker: '3MINDIA', dcf_price: 28245, dcf_bear: 13576, dcf_value: 25787, dcf_bull: 45084, dcf_mos_price: 16761, dcf_tv_pct: 65, dcf_verdict: 'OVERVALUED vs base', dcf_pe_verdict: 'CHEAP vs own P/E history'}
+--   {ticker: 'ABBOTINDIA', dcf_price: 25815, dcf_bear: 15265, dcf_value: 23765, dcf_bull: 36593, dcf_mos_price: 16635, dcf_tv_pct: 66, dcf_verdict: 'OVERVALUED vs base', dcf_pe_verdict: 'CHEAP vs own P/E history'}
+--   {ticker: 'ABFRL', dcf_price: 37.39, dcf_bear: 5, dcf_value: 10, dcf_bull: 17, dcf_mos_price: 7, dcf_tv_pct: 56, dcf_verdict: 'OVERVALUED even vs bull', dcf_pe_verdict: 'RICH vs own P/E history'}
+
+-- ===== VIEW abinash_src_momentum — 347 rows =====
+CREATE VIEW abinash_src_momentum AS SELECT "replace"(upper(nse_symbol), '.NS', '') AS ticker, date AS mom_date, "close" AS mom_close, "6M" AS ret_6m, "1Y" AS ret_1y, sma50_dist, sma200_dist, rsi, macd_bullish, adx FROM ticker_momentum QUALIFY (row_number() OVER (PARTITION BY "replace"(upper(nse_symbol), '.NS', '') ORDER BY date DESC) = 1);
+-- Columns:
+--   ticker VARCHAR | 347 distinct | samples: 'ACUTAAS', 'AIAENG', 'BHARATFORG'
+--   mom_date TIMESTAMP_NS | 6 distinct | min=2026-05-11T00:00:00, max=2026-11-17T00:00:00 | ENUM(2026-05-11T00:00:00, 2026-05-12T00:00:00, 2026-07-16T00:00:00, 2026-09-28T00:00:00, 2026-11-16T00:00:00, 2026-11-17T00:00:00)
+--   mom_close DOUBLE | 347 distinct | min=18.15999985, max=128082 | samples: 178.9700012, 947.2000122, 1130
+--   ret_6m DOUBLE | 347 distinct | min=-53.74226992, max=128.0165516 | samples: -4.830540341, -28.88069874, -3.279845571
+--   ret_1y DOUBLE | 347 distinct | min=-59.14037334, max=454.1159356 | samples: 4.180756366, 92.13153234, 64.78078327
+--   sma50_dist DOUBLE | 347 distinct | min=-0.2904893166, max=0.380299283 | samples: -0.01253260834, -0.07280246444, 0.1321855934
+--   sma200_dist DOUBLE | 347 distinct | min=-0.4668306427, max=0.8334014436 | samples: -0.1531859422, -0.01679110191, -0.08835220611
+--   rsi DOUBLE | 347 distinct | min=18.00331637, max=93.42988684 | samples: 80.71013629, 85.5807967, 55.51672491
+--   macd_bullish BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   adx DOUBLE | 347 distinct | min=9.062870876, max=79.66448766 | samples: 39.27088046, 23.93059369, 47.56453604
+-- Sample rows (3):
+--   {ticker: 'ABSLAMC', mom_date: 2026-11-16T00:00:00, mom_close: 896.5999756, ret_6m: -11.3638891, ret_1y: 22.3466269, sma50_dist: -0.07840072958, sma200_dist: -0.08997249442, rsi: 52.57580893, macd_bullish: 1, adx: 55.15569539}
+--   {ticker: 'AMBER', mom_date: 2026-11-17T00:00:00, mom_close: 6245.5, ret_6m: -12.6930873, ret_1y: -13.31112499, sma50_dist: -0.06613116181, sma200_dist: -0.1383615694, rsi: 53.86547085, macd_bullish: 1, adx: 30.35453238}
+--   {ticker: 'CANFINHOME', mom_date: 2026-11-17T00:00:00, mom_close: 786.6500244, ret_6m: -6.556839707, ret_1y: -10.67948045, sma50_dist: 0.04774351953, sma200_dist: -0.04850256884, rsi: 66.69396, macd_bullish: 1, adx: 23.33821877}
+
+-- ===== VIEW abinash_src_quality — 335 rows =====
+CREATE VIEW abinash_src_quality AS SELECT "replace"(upper(ticker), '.NS', '') AS ticker, company_name, sector, market_cap, stock_p_e, current_price, roce, de, profit_cagr, pe_discount_pct, quality_score, valuation_score, timing_score, technical_score, recommendation AS gate_rec, g1b_fcf_fail, g1e_debt_fail, g3d_promoter_fail FROM gate_results;
+-- Columns:
+--   ticker VARCHAR | 335 distinct | samples: 'ABCAPITAL', 'BALRAMCHIN', 'BEL'
+--   company_name VARCHAR | 335 distinct | samples: 'AIA Engineering Ltd', 'Kalyan Jewellers India Ltd', 'Kansai Nerolac Paints Ltd'
+--   sector VARCHAR | 21 distinct | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Forest Materials', 'Healthcare', 'Information Technology', 'Media, Entertainment & Publication', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication', 'Textiles')
+--   market_cap DOUBLE | 335 distinct | min=1257, max=1762680 | samples: 47011, 14566, 71826
+--   stock_p_e DOUBLE | 272 distinct | min=5.19, max=2238 | nulls=12 | samples: 33, 6.16, 17.6
+--   current_price DOUBLE | 317 distinct | min=21.8, max=133000 | samples: 8712, 454, 2268
+--   roce DOUBLE | 259 distinct | min=-32.3, max=157 | samples: 17.4, 5.69, 13.8
+--   de DOUBLE | 322 distinct | min=0, max=13.21233726 | nulls=1 | samples: 0, 0.07644882861, 0.1753452588
+--   profit_cagr DOUBLE | 312 distinct | min=-65.89339696, max=184.624281 | nulls=22 | samples: -8.983307258, 9.108527513, 6.303012815
+--   pe_discount_pct DOUBLE | 310 distinct | min=-9981.081081, max=78.15104167 | nulls=12 | samples: 4.980842912, -1050.234742, 0
+--   quality_score INTEGER | 11 distinct | min=0, max=100 | ENUM(0, 5, 10, 25, 30, 40, 45, 60, 65, 80, 100)
+--   valuation_score INTEGER | 6 distinct | min=0, max=99 | ENUM(0, 13, 33, 46, 66, 99)
+--   timing_score INTEGER | 12 distinct | min=0, max=100 | ENUM(0, 5, 10, 20, 25, 30, 40, 45, 60, 65, 80, 100)
+--   technical_score INTEGER | 6 distinct | min=0, max=75 | ENUM(0, 10, 25, 35, 50, 75)
+--   gate_rec VARCHAR | 5 distinct | ENUM('Accumulate', 'Avoid', 'Buy', 'Overvalued', 'Watch')
+--   g1b_fcf_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1e_debt_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3d_promoter_fail BOOLEAN | 2 distinct | ENUM(false, true)
+-- Sample rows (3):
+--   {ticker: 'ABCAPITAL', company_name: 'Aditya Birla Capital Ltd', sector: 'Financial Services', market_cap: 110130, stock_p_e: 33, current_price: 402, roce: 8.75, de: 4.831057069, profit_cagr: 4.267324998, pe_discount_pct: -48.64864865, quality_score: 0, valuation_score: 0, timing_score: 60, technical_score: 75, gate_rec: 'Avoid', g1b_fcf_fail: true, g1e_debt_fail: true, g3d_promoter_fail: false}
+--   {ticker: 'BALRAMCHIN', company_name: 'Balrampur Chini Mills Ltd', sector: 'Fast Moving Consumer Goods', market_cap: 14904, stock_p_e: 43.5, current_price: 704, roce: 9.06, de: 0.8144912641, profit_cagr: -7.472944617, pe_discount_pct: 3.54767184, quality_score: 0, valuation_score: 0, timing_score: 10, technical_score: 0, gate_rec: 'Avoid', g1b_fcf_fail: true, g1e_debt_fail: false, g3d_promoter_fail: false}
+--   {ticker: 'BEL', company_name: 'Bharat Electronics Ltd', sector: 'Capital Goods', market_cap: 298678, stock_p_e: 48.7, current_price: 409, roce: 37, de: 0.002742847498, profit_cagr: 15.08822743, pe_discount_pct: 2.988047809, quality_score: 65, valuation_score: 0, timing_score: 0, technical_score: 25, gate_rec: 'Watch', g1b_fcf_fail: false, g1e_debt_fail: false, g3d_promoter_fail: false}
+
+-- ===== VIEW balance_sheet — 44,507 rows =====
+CREATE VIEW balance_sheet AS SELECT ticker, metric, dt, val FROM "data/fundamental_clean/balance_sheet.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   metric VARCHAR | 12 distinct | ENUM('Borrowing', 'Borrowings', 'CWIP', 'Deposits', 'Equity Capital', 'Fixed Assets', 'Investments', 'Other Assets', 'Other Liabilities', 'Reserves', 'Total Assets', 'Total Liabilities')
+--   dt TIMESTAMP | 68 distinct | min=2002-03-01T00:00:00, max=2026-09-01T00:00:00 | samples: 2017-03-01T00:00:00, 2019-03-01T00:00:00, 2020-03-01T00:00:00
+--   val DOUBLE | 13,083 distinct | min=-11342, max=7622957 | nulls=12 | samples: 15, 16, 2203
+-- Sample rows (3):
+--   {ticker: '360ONE', metric: 'Equity Capital', dt: 2015-03-01T00:00:00, val: 12}
+--   {ticker: '360ONE', metric: 'Equity Capital', dt: 2016-03-01T00:00:00, val: 15}
+--   {ticker: '360ONE', metric: 'Equity Capital', dt: 2017-03-01T00:00:00, val: 16}
+
+-- ===== VIEW balance_sheet_raw — 44,507 rows =====
+CREATE VIEW balance_sheet_raw AS SELECT * FROM "data/fundamental/*/balance_sheet.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: 'ACCELYA', 'ADANIGREEN', 'AZAD'
+--   period VARCHAR | 68 distinct | samples: 'Mar 2020', 'Dec 2022', 'Mar 2014'
+--   metric VARCHAR | 12 distinct | ENUM('Borrowing', 'Borrowings', 'CWIP', 'Deposits', 'Equity Capital', 'Fixed Assets', 'Investments', 'Other Assets', 'Other Liabilities', 'Reserves', 'Total Assets', 'Total Liabilities')
+--   value VARCHAR | 13,087 distinct | samples: '0', '13', '17'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Mar 2015', metric: 'Equity Capital', value: '12'}
+--   {ticker: '360ONE', period: 'Mar 2016', metric: 'Equity Capital', value: '15'}
+--   {ticker: '360ONE', period: 'Mar 2017', metric: 'Equity Capital', value: '16'}
+
+-- ===== VIEW benchmark_momentum — 47,494 rows =====
+CREATE VIEW benchmark_momentum AS SELECT date, "close", "1Y", "6M", "3M", "2M", "1M", "14D", "7D", "5D", "4D", "3D", "2D", "1D", sma20_dist, sma50_dist, sma200_dist, sma50, sma200, trend_stack, vol_ratio, volume_trend, trend_consistency, dist_52w_high, volatility, ulcer, drawdown, rsi, breakout_strength, gap, acceleration, volume_price_signal, kalman_dist, vol_compression, macd, macd_bullish, atr, atr_expansion, adx, strong_trend, bb_width, bb_squeeze, vwap_dist, momentum_quality, days_in_trend, momentum_decay, "year", sma20_low, sma20_mid, sma20_high, sma50_pos, sma200_pos, vol_low, vol_mid, vol_high, volume_trend_up, volatility_low, volatility_mid, volatility_high, "compression", rsi_low, rsi_mid, rsi_high, ulcer_low, ulcer_high, drawdown_shallow, trend_consistent, breakout, kalman_positive, gap_up, near_52w_high, at_52w_high, trend_fresh, trend_mature, momentum_slowing, vps_bullish, vps_bearish, momentum_accelerating, momentum_aligned, ticker, "name" AS sector FROM "data/signal_momentum/year=*/benchmark_momentum.parquet";
+-- Columns:
+--   date TIMESTAMP_NS | 2,067 distinct | min=2018-07-03T00:00:00, max=2026-11-17T00:00:00 | samples: 2023-01-10T00:00:00, 2023-01-12T00:00:00, 2023-01-17T00:00:00
+--   close DOUBLE | 42,752 distinct | min=0.3355000019, max=66305.20312 | samples: 10672.25, 10934.34961, 10943.59961
+--   1Y DOUBLE | 47,483 distinct | min=-98.78582802, max=12925.33547 | samples: 3.139074876, 1.007768916, -0.7626303259
+--   6M DOUBLE | 47,481 distinct | min=-98.85267767, max=12511.02865 | samples: 15.07954356, 15.46545094, 15.14953545
+--   3M DOUBLE | 47,480 distinct | min=-98.99442508, max=10663.04036 | samples: 9.633469548, 8.752348262, 6.036455182
+--   2M DOUBLE | 47,478 distinct | min=-99.00630869, max=10809.36115 | samples: 20.40901815, 16.64191346, 14.2417272
+--   1M DOUBLE | 47,454 distinct | min=-99.00895048, max=10400.74496 | samples: -0.1029461975, 3.176345483, 0.1547579435
+--   14D DOUBLE | 47,459 distinct | min=-98.99591487, max=10347.0936 | samples: -0.6086053844, -0.4908907911, -1.328496512
+--   7D DOUBLE | 47,446 distinct | min=-98.98965566, max=10168.2565 | samples: 0.5987678471, 0.6123320703, -0.3398611223
+--   5D DOUBLE | 47,433 distinct | min=-98.99211411, max=10093.16504 | samples: -0.5368165582, -0.8112467221, 0.580499334
+--   4D DOUBLE | 47,413 distinct | min=-98.99381042, max=10048.58919 | samples: 2.277279206, 4.192646538, 2.257972011
+--   3D DOUBLE | 47,414 distinct | min=-98.99680054, max=10004.01222 | samples: 1.557387308, 0.0314812857, 1.040529596
+--   2D DOUBLE | 47,377 distinct | min=-98.99859709, max=9929.806657 | samples: 0.7737851376, 0.1800495091, 0.1528919398
+--   1D DOUBLE | 47,288 distinct | min=-99.00136922, max=9900.000779 | samples: -0.6448744167, -0.2462613202, 0.1368225934
+--   sma20_dist DOUBLE | 47,492 distinct | min=-0.9899679752, max=1.590067345 | samples: -0.009433001762, 0.003006370822, 0.002600597669
+--   sma50_dist DOUBLE | 47,493 distinct | min=-0.9900326974, max=2.447452462 | samples: 0.01948359029, 0.01797737116, 0.02331804232
+--   sma200_dist DOUBLE | 47,494 distinct | min=-0.9891820222, max=3.843208336 | samples: 0.001255779403, -0.005165227624, 0.006171988936
+--   sma50 DOUBLE | 47,453 distinct | min=10.99299999, max=63609.15406 | samples: 10631.18201, 10655.23002, 10685.66701
+--   sma200 DOUBLE | 47,477 distinct | min=11.92159996, max=58818.47176 | samples: 10788.5635, 10795.50024, 10798.85325
+--   trend_stack DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_ratio DOUBLE | 39,285 distinct | min=0, max=1.209321e+15 | samples: 0.8897732042, 0.9272806853, 1.036312272
+--   volume_trend DOUBLE | 39,481 distinct | min=0, max=4 | samples: 0.826702186, 0.8482092098, 0.9743114225
+--   trend_consistency DOUBLE | 18 distinct | min=0.1, max=0.95 | ENUM(0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95)
+--   dist_52w_high DOUBLE | 46,433 distinct | min=-0.9902968778, max=0.3041825267 | samples: -0.08058951314, -0.08613965929, -0.07976739868
+--   volatility DOUBLE | 47,493 distinct | min=0.001455520241, max=29.73401292 | samples: 0.01179106288, 0.004360279036, 0.005161151335
+--   ulcer DOUBLE | 47,475 distinct | min=0.367232475, max=54.02256498 | samples: 1.545358566, 1.716572793, 0.9747426437
+--   drawdown DOUBLE | 40,657 distinct | min=-0.9902133808, max=0 | samples: -0.02559103724, -0.01902285681, -0.06220557953
+--   rsi DOUBLE | 47,418 distinct | min=0, max=100 | samples: 62.27737738, 46.45935759, 48.23736672
+--   breakout_strength DOUBLE | 47,144 distinct | min=-0.9900611734, max=0.6197584513 | samples: -0.01505834772, -0.01328496512, -0.003566880661
+--   gap DOUBLE | 44,492 distinct | min=-0.9910108352, max=99.14859365 | samples: 0.002805230823, 0.001883437159, -0.004182356816
+--   acceleration DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volume_price_signal DOUBLE | 39,279 distinct | min=-1.209321e+15, max=1.1873e+15 | samples: 0.948095085, -0.8770766218, -1.059783906
+--   kalman_dist DOUBLE | 47,494 distinct | min=-0.9889343714, max=1.01395491 | samples: -0.007828584408, 0.01399732543, 0.01221727155
+--   vol_compression DOUBLE | 47,493 distinct | min=0.004653663557, max=1.999857917 | samples: 0.7046629825, 0.9528124732, 0.950560157
+--   macd DOUBLE | 47,494 distinct | min=-3340.871291, max=1659.067943 | samples: 45.04538119, 10.16171391, 0.39475133
+--   macd_bullish BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   atr DOUBLE | 45,898 distinct | min=0.04979991913, max=2206.417202 | samples: 124.4571708, 121.6821289, 125.9642857
+--   atr_expansion BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   adx DOUBLE | 47,494 distinct | min=4.399268306, max=100 | samples: 12.1234563, 17.77342348, 20.80732938
+--   strong_trend BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   bb_width DOUBLE | 47,470 distinct | min=0.004434248917, max=1.137441856 | samples: 0.02373305879, 0.02376375788, 0.01880937814
+--   bb_squeeze BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vwap_dist DOUBLE | 43,537 distinct | min=-0.9865891688, max=inf | samples: 0.06921332018, 0.06669093452, 0.07190028499
+--   momentum_quality DOUBLE | 47,470 distinct | min=-3514.258953, max=902103.1343 | samples: 1971.512359, 1449.715589, 907.2171433
+--   days_in_trend DOUBLE | 388 distinct | min=0, max=5.96100534 | samples: 3.663561646, 3.784189634, 3.850147602
+--   momentum_decay DOUBLE | 47,477 distinct | min=-10090.27481, max=10399.36367 | samples: -1.406447482, 0.7083005245, 2.452054128
+--   year BIGINT | 9 distinct | min=2018, max=2026 | ENUM(2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026)
+--   sma20_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma20_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma20_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma50_pos DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma200_pos DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volume_trend_up DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volatility_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volatility_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volatility_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   compression DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   rsi_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   rsi_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   rsi_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   ulcer_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   ulcer_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   drawdown_shallow DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   trend_consistent DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   breakout DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   kalman_positive DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   gap_up DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   near_52w_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   at_52w_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   trend_fresh DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   trend_mature DOUBLE | 1 distinct | min=0, max=0 | ENUM(0)
+--   momentum_slowing DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vps_bullish DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vps_bearish DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   momentum_accelerating DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   momentum_aligned DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   ticker VARCHAR | 28 distinct | ENUM('0P0001KR2R.BO', '0P0001QYWR.BO', 'AUTOBEES.NS', 'BANKBEES.NS', 'CPSEETF.NS', 'GOLDBEES.NS', 'INFRABEES.NS', 'JUNIORBEES.NS', 'MID150BEES.NS', 'NIFTYBEES.NS', 'PHARMABEES.NS', 'SILVERBEES.NS', '^CNXAUTO', '^CNXCMDT', '^CNXCONSUM', '^CNXENERGY', '^CNXFMCG', '^CNXINFRA', '^CNXIT', '^CNXMEDIA', '^CNXMETAL', '^CNXMNC', '^CNXPHARMA', '^CNXPSUBANK', '^CNXREALTY', '^INDIAVIX', '^NSEBANK', '^NSEI')
+--   sector VARCHAR | 28 distinct | ENUM('AUTOBEES', 'BANKBEES', 'Defence_ETF', 'GOLD', 'INDIA_VIX', 'INFRABEES', 'MID150BEES', 'NIFTYBEES', 'NIFTY_50', 'NIFTY_Auto_Index', 'NIFTY_Bank_Index', 'NIFTY_CPSE', 'NIFTY_Commodities', 'NIFTY_Consumption', 'NIFTY_Energy', 'NIFTY_FMCG', 'NIFTY_IT', 'NIFTY_Infrastructure', 'NIFTY_MNC', 'NIFTY_Media', 'NIFTY_Metal', 'NIFTY_PSU_Bank', 'NIFTY_Pharma_Index', 'NIFTY_Realty', 'NIFTY_Smallcap_100', 'Next_50', 'PHARMABEES', 'SILVER')
+-- Sample rows (3):
+--   {date: 2018-08-17T00:00:00, close: 11470.75, 1Y: 18.12363792, 6M: 8.773884595, 3M: 9.071760029, 2M: 7.098672706, 1M: 4.465206763, 14D: 1.705926818, 7D: 0.7138167628, 5D: 0.0004341904736, 4D: 0.3609081762, 3D: 1.012702816, 2D: 0.3117628341, 1D: 0.7527432623, sma20_dist: 0.01648513028, sma50_dist: 0.0426821832, sma200_dist: 0.08083133312, sma50: 11001.19498, sma200: 10612.89551, trend_stack: 1, vol_ratio: 1.00520376, volume_trend: 0.9185172495, trend_consistency: 0.7, dist_52w_high: 4.341904736e-06, volatility: 0.005314704463, ulcer: 0.9089574133, drawdown: 0, rsi: 62.89546854, breakout_strength: 4.341904736e-06, gap: 0.004576228197, acceleration: 0, volume_price_signal: -1.00520376, kalman_dist: 0.01503283923, vol_compression: 1.185645909, macd: 129.0288181, macd_bullish: 0, atr: 83.45717076, atr_expansion: 0, adx: 55.15397666, strong_trend: 1, bb_width: 0.02420880256, bb_squeeze: 0, vwap_dist: 0.160304935, momentum_quality: 840.1607189, days_in_trend: 0.6931471806, momentum_decay: 4.464772572, year: 2018, sma20_low: 0, sma20_mid: 1, sma20_high: 0, sma50_pos: 1, sma200_pos: 1, vol_low: 0, vol_mid: 1, vol_high: 0, volume_trend_up: 0, volatility_low: 1, volatility_mid: 0, volatility_high: 0, compression: 0, rsi_low: 0, rsi_mid: 1, rsi_high: 0, ulcer_low: 1, ulcer_high: 0, drawdown_shallow: 1, trend_consistent: 1, breakout: 1, kalman_positive: 1, gap_up: 0, near_52w_high: 1, at_52w_high: 1, trend_fresh: 0, trend_mature: 0, momentum_slowing: 0, vps_bullish: 0, vps_bearish: 0, momentum_accelerating: 0, momentum_aligned: 0, ticker: '^NSEI', sector: 'NIFTY_50'}
+--   {date: 2018-08-20T00:00:00, close: 11551.75, 1Y: 17.94540148, 6M: 10.51873957, 3M: 9.633469548, 2M: 7.238178522, 1M: 5.427078441, 14D: 2.051320055, 7D: 0.8886462882, 5D: 1.069600595, 4D: 1.725997843, 3D: 1.020108216, 2D: 1.464202601, 1D: 0.7061438877, sma20_dist: 0.0213385474, sma50_dist: 0.0487058717, sma200_dist: 0.08789613019, sma50: 11015.24299, sma200: 10618.43101, trend_stack: 1, vol_ratio: 0.9921091917, volume_trend: 0.8571550437, trend_consistency: 0.7, dist_52w_high: 0.007061438877, volatility: 0.00487599379, ulcer: 1.431455104, drawdown: 0, rsi: 64.77476794, breakout_strength: 0.007061438877, gap: 0.002733004326, acceleration: 0, volume_price_signal: -0.9921091917, kalman_dist: 0.02004628323, vol_compression: 1.211870327, macd: 133.4807885, macd_bullish: 0, atr: 85.4500558, atr_expansion: 1, adx: 52.45772842, strong_trend: 1, bb_width: 0.02251777712, bb_squeeze: 0, vwap_dist: 0.1680054695, momentum_quality: 1113.019737, days_in_trend: 1.098612289, momentum_decay: 4.357477846, year: 2018, sma20_low: 0, sma20_mid: 1, sma20_high: 0, sma50_pos: 1, sma200_pos: 1, vol_low: 1, vol_mid: 0, vol_high: 0, volume_trend_up: 0, volatility_low: 1, volatility_mid: 0, volatility_high: 0, compression: 0, rsi_low: 0, rsi_mid: 1, rsi_high: 0, ulcer_low: 1, ulcer_high: 0, drawdown_shallow: 1, trend_consistent: 1, breakout: 1, kalman_positive: 1, gap_up: 0, near_52w_high: 1, at_52w_high: 1, trend_fresh: 1, trend_mature: 0, momentum_slowing: 0, vps_bullish: 0, vps_bearish: 0, momentum_accelerating: 0, momentum_aligned: 0, ticker: '^NSEI', sector: 'NIFTY_50'}
+--   {date: 2018-08-21T00:00:00, close: 11570.90039, 1Y: 16.90966848, 6M: 11.49021, 3M: 10.93492379, 2M: 7.725473289, 1M: 5.092552228, 14D: 1.887909044, 7D: 0.8735316381, 5D: 1.894638316, 4D: 1.187578472, 3D: 1.632409073, 2D: 0.8730936567, 1D: 0.1657791298, sma20_dist: 0.02058839005, sma50_dist: 0.04895105452, sma200_dist: 0.0890758109, sma50: 11030.92498, sma200: 10624.51326, trend_stack: 1, vol_ratio: 0.9471305156, volume_trend: 1.045476628, trend_consistency: 0.7, dist_52w_high: 0.001657791298, volatility: 0.004871420669, ulcer: 1.500579112, drawdown: 0, rsi: 63.95835876, breakout_strength: 0.001657791298, gap: 0.002116579333, acceleration: 0, volume_price_signal: -0.9471305156, kalman_dist: 0.01962895947, vol_compression: 0.9138454942, macd: 136.9753175, macd_bullish: 1, atr: 81.44294085, atr_expansion: 0, adx: 49.50869032, strong_trend: 1, bb_width: 0.02168644464, bb_squeeze: 1, vwap_dist: 0.1694631784, momentum_quality: 1045.393434, days_in_trend: 1.386294361, momentum_decay: 3.197913911, year: 2018, sma20_low: 0, sma20_mid: 1, sma20_high: 0, sma50_pos: 1, sma200_pos: 1, vol_low: 1, vol_mid: 0, vol_high: 0, volume_trend_up: 1, volatility_low: 1, volatility_mid: 0, volatility_high: 0, compression: 1, rsi_low: 0, rsi_mid: 1, rsi_high: 0, ulcer_low: 1, ulcer_high: 0, drawdown_shallow: 1, trend_consistent: 1, breakout: 1, kalman_positive: 1, gap_up: 0, near_52w_high: 1, at_52w_high: 1, trend_fresh: 1, trend_mature: 0, momentum_slowing: 0, vps_bullish: 0, vps_bearish: 0, momentum_accelerating: 0, momentum_aligned: 0, ticker: '^NSEI', sector: 'NIFTY_50'}
+
+-- ===== VIEW benchmark_prices — 60,150 rows =====
+CREATE VIEW benchmark_prices AS SELECT Date, "Close", High, Low, Open, Volume, Ticker, split_part(Ticker, '.', 1) AS nse_symbol, "year" FROM "data/benchmark/year=*/*.parquet";
+-- Columns:
+--   Date DATE | 2,585 distinct | min=2016-06-01, max=2026-11-17 | samples: 2017-01-04, 2017-01-11, 2017-01-16
+--   Close DOUBLE | 52,900 distinct | min=0.3355000019, max=66305.20312 | samples: 277.1960144, 279.6109924, 279.3460083
+--   High DOUBLE | 49,725 distinct | min=0.3389999866, max=66438.70312 | samples: 201, 200.7799988, 197.8999939
+--   Low DOUBLE | 50,503 distinct | min=0.300999999, max=65787.35156 | samples: 199.5350037, 196.8249969, 196.6999969
+--   Open DOUBLE | 49,220 distinct | min=0.3019999862, max=66276.35156 | samples: 199.8990021, 200.7799988, 197.4080048
+--   Volume BIGINT | 36,342 distinct | min=0, max=9840276100 | samples: 1460, 15250, 30680
+--   Ticker VARCHAR | 28 distinct | ENUM('0P0001KR2R.BO', '0P0001QYWR.BO', 'AUTOBEES.NS', 'BANKBEES.NS', 'CPSEETF.NS', 'GOLDBEES.NS', 'INFRABEES.NS', 'JUNIORBEES.NS', 'MID150BEES.NS', 'NIFTYBEES.NS', 'PHARMABEES.NS', 'SILVERBEES.NS', '^CNXAUTO', '^CNXCMDT', '^CNXCONSUM', '^CNXENERGY', '^CNXFMCG', '^CNXINFRA', '^CNXIT', '^CNXMEDIA', '^CNXMETAL', '^CNXMNC', '^CNXPHARMA', '^CNXPSUBANK', '^CNXREALTY', '^INDIAVIX', '^NSEBANK', '^NSEI')
+--   nse_symbol VARCHAR | 28 distinct | ENUM('0P0001KR2R', '0P0001QYWR', 'AUTOBEES', 'BANKBEES', 'CPSEETF', 'GOLDBEES', 'INFRABEES', 'JUNIORBEES', 'MID150BEES', 'NIFTYBEES', 'PHARMABEES', 'SILVERBEES', '^CNXAUTO', '^CNXCMDT', '^CNXCONSUM', '^CNXENERGY', '^CNXFMCG', '^CNXINFRA', '^CNXIT', '^CNXMEDIA', '^CNXMETAL', '^CNXMNC', '^CNXPHARMA', '^CNXPSUBANK', '^CNXREALTY', '^INDIAVIX', '^NSEBANK', '^NSEI')
+--   year BIGINT | 11 distinct | min=2016, max=2026 | ENUM(2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026)
+-- Sample rows (3):
+--   {Date: 2016-10-24, Close: 200.0299988, High: 201, Low: 199.5350037, Open: 199.8990021, Volume: 11970, Ticker: 'BANKBEES.NS', nse_symbol: 'BANKBEES', year: 2016}
+--   {Date: 2016-10-25, Close: 200.3540039, High: 200.7799988, Low: 199.2250061, Open: 200.7799988, Volume: 1460, Ticker: 'BANKBEES.NS', nse_symbol: 'BANKBEES', year: 2016}
+--   {Date: 2016-10-26, Close: 197.4450073, High: 199.2799988, Low: 196.75, Open: 198.6000061, Volume: 17810, Ticker: 'BANKBEES.NS', nse_symbol: 'BANKBEES', year: 2016}
+
+-- ===== VIEW cash_flows — 26,124 rows =====
+CREATE VIEW cash_flows AS SELECT ticker, metric, dt, val FROM "data/fundamental_clean/cash_flows.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   metric VARCHAR | 6 distinct | ENUM('CFO/OP', 'Cash from Financing Activity', 'Cash from Investing Activity', 'Cash from Operating Activity', 'Free Cash Flow', 'Net Cash Flow')
+--   dt TIMESTAMP | 67 distinct | min=2002-03-01T00:00:00, max=2026-06-01T00:00:00 | samples: 2017-03-01T00:00:00, 2019-03-01T00:00:00, 2020-03-01T00:00:00
+--   val DOUBLE | 6,516 distinct | min=-143583, max=145177 | nulls=339 | samples: -14, 137, 1107
+-- Sample rows (3):
+--   {ticker: '360ONE', metric: 'Cash from Operating Activity', dt: 2015-03-01T00:00:00, val: -14}
+--   {ticker: '360ONE', metric: 'Cash from Operating Activity', dt: 2016-03-01T00:00:00, val: 214}
+--   {ticker: '360ONE', metric: 'Cash from Operating Activity', dt: 2017-03-01T00:00:00, val: -65}
+
+-- ===== VIEW cash_flows_raw — 26,124 rows =====
+CREATE VIEW cash_flows_raw AS SELECT * FROM "data/fundamental/*/cash_flows.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: 'ARVINDFASN', 'BAJAJHLDNG', 'FACT'
+--   period VARCHAR | 67 distinct | samples: 'Mar 2020', 'Mar 2014', 'Dec 2022'
+--   metric VARCHAR | 6 distinct | ENUM('CFO/OP', 'Cash from Financing Activity', 'Cash from Investing Activity', 'Cash from Operating Activity', 'Free Cash Flow', 'Net Cash Flow')
+--   value VARCHAR | 7,148 distinct | samples: '0', '-0', '-1'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Mar 2015', metric: 'Cash from Operating Activity', value: '-14'}
+--   {ticker: '360ONE', period: 'Mar 2016', metric: 'Cash from Operating Activity', value: '214'}
+--   {ticker: '360ONE', period: 'Mar 2017', metric: 'Cash from Operating Activity', value: '-65'}
+
+-- ===== VIEW compounded_profit_growth — 1,600 rows =====
+CREATE VIEW compounded_profit_growth AS SELECT ticker, horizon, "years", val FROM "data/fundamental_clean/compounded_profit_growth.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   horizon VARCHAR | 4 distinct | ENUM('10 Years', '3 Years', '5 Years', 'TTM')
+--   years INTEGER | 4 distinct | min=0, max=10 | ENUM(0, 3, 5, 10)
+--   val DOUBLE | 204 distinct | min=-479, max=3573 | nulls=283 | samples: 27, 14, 59
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', years: 10, val: NULL}
+--   {ticker: '360ONE', horizon: '5 Years', years: 5, val: 27}
+--   {ticker: '360ONE', horizon: '3 Years', years: 3, val: 23}
+
+-- ===== VIEW compounded_profit_growth_raw — 1,600 rows =====
+CREATE VIEW compounded_profit_growth_raw AS SELECT * FROM "data/fundamental/*/compounded_profit_growth.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: 'CENTRALBK', 'CGPOWER', 'ESCORTS'
+--   horizon VARCHAR | 4 distinct | ENUM('10 Years', '3 Years', '5 Years', 'TTM')
+--   value VARCHAR | 205 distinct | samples: '10%', '53%', '28%'
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', value: '%'}
+--   {ticker: '360ONE', horizon: '5 Years', value: '27%'}
+--   {ticker: '360ONE', horizon: '3 Years', value: '23%'}
+
+-- ===== VIEW compounded_sales_growth — 1,600 rows =====
+CREATE VIEW compounded_sales_growth AS SELECT ticker, horizon, "years", val FROM "data/fundamental_clean/compounded_sales_growth.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   horizon VARCHAR | 4 distinct | ENUM('10 Years', '3 Years', '5 Years', 'TTM')
+--   years INTEGER | 4 distinct | min=0, max=10 | ENUM(0, 3, 5, 10)
+--   val DOUBLE | 107 distinct | min=-95, max=383 | nulls=261 | samples: 28, 27, 40
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', years: 10, val: NULL}
+--   {ticker: '360ONE', horizon: '5 Years', years: 5, val: 21}
+--   {ticker: '360ONE', horizon: '3 Years', years: 3, val: 28}
+
+-- ===== VIEW compounded_sales_growth_raw — 1,600 rows =====
+CREATE VIEW compounded_sales_growth_raw AS SELECT * FROM "data/fundamental/*/compounded_sales_growth.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: 'ARE&M', 'ASTERDM', 'AWFIS'
+--   horizon VARCHAR | 4 distinct | ENUM('10 Years', '3 Years', '5 Years', 'TTM')
+--   value VARCHAR | 108 distinct | samples: '7%', '9%', '16%'
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', value: '%'}
+--   {ticker: '360ONE', horizon: '5 Years', value: '21%'}
+--   {ticker: '360ONE', horizon: '3 Years', value: '28%'}
+
+-- ===== VIEW cons — 2,548 rows =====
+CREATE VIEW cons AS SELECT ticker, item FROM "data/fundamental_clean/cons.parquet";
+-- Columns:
+--   ticker VARCHAR | 361 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   item VARCHAR | 1,692 distinct | samples: 'Stock is trading at 4.72 times its book…', 'Promoter holding has decreased over las…', 'The company has delivered a poor sales …'
+-- Sample rows (3):
+--   {ticker: '360ONE', item: 'Stock is trading at 4.72 times its book…'}
+--   {ticker: '360ONE', item: 'Promoter holding is low: 6.24%'}
+--   {ticker: '360ONE', item: 'Promoter holding has decreased over las…'}
+
+-- ===== VIEW cons_raw — 2,548 rows =====
+CREATE VIEW cons_raw AS SELECT * FROM "data/fundamental/*/cons.parquet";
+-- Columns:
+--   ticker VARCHAR | 361 distinct | samples: 'ADANIENT', 'AEGISLOG', 'AZAD'
+--   item VARCHAR | 1,692 distinct | samples: 'Stock is trading at 22.5 times its book…', 'Stock is trading at 7.26 times its book…', 'The company has delivered a poor sales …'
+-- Sample rows (3):
+--   {ticker: '360ONE', item: 'Stock is trading at 4.72 times its book…'}
+--   {ticker: '360ONE', item: 'Promoter holding is low: 6.24%'}
+--   {ticker: '360ONE', item: 'Promoter holding has decreased over las…'}
+
+-- ===== VIEW fss_accruals — 374 rows =====
+CREATE VIEW fss_accruals AS WITH pl_latest AS (SELECT ticker, max(dt) AS dt FROM profit_loss WHERE (dt < CURRENT_DATE) GROUP BY ticker), ni AS (SELECT p.ticker, max(CASE  WHEN ((p.metric = 'Net Profit')) THEN (p.val) ELSE NULL END) AS net_income FROM profit_loss AS p INNER JOIN pl_latest AS l ON (((p.ticker = l.ticker) AND (p.dt = l.dt))) GROUP BY p.ticker), cf_latest AS (SELECT ticker, max(dt) AS dt FROM cash_flows GROUP BY ticker), cfo AS (SELECT c.ticker, max(CASE  WHEN ((c.metric = 'Cash from Operating Activity')) THEN (c.val) ELSE NULL END) AS cfo FROM cash_flows AS c INNER JOIN cf_latest AS l ON (((c.ticker = l.ticker) AND (c.dt = l.dt))) GROUP BY c.ticker), bs_latest AS (SELECT ticker, max(dt) AS dt FROM balance_sheet GROUP BY ticker), assets AS (SELECT b.ticker, max(CASE  WHEN ((b.metric = 'Total Assets')) THEN (b.val) ELSE NULL END) AS total_assets FROM balance_sheet AS b INNER JOIN bs_latest AS l ON (((b.ticker = l.ticker) AND (b.dt = l.dt))) GROUP BY b.ticker), joined AS (SELECT ni.ticker, ((ni.net_income - cfo.cfo) / "nullif"(assets.total_assets, 0)) AS accruals FROM ni INNER JOIN cfo ON ((ni.ticker = cfo.ticker)) INNER JOIN assets ON ((ni.ticker = assets.ticker)))SELECT ticker, accruals FROM joined WHERE (accruals IS NOT NULL);
+-- Columns:
+--   ticker VARCHAR | 374 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   accruals DOUBLE | 373 distinct | min=-0.3363957597, max=0.5236088818 | samples: 0.1603355492, 0.01315103412, -0.04990471653
+-- Sample rows (3):
+--   {ticker: '3BBLACKBIO', accruals: 0.02285714286}
+--   {ticker: 'ABB', accruals: 0.1123538383}
+--   {ticker: 'ACCELYA', accruals: 0.03921568627}
+
+-- ===== VIEW fss_book — 168 rows =====
+CREATE VIEW fss_book AS WITH g AS (SELECT s.*, row_number() OVER (PARTITION BY industry ORDER BY composite DESC, ticker) AS rn FROM fss_scored AS s), sized AS (SELECT g.*, CAST(greatest(1, round_even((g.industry_size * p.top_pct), 0)) AS INTEGER) AS k, p.weighting FROM g CROSS JOIN fss_params AS p), sided AS (SELECT ticker, industry, composite, k, weighting, CASE  WHEN ((rn <= k)) THEN ('L') ELSE 'S' END AS side, CASE  WHEN ((rn <= k)) THEN (composite) ELSE -(composite) END AS val FROM sized WHERE ((rn <= k) OR (rn > (industry_size - k)))), shifted AS (SELECT *, ((val - min(val) OVER (PARTITION BY industry, side)) + (0.1 * ((max(val) OVER (PARTITION BY industry, side) - min(val) OVER (PARTITION BY industry, side)) + 1e-09))) AS sh FROM sided)SELECT ticker, industry, side, composite, CASE  WHEN ((weighting = 'score')) THEN ((sh / sum(sh) OVER (PARTITION BY industry, side))) ELSE (1.0 / k) END AS weight FROM shifted;
+-- Columns:
+--   ticker VARCHAR | 168 distinct | samples: 'KSB', 'BEML', 'GILLETTE'
+--   industry VARCHAR | 34 distinct | ENUM('Aerospace & Defense', 'Agricultural Food & other Products', 'Agricultural, Commercial & Construction…', 'Auto Components', 'Automobiles', 'Banks', 'Beverages', 'Capital Markets', 'Cement & Cement Products', 'Chemicals & Petrochemicals', 'Commercial Services & Supplies', 'Construction', 'Consumer Durables', 'Electrical Equipment', 'Fertilizers & Agrochemicals', 'Finance', 'Food Products', 'Gas', 'Healthcare Services', 'IT - Services', 'IT - Software', 'Industrial Manufacturing', 'Industrial Products', 'Insurance', 'Leisure Services', 'Non - Ferrous Metals', 'Personal Products', 'Petroleum Products', 'Pharmaceuticals & Biotechnology', 'Power', 'Realty', 'Retailing', 'Telecom - Services', 'Transport Services')
+--   side VARCHAR | 2 distinct | ENUM('L', 'S')
+--   composite DOUBLE | 168 distinct | min=-1.193431578, max=1.245949898 | samples: -0.9058348646, 0.6113302947, 0.9836773651
+--   weight DOUBLE | 6 distinct | min=0.1666666667, max=1 | ENUM(0.1666666667, 0.2, 0.25, 0.3333333333, 0.5, 1)
+-- Sample rows (3):
+--   {ticker: 'BEML', industry: 'Agricultural, Commercial & Construction…', side: 'S', composite: -0.5257541732, weight: 1}
+--   {ticker: 'GILLETTE', industry: 'Personal Products', side: 'L', composite: 0.3422929637, weight: 1}
+--   {ticker: 'SANOFI', industry: 'Pharmaceuticals & Biotechnology', side: 'L', composite: 0.7551024258, weight: 0.1666666667}
+
+-- ===== VIEW fss_de_trend — 377 rows =====
+CREATE VIEW fss_de_trend AS WITH bs AS (SELECT ticker, dt, max(CASE  WHEN ((metric IN ('Borrowing', 'Borrowings'))) THEN (val) ELSE NULL END) AS debt, max(CASE  WHEN ((metric = 'Reserves')) THEN (val) ELSE NULL END) AS reserves, max(CASE  WHEN ((metric = 'Equity Capital')) THEN (val) ELSE NULL END) AS eq_cap FROM balance_sheet GROUP BY ticker, dt), ranked AS (SELECT *, dense_rank() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk FROM bs WHERE (dt < CURRENT_DATE)), de AS (SELECT ticker, dt, (debt / "nullif"((COALESCE(eq_cap, 0) + COALESCE(reserves, 0)), 0)) AS de_ratio FROM ranked WHERE (rk <= 4))SELECT ticker, (arg_max(de_ratio, dt) - arg_min(de_ratio, dt)) AS de_trend FROM de WHERE (de_ratio IS NOT NULL) GROUP BY ticker HAVING (count_star() >= 2);
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: 'ABCAPITAL', 'BALRAMCHIN', 'BEL'
+--   de_trend DOUBLE | 370 distinct | min=-14.96453611, max=29.44505495 | samples: -0.05739017879, 0.03896549031, -0.01692025619
+-- Sample rows (3):
+--   {ticker: 'ACUTAAS', de_trend: 0.01406519835}
+--   {ticker: 'AIAENG', de_trend: -0.07013142131}
+--   {ticker: 'BHARATFORG', de_trend: -0.2515785916}
+
+-- ===== VIEW fss_general_info — 385 rows =====
+CREATE VIEW fss_general_info AS SELECT ticker, company_name, sector, broad_sector, broad_industry, industry, roe, roce, stock_p_e, market_cap, current_price FROM general_info QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY ticker) = 1);
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   company_name VARCHAR | 384 distinct | nulls=1 | samples: 'Canara Bank', 'Gujarat Pipavav Port Ltd', 'Indian Energy Exchange Ltd'
+--   sector VARCHAR | 22 distinct | nulls=1 | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Forest Materials', 'Healthcare', 'Information Technology', 'Media, Entertainment & Publication', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication', 'Textiles', 'Utilities')
+--   broad_sector VARCHAR | 12 distinct | nulls=1 | ENUM('Commodities', 'Consumer Discretionary', 'Diversified', 'Energy', 'Fast Moving Consumer Goods', 'Financial Services', 'Healthcare', 'Industrials', 'Information Technology', 'Services', 'Telecommunication', 'Utilities')
+--   broad_industry VARCHAR | 52 distinct | nulls=1 | samples: 'Banks', 'Petroleum Products', 'Industrial Manufacturing'
+--   industry VARCHAR | 122 distinct | nulls=1 | samples: 'Port & Port services', 'Lubricants', 'Railway Wagons'
+--   roe DOUBLE | 274 distinct | min=-108, max=206 | nulls=10 | samples: 13.9, 15.2, 5.82
+--   roce DOUBLE | 278 distinct | min=-32.3, max=157 | nulls=9 | samples: 8.12, 6.51, 27.2
+--   stock_p_e DOUBLE | 295 distinct | min=5.19, max=2238 | nulls=22 | samples: 17.1, 15.1, 22
+--   market_cap DOUBLE | 377 distinct | min=104, max=1762680 | nulls=8 | samples: 20650, 12312, 10413
+--   current_price DOUBLE | 356 distinct | min=21.8, max=133000 | nulls=8 | samples: 1375, 2550, 3315
+-- Sample rows (3):
+--   {ticker: '360ONE', company_name: '360 ONE WAM Ltd', sector: 'Financial Services', broad_sector: 'Financial Services', broad_industry: 'Capital Markets', industry: 'Stockbroking & Allied', roe: 6.09, roce: 6.89, stock_p_e: 128, market_cap: 47011, current_price: 1153}
+--   {ticker: '538882', company_name: 'Emerald Finance Ltd', sector: 'Financial Services', broad_sector: 'Financial Services', broad_industry: 'Finance', industry: 'Non Banking Financial Company (NBFC)', roe: 13.8, roce: 18.4, stock_p_e: 16.1, market_cap: 217, current_price: 62.7}
+--   {ticker: 'ABCAPITAL', company_name: 'Aditya Birla Capital Ltd', sector: 'Financial Services', broad_sector: 'Financial Services', broad_industry: 'Finance', industry: 'Investment Company', roe: 11.6, roce: 8.75, stock_p_e: 33, market_cap: 110130, current_price: 402}
+
+-- ===== VIEW fss_metrics — 377 rows =====
+CREATE VIEW fss_metrics AS SELECT ticker, r.roe_momentum, a.accruals, v.rev_cv, d.de_trend, g.broad_industry FROM fss_roe_momentum AS r FULL JOIN fss_accruals AS a USING (ticker) FULL JOIN fss_rev_cv AS v USING (ticker) FULL JOIN fss_de_trend AS d USING (ticker) LEFT JOIN fss_general_info AS g USING (ticker);
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   roe_momentum DOUBLE | 375 distinct | min=-1.590703393, max=0.2012767442 | nulls=2 | samples: -0.008809913491, 0.01126476867, -0.002630857506
+--   accruals DOUBLE | 373 distinct | min=-0.3363957597, max=0.5236088818 | nulls=3 | samples: 0.04754521964, 0.08959784867, -0.01933466022
+--   rev_cv DOUBLE | 374 distinct | min=0.008391979415, max=1.746718685 | nulls=3 | samples: 0.7526140811, 0.1544437783, 0.08879922114
+--   de_trend DOUBLE | 370 distinct | min=-14.96453611, max=29.44505495 | samples: -0.308922997, 0.01406519835, 0.1605782207
+--   broad_industry VARCHAR | 52 distinct | nulls=1 | samples: 'Aerospace & Defense', 'Petroleum Products', 'Banks'
+-- Sample rows (3):
+--   {ticker: '360ONE', roe_momentum: -0.009224668802, accruals: 0.09479819641, rev_cv: 0.7526140811, de_trend: -0.308922997, broad_industry: 'Capital Markets'}
+--   {ticker: '538882', roe_momentum: -0.008809913491, accruals: 0.2280701754, rev_cv: 0.08419668004, de_trend: 0.04855609507, broad_industry: 'Finance'}
+--   {ticker: 'ABCAPITAL', roe_momentum: 0.004281029092, accruals: 0.1603355492, rev_cv: 0.05700691855, de_trend: 4.830462892, broad_industry: 'Finance'}
+
+-- ===== VIEW fss_rev_cv — 374 rows =====
+CREATE VIEW fss_rev_cv AS WITH ranked AS (SELECT ticker, dt, val, dense_rank() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk FROM quarterly_results WHERE ((metric IN ('Sales', 'Revenue')) AND (val IS NOT NULL))), cv AS (SELECT ticker, (stddev_samp(val) / "nullif"(abs(avg(val)), 0)) AS rev_cv FROM ranked WHERE (rk <= 4) GROUP BY ticker)SELECT ticker, rev_cv FROM cv WHERE (rev_cv IS NOT NULL);
+-- Columns:
+--   ticker VARCHAR | 374 distinct | samples: 'ABCAPITAL', 'BALRAMCHIN', 'BEL'
+--   rev_cv DOUBLE | 374 distinct | min=0.008391979415, max=1.746718685 | samples: 0.1453333032, 0.05066405471, 0.180695736
+-- Sample rows (3):
+--   {ticker: 'ACUTAAS', rev_cv: 0.1544437783}
+--   {ticker: 'AIAENG', rev_cv: 0.04730234417}
+--   {ticker: 'BHARATFORG', rev_cv: 0.08288524602}
+
+-- ===== VIEW fss_roe_momentum — 375 rows =====
+CREATE VIEW fss_roe_momentum AS WITH np_q AS (SELECT ticker, dt, max(val) AS net_profit FROM quarterly_results WHERE ((metric = 'Net Profit') AND (val IS NOT NULL)) GROUP BY ticker, dt), ranked AS (SELECT ticker, dt, net_profit, dense_rank() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk FROM np_q), last5 AS (SELECT *, count() OVER (PARTITION BY ticker) AS cnt FROM ranked WHERE (rk <= 5)), eq_all AS (SELECT ticker, dt, (COALESCE(max(CASE  WHEN ((metric = 'Equity Capital')) THEN (val) ELSE NULL END), 0) + COALESCE(max(CASE  WHEN ((metric = 'Reserves')) THEN (val) ELSE NULL END), 0)) AS equity FROM balance_sheet GROUP BY ticker, dt), eq AS (SELECT ticker, dt, equity FROM eq_all WHERE (equity > 0)), roe_q AS (SELECT q.ticker, q.dt, q.rk, q.cnt, (q.net_profit / e.equity) AS roe_q FROM last5 AS q ASOF LEFT JOIN eq AS e ON (((q.ticker = e.ticker) AND (q.dt >= e.dt))))SELECT ticker, (max(CASE  WHEN ((rk = 1)) THEN (roe_q) ELSE NULL END) - max(CASE  WHEN ((rk = cnt)) THEN (roe_q) ELSE NULL END)) AS roe_momentum FROM roe_q GROUP BY ticker HAVING (max(cnt) >= 2);
+-- Columns:
+--   ticker VARCHAR | 375 distinct | samples: 'ACUTAAS', 'AIAENG', 'BHARATFORG'
+--   roe_momentum DOUBLE | 375 distinct | min=-1.590703393, max=0.2012767442 | samples: 0.01126476867, -0.002630857506, -0.02474265794
+-- Sample rows (3):
+--   {ticker: 'ACUTAAS', roe_momentum: 0.01126476867}
+--   {ticker: 'AIAENG', roe_momentum: -0.002630857506}
+--   {ticker: 'BHARATFORG', roe_momentum: -0.001705523457}
+
+-- ===== VIEW fss_scored — 344 rows =====
+CREATE VIEW fss_scored AS WITH elig AS (SELECT ticker, broad_industry AS industry, roe_momentum, accruals, rev_cv, de_trend FROM fss_metrics WHERE ((broad_industry IS NOT NULL) AND (roe_momentum IS NOT NULL) AND (accruals IS NOT NULL) AND (rev_cv IS NOT NULL) AND (de_trend IS NOT NULL))), stats AS (SELECT e.*, count() OVER (PARTITION BY industry) AS n, avg(roe_momentum) OVER (PARTITION BY industry) AS mu_roe, stddev_samp(roe_momentum) OVER (PARTITION BY industry) AS sd_roe, avg(accruals) OVER (PARTITION BY industry) AS mu_accr, stddev_samp(accruals) OVER (PARTITION BY industry) AS sd_accr, avg(rev_cv) OVER (PARTITION BY industry) AS mu_rev, stddev_samp(rev_cv) OVER (PARTITION BY industry) AS sd_rev, avg(de_trend) OVER (PARTITION BY industry) AS mu_de, stddev_samp(de_trend) OVER (PARTITION BY industry) AS sd_de, ((rank() OVER (PARTITION BY industry ORDER BY roe_momentum) + count() OVER (PARTITION BY industry ORDER BY roe_momentum)) / 2.0) AS ar_roe, ((rank() OVER (PARTITION BY industry ORDER BY accruals) + count() OVER (PARTITION BY industry ORDER BY accruals)) / 2.0) AS ar_accr, ((rank() OVER (PARTITION BY industry ORDER BY rev_cv) + count() OVER (PARTITION BY industry ORDER BY rev_cv)) / 2.0) AS ar_rev, ((rank() OVER (PARTITION BY industry ORDER BY de_trend) + count() OVER (PARTITION BY industry ORDER BY de_trend)) / 2.0) AS ar_de FROM elig AS e), tr AS (SELECT s.ticker, s.industry, s.n, s.roe_momentum, s.accruals, s.rev_cv, s.de_trend, CASE  WHEN ((p."method" = 'zscore')) THEN (COALESCE(((s.roe_momentum - s.mu_roe) / "nullif"(s.sd_roe, 0)), 0.0)) WHEN ((s.n < 2)) THEN (0.0) ELSE ((s.ar_roe / s.n) - 0.5) END AS t_roe, CASE  WHEN ((p."method" = 'zscore')) THEN (COALESCE(((s.accruals - s.mu_accr) / "nullif"(s.sd_accr, 0)), 0.0)) WHEN ((s.n < 2)) THEN (0.0) ELSE ((s.ar_accr / s.n) - 0.5) END AS t_accr, CASE  WHEN ((p."method" = 'zscore')) THEN (COALESCE(((s.rev_cv - s.mu_rev) / "nullif"(s.sd_rev, 0)), 0.0)) WHEN ((s.n < 2)) THEN (0.0) ELSE ((s.ar_rev / s.n) - 0.5) END AS t_rev, CASE  WHEN ((p."method" = 'zscore')) THEN (COALESCE(((s.de_trend - s.mu_de) / "nullif"(s.sd_de, 0)), 0.0)) WHEN ((s.n < 2)) THEN (0.0) ELSE ((s.ar_de / s.n) - 0.5) END AS t_de FROM stats AS s CROSS JOIN fss_params AS p WHERE (s.n >= p.min_per_sector))SELECT ticker, industry, n AS industry_size, t_roe AS z_roe, -(t_accr) AS z_accr, -(t_rev) AS z_rev, -(t_de) AS z_de, ((((t_roe - t_accr) - t_rev) - t_de) / 4.0) AS composite, roe_momentum, accruals, rev_cv, de_trend FROM tr;
+-- Columns:
+--   ticker VARCHAR | 344 distinct | samples: 'TVSMOTOR', 'HEROMOTOCO', 'MANORAMA'
+--   industry VARCHAR | 34 distinct | ENUM('Aerospace & Defense', 'Agricultural Food & other Products', 'Agricultural, Commercial & Construction…', 'Auto Components', 'Automobiles', 'Banks', 'Beverages', 'Capital Markets', 'Cement & Cement Products', 'Chemicals & Petrochemicals', 'Commercial Services & Supplies', 'Construction', 'Consumer Durables', 'Electrical Equipment', 'Fertilizers & Agrochemicals', 'Finance', 'Food Products', 'Gas', 'Healthcare Services', 'IT - Services', 'IT - Software', 'Industrial Manufacturing', 'Industrial Products', 'Insurance', 'Leisure Services', 'Non - Ferrous Metals', 'Personal Products', 'Petroleum Products', 'Pharmaceuticals & Biotechnology', 'Power', 'Realty', 'Retailing', 'Telecom - Services', 'Transport Services')
+--   industry_size BIGINT | 14 distinct | min=4, max=23 | ENUM(4, 5, 6, 7, 8, 9, 10, 13, 15, 16, 18, 20, 22, 23)
+--   z_roe DOUBLE | 344 distinct | min=-4.117848368, max=3.288244325 | samples: 0.2359734079, 0.1847493771, 0.1697368851
+--   z_accr DOUBLE | 344 distinct | min=-2.659755823, max=2.719423384 | samples: -1.100339835, -1.288517649, -1.209520939
+--   z_rev DOUBLE | 344 distinct | min=-3.874835103, max=1.571213608 | samples: 0.5591467549, 0.2161677842, -1.020629636
+--   z_de DOUBLE | 342 distinct | min=-3.807466251, max=3.304096301 | samples: 1.278769208, 0.1365080059, -0.5454772578
+--   composite DOUBLE | 344 distinct | min=-1.193431578, max=1.245949898 | samples: 1.093025278, -0.9754082042, -0.7900070219
+--   roe_momentum DOUBLE | 344 distinct | min=-1.590703393, max=0.2012767442 | samples: -0.004041158805, -0.03649372979, 0.01175222509
+--   accruals DOUBLE | 343 distinct | min=-0.3363957597, max=0.3681550126 | samples: -0.02167267461, -0.03423696011, -0.06873303302
+--   rev_cv DOUBLE | 344 distinct | min=0.008391979415, max=1.746718685 | samples: 0.06557317736, 0.1298389947, 0.1279364162
+--   de_trend DOUBLE | 337 distinct | min=-14.96453611, max=4.830462892 | samples: -0.5359132868, -0.2922835569, 0.007282680612
+-- Sample rows (3):
+--   {ticker: 'SUZLON', industry: 'Electrical Equipment', industry_size: 15, z_roe: -0.5760399907, z_accr: -1.100339835, z_rev: -0.175839959, z_de: 2.652714901, composite: 0.2001237791, roe_momentum: -0.03162446163, accruals: 0.1536632568, rev_cv: 0.1930437623, de_trend: -1.62105229}
+--   {ticker: 'AZAD', industry: 'Electrical Equipment', industry_size: 15, z_roe: 0.06824216243, z_accr: -0.6466526014, z_rev: 1.138458217, z_de: 1.797245071, composite: 0.5893232123, roe_momentum: 0.002039317756, accruals: 0.1193621868, rev_cv: 0.07299446335, de_trend: -1.171619163}
+--   {ticker: 'TARIL', industry: 'Electrical Equipment', industry_size: 15, z_roe: -0.258134195, z_accr: -0.9382753213, z_rev: -0.8023305616, z_de: 0.5872158906, composite: -0.3528810468, roe_momentum: -0.0150138656, accruals: 0.1414103526, rev_cv: 0.2502680353, de_trend: -0.5359132868}
+
+-- ===== VIEW gate_results — 335 rows =====
+CREATE VIEW gate_results AS WITH params AS (SELECT CAST('f' AS BOOLEAN) AS dip_mode), derived AS (SELECT g.*, p.dip_mode, CASE  WHEN (((g.profit_now > 0) AND (g.profit_3y > 0))) THEN (((power((g.profit_now / g.profit_3y), (1.0 / 3)) - 1) * 100)) ELSE NULL END AS profit_cagr, CASE  WHEN (((g.reserves + g.equity_capital) > 0)) THEN ((g.debt / (g.reserves + g.equity_capital))) ELSE NULL END AS de, ((lower(COALESCE(g.sector, '')) ~~ '%banks%') OR (lower(COALESCE(g.sector, '')) ~~ '%finance%') OR (lower(COALESCE(g.sector, '')) ~~ '%nbfc%') OR (lower(COALESCE(g.sector, '')) ~~ '%insurance%')) AS is_financial, CASE  WHEN (((g.stock_p_e > 0) AND (g.sector_median_pe > 0))) THEN ((((g.sector_median_pe - g.stock_p_e) / g.sector_median_pe) * 100)) ELSE NULL END AS pe_discount_pct, CASE  WHEN ((g.book_value > 0)) THEN ((g.current_price / g.book_value)) ELSE NULL END AS pb FROM gate_score AS g CROSS JOIN params AS p), derived2 AS (SELECT d.*, CASE  WHEN ((d.profit_cagr > 0)) THEN ((d.stock_p_e / d.profit_cagr)) ELSE NULL END AS peg FROM derived AS d), flags AS (SELECT d.*, COALESCE((roce >= 18), CAST('f' AS BOOLEAN)) AS g1a_roce_pass, COALESCE((roce < 8), CAST('f' AS BOOLEAN)) AS g1a_roce_fail, COALESCE((fcf > 0), CAST('f' AS BOOLEAN)) AS g1b_fcf_pass, COALESCE((fcf < 0), CAST('f' AS BOOLEAN)) AS g1b_fcf_fail, COALESCE((profit_cagr >= 15), CAST('f' AS BOOLEAN)) AS g1c_cagr_pass, COALESCE((profit_cagr < 0), CAST('f' AS BOOLEAN)) AS g1c_cagr_fail, COALESCE(((profit_now > 0) AND (cfo > profit_now)), CAST('f' AS BOOLEAN)) AS g1d_cfo_pass, COALESCE(((profit_now > 0) AND (cfo < (profit_now * 0.5))), CAST('f' AS BOOLEAN)) AS g1d_cfo_fail, ((NOT is_financial) AND COALESCE((de < 0.5), CAST('f' AS BOOLEAN))) AS g1e_debt_pass, ((NOT is_financial) AND COALESCE((de > 1.5), CAST('f' AS BOOLEAN))) AS g1e_debt_fail, COALESCE((pe_discount_pct >= 15), CAST('f' AS BOOLEAN)) AS g2a_pe_pass, COALESCE((pe_discount_pct < -30), CAST('f' AS BOOLEAN)) AS g2a_pe_fail, COALESCE((peg < 1.0), CAST('f' AS BOOLEAN)) AS g2b_peg_pass, COALESCE((peg > 2.5), CAST('f' AS BOOLEAN)) AS g2b_peg_fail, COALESCE((pb < 3.0), CAST('f' AS BOOLEAN)) AS g2c_pb_pass, COALESCE((pb > 8.0), CAST('f' AS BOOLEAN)) AS g2c_pb_fail, COALESCE(((sales_q0 > sales_q1) AND (sales_q1 > sales_q2)), CAST('f' AS BOOLEAN)) AS g3a_sales_pass, ((sales_q0 IS NOT NULL) AND (sales_q1 IS NOT NULL) AND (sales_q2 IS NOT NULL) AND (sales_q0 < sales_q1)) AS g3a_sales_fail, COALESCE((profit_q0 > profit_q1), CAST('f' AS BOOLEAN)) AS g3b_profit_pass, COALESCE(((profit_q0 < profit_q1) AND (profit_q0 > 0)), CAST('f' AS BOOLEAN)) AS g3b_profit_fail, COALESCE((opm_q0 > opm_q1), CAST('f' AS BOOLEAN)) AS g3c_opm_pass, COALESCE((opm_q0 < (opm_q1 - 3)), CAST('f' AS BOOLEAN)) AS g3c_opm_fail, COALESCE((promoter >= promoter_prev), CAST('f' AS BOOLEAN)) AS g3d_promoter_pass, COALESCE((promoter < (promoter_prev - 2)), CAST('f' AS BOOLEAN)) AS g3d_promoter_fail, ((fii IS NOT NULL) AND (fii_prev IS NOT NULL) AND (dii IS NOT NULL) AND (dii_prev IS NOT NULL) AND ((fii >= fii_prev) OR (dii >= dii_prev))) AS g3e_inst_pass, ((fii IS NOT NULL) AND (fii_prev IS NOT NULL) AND (dii IS NOT NULL) AND (dii_prev IS NOT NULL) AND (fii < fii_prev) AND (dii < dii_prev)) AS g3e_inst_fail, COALESCE((bb_width <= (min_bb_63d * 1.15)), CAST('f' AS BOOLEAN)) AS g4a_bb_pass, COALESCE((bb_width > 0.35), CAST('f' AS BOOLEAN)) AS g4a_bb_fail, COALESCE(((dist_from_ma50 > 0) AND (dist_from_ma50 < 12)), CAST('f' AS BOOLEAN)) AS g4b_ma50_pass, COALESCE(((dist_from_ma50 > 25) OR (dist_from_ma50 < -8)), CAST('f' AS BOOLEAN)) AS g4b_ma50_fail, CASE  WHEN (dip_mode) THEN (COALESCE((pct_from_52w BETWEEN -40 AND -10), CAST('f' AS BOOLEAN))) ELSE COALESCE((pct_from_52w >= -5), CAST('f' AS BOOLEAN)) END AS g4c_52w_pass, COALESCE((pct_from_52w < -40), CAST('f' AS BOOLEAN)) AS g4c_52w_fail, COALESCE((volume_ratio >= 1.1), CAST('f' AS BOOLEAN)) AS g4d_vol_pass, COALESCE((volume_ratio < 0.6), CAST('f' AS BOOLEAN)) AS g4d_vol_fail FROM derived2 AS d), scored AS (SELECT f.*, greatest(0, least(100, ((((((CAST(g1a_roce_pass AS INTEGER) + CAST(g1b_fcf_pass AS INTEGER)) + CAST(g1c_cagr_pass AS INTEGER)) + CAST(g1d_cfo_pass AS INTEGER)) + CAST(g1e_debt_pass AS INTEGER)) * 20) - (((((CAST(g1a_roce_fail AS INTEGER) + CAST(g1b_fcf_fail AS INTEGER)) + CAST(g1c_cagr_fail AS INTEGER)) + CAST(g1d_cfo_fail AS INTEGER)) + CAST(g1e_debt_fail AS INTEGER)) * 15)))) AS quality_score, greatest(0, least(100, ((((CAST(g2a_pe_pass AS INTEGER) + CAST(g2b_peg_pass AS INTEGER)) + CAST(g2c_pb_pass AS INTEGER)) * 33) - (((CAST(g2a_pe_fail AS INTEGER) + CAST(g2b_peg_fail AS INTEGER)) + CAST(g2c_pb_fail AS INTEGER)) * 20)))) AS valuation_score, greatest(0, least(100, ((((((CAST(g3a_sales_pass AS INTEGER) + CAST(g3b_profit_pass AS INTEGER)) + CAST(g3c_opm_pass AS INTEGER)) + CAST(g3d_promoter_pass AS INTEGER)) + CAST(g3e_inst_pass AS INTEGER)) * 20) - (((((CAST(g3a_sales_fail AS INTEGER) + CAST(g3b_profit_fail AS INTEGER)) + CAST(g3c_opm_fail AS INTEGER)) + CAST(g3d_promoter_fail AS INTEGER)) + CAST(g3e_inst_fail AS INTEGER)) * 15)))) AS timing_score, greatest(0, least(100, (((((CAST(g4a_bb_pass AS INTEGER) + CAST(g4b_ma50_pass AS INTEGER)) + CAST(g4c_52w_pass AS INTEGER)) + CAST(g4d_vol_pass AS INTEGER)) * 25) - ((((CAST(g4a_bb_fail AS INTEGER) + CAST(g4b_ma50_fail AS INTEGER)) + CAST(g4c_52w_fail AS INTEGER)) + CAST(g4d_vol_fail AS INTEGER)) * 15)))) AS technical_score FROM flags AS f)SELECT s.*, CASE  WHEN (((quality_score >= 70) AND (valuation_score >= 70) AND ((timing_score >= 60) OR (technical_score >= 60)))) THEN ('Strong Buy') WHEN (((quality_score >= 70) AND (valuation_score >= 40) AND ((timing_score >= 40) OR (technical_score >= 40)))) THEN ('Buy') WHEN (((quality_score >= 70) AND (valuation_score >= 40))) THEN ('Accumulate') WHEN (((quality_score >= 70) AND (valuation_score < 40))) THEN ('Overvalued') WHEN ((quality_score >= 40)) THEN ('Watch') ELSE 'Avoid' END AS recommendation FROM scored AS s;
+-- Columns:
+--   ticker VARCHAR | 335 distinct | samples: 'AUROPHARMA', 'BAJAJHLDNG', 'CONCOR'
+--   company_name VARCHAR | 335 distinct | samples: 'Accelya Solutions India Ltd', 'Adani Green Energy Ltd', 'Finolex Industries Ltd'
+--   sector VARCHAR | 21 distinct | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Forest Materials', 'Healthcare', 'Information Technology', 'Media, Entertainment & Publication', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication', 'Textiles')
+--   market_cap DOUBLE | 335 distinct | min=1257, max=1762680 | samples: 211399, 6073, 74458
+--   stock_p_e DOUBLE | 272 distinct | min=5.19, max=2238 | nulls=12 | samples: 27.6, 36.4, 35.7
+--   roce DOUBLE | 259 distinct | min=-32.3, max=157 | samples: 1.69, 22.2, 9.6
+--   roe DOUBLE | 253 distinct | min=-108, max=206 | nulls=1 | samples: 3.68, 22.2, 7.63
+--   book_value DOUBLE | 286 distinct | min=-5.85, max=48223 | samples: 772, 290, 80.8
+--   current_price DOUBLE | 317 distinct | min=21.8, max=133000 | samples: 424, 2963, 227
+--   sector_median_pe DOUBLE | 20 distinct | min=13.6, max=140 | ENUM(13.6, 21.3, 22.2, 25.9, 26.1, 31.75, 33.6, 34.65, 34.8, 37.5, 38.4, 45.1, 49.95, 50.2, 50.7, 51.2, 57.9, 64.9, 71.9, 140)
+--   sales_q0 DOUBLE | 297 distinct | min=-0, max=262435 | nulls=32 | samples: 153, 301, 2701
+--   sales_q1 DOUBLE | 293 distinct | min=-0, max=276206 | nulls=32 | samples: 816, 573, 34773
+--   sales_q2 DOUBLE | 298 distinct | min=-0, max=235467 | nulls=32 | samples: 37996, -0, 1454
+--   sales_q3 DOUBLE | 297 distinct | min=-0, max=240690 | nulls=32 | samples: 231, 673, 2650
+--   opm_q0 DOUBLE | 98 distinct | min=-2969, max=96 | nulls=33 | samples: 25, 4, 78
+--   opm_q1 DOUBLE | 99 distinct | min=-18605, max=96 | nulls=33 | samples: 10, 26, 34
+--   profit_q0 DOUBLE | 293 distinct | min=-11526, max=21121 | samples: 115, 32, 17
+--   profit_q1 DOUBLE | 292 distinct | min=-2662, max=23420 | samples: 13, 234, 254
+--   profit_q2 DOUBLE | 285 distinct | min=-900, max=21028 | samples: -0.01, 12.1, 529
+--   profit_q3 DOUBLE | 289 distinct | min=-3591, max=20160 | samples: -319, 138, 195
+--   eps_q0 DOUBLE | 306 distinct | min=-54.17, max=1118.51 | samples: -1.01, 39.6, 1.47
+--   eps_q1 DOUBLE | 313 distinct | min=-68.86, max=1604.4 | samples: 19.98, 4.1, 2.33
+--   profit_now DOUBLE | 328 distinct | min=-5045, max=81993 | samples: 51, 2988, 230
+--   sales_now DOUBLE | 303 distinct | min=0, max=991507 | nulls=32 | samples: 19757, 2820, 8674
+--   interest DOUBLE | 207 distinct | min=0, max=313657 | samples: 45, 46, 87
+--   profit_3y DOUBLE | 316 distinct | min=-1888, max=61077 | nulls=1 | samples: 11674, 554, 164
+--   sales_3y DOUBLE | 298 distinct | min=3, max=842708 | nulls=33 | samples: 1611, 4574, 20572
+--   cfo DOUBLE | 326 distinct | min=-42324, max=123617 | samples: 791, 978, 355
+--   fcf DOUBLE | 320 distinct | min=-42441, max=120903 | samples: -605, 623, -1712
+--   debt DOUBLE | 289 distinct | min=0, max=731254 | samples: 4060, 2101, 27
+--   reserves DOUBLE | 334 distinct | min=-7132, max=561362 | samples: 2393, 1517, 27616
+--   equity_capital DOUBLE | 233 distinct | min=4, max=28826 | samples: 15, 1647, 16
+--   promoter DOUBLE | 301 distinct | min=0, max=96.5 | nulls=20 | samples: 74.96, 47.29, 61.9
+--   fii DOUBLE | 316 distinct | min=0.06, max=61.96 | nulls=2 | samples: 11.33, 43.19, 20.2
+--   dii DOUBLE | 323 distinct | min=0.01, max=66.46 | nulls=2 | samples: 7.26, 45.31, 18.88
+--   promoter_prev DOUBLE | 295 distinct | min=0, max=96.5 | nulls=20 | samples: 37.84, 60.86, 62.86
+--   fii_prev DOUBLE | 311 distinct | min=0.06, max=63.33 | nulls=2 | samples: 7.97, 24.87, 6.17
+--   dii_prev DOUBLE | 321 distinct | min=0.01, max=66.11 | nulls=2 | samples: 0.01, 24.63, 27.47
+--   price DOUBLE | 335 distinct | min=18.15999985, max=128082 | samples: 340.75, 1388, 18.15999985
+--   return_1m DOUBLE | 335 distinct | min=-24.13104806, max=38.42262056 | samples: -10.45022585, 9.394847458, 4.518072289
+--   return_3m DOUBLE | 335 distinct | min=-62.66892104, max=86.60791975 | samples: -11.2985368, -4.275862069, 25.0840274
+--   bb_width DOUBLE | 335 distinct | min=0.04616940859, max=0.550774837 | samples: 0.1895152876, 0.2941226987, 0.1972482106
+--   min_bb_63d DOUBLE | 335 distinct | min=0.0117176029, max=0.16214345 | samples: 0.1185461367, 0.08271174599, 0.02654603711
+--   pct_from_52w DOUBLE | 325 distinct | min=-66.97089369, max=0 | samples: -58.52059517, -35.64593936, -13.42003154
+--   volume_ratio DOUBLE | 335 distinct | min=0.1325220935, max=6.833887527 | samples: 1.140955488, 0.9259817581, 0.7108168479
+--   dist_from_ma50 DOUBLE | 335 distinct | min=-28.33081614, max=36.86775707 | samples: 19.11425487, 6.177887155, -10.63414543
+--   dip_mode BOOLEAN | 1 distinct | ENUM(false)
+--   profit_cagr DOUBLE | 312 distinct | min=-65.89339696, max=184.624281 | nulls=22 | samples: -8.983307258, 9.108527513, 6.303012815
+--   de DOUBLE | 322 distinct | min=0, max=13.21233726 | nulls=1 | samples: 0, 0.07644882861, 0.1753452588
+--   is_financial BOOLEAN | 1 distinct | ENUM(false)
+--   pe_discount_pct DOUBLE | 310 distinct | min=-9981.081081, max=78.15104167 | nulls=12 | samples: 0, -27.27272727, 3.54767184
+--   pb DOUBLE | 334 distinct | min=0.5328947368, max=53.01587302 | nulls=1 | samples: 3.963003264, 11.47327249, 7.684210526
+--   peg DOUBLE | 228 distinct | min=0.1862625553, max=506.3679554 | nulls=107 | samples: 0.9254618943, 0.8583196891, 0.6796919769
+--   g1a_roce_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1a_roce_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1b_fcf_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1b_fcf_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1c_cagr_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1c_cagr_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1d_cfo_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1d_cfo_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1e_debt_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g1e_debt_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g2a_pe_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g2a_pe_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g2b_peg_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g2b_peg_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g2c_pb_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g2c_pb_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3a_sales_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3a_sales_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3b_profit_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3b_profit_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3c_opm_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3c_opm_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3d_promoter_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3d_promoter_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3e_inst_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g3e_inst_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4a_bb_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4a_bb_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4b_ma50_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4b_ma50_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4c_52w_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4c_52w_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4d_vol_pass BOOLEAN | 2 distinct | ENUM(false, true)
+--   g4d_vol_fail BOOLEAN | 2 distinct | ENUM(false, true)
+--   quality_score INTEGER | 11 distinct | min=0, max=100 | ENUM(0, 5, 10, 25, 30, 40, 45, 60, 65, 80, 100)
+--   valuation_score INTEGER | 6 distinct | min=0, max=99 | ENUM(0, 13, 33, 46, 66, 99)
+--   timing_score INTEGER | 12 distinct | min=0, max=100 | ENUM(0, 5, 10, 20, 25, 30, 40, 45, 60, 65, 80, 100)
+--   technical_score INTEGER | 6 distinct | min=0, max=75 | ENUM(0, 10, 25, 35, 50, 75)
+--   recommendation VARCHAR | 5 distinct | ENUM('Accumulate', 'Avoid', 'Buy', 'Overvalued', 'Watch')
+-- Sample rows (3):
+--   {ticker: 'ADANIPOWER', company_name: 'Adani Power Ltd', sector: 'Power', market_cap: 401681, stock_p_e: 33.6, roce: 19.1, roe: 22, book_value: 27.5, current_price: 208, sector_median_pe: 33.6, sales_q0: 15761, sales_q1: 11573, sales_q2: 10011, sales_q3: 11243, opm_q0: 42, opm_q1: 33, profit_q0: 4105, profit_q1: 3087, profit_q2: 2047, profit_q3: 2735, eps_q0: 2.13, eps_q1: 1.6, profit_now: 11974, sales_now: 48589, interest: 3399, profit_3y: 19632, sales_3y: 46456, cfo: 19148, fcf: 5175, debt: 49095, reserves: 49158, equity_capital: 3857, promoter: 74.96, fii: 11.03, dii: 4.47, promoter_prev: 74.96, fii_prev: 11.76, dii_prev: 4.07, price: 208.0700073, return_1m: 5.88804444, return_3m: 1.211209977, bb_width: 0.1873630764, min_bb_63d: 0.05383912318, pct_from_52w: -16.40753515, volume_ratio: 0.7249422618, dist_from_ma50: 4.510736419, dip_mode: false, profit_cagr: -15.19432742, de: 0.9260586626, is_financial: false, pe_discount_pct: 0, pb: 7.563636364, peg: NULL, g1a_roce_pass: true, g1a_roce_fail: false, g1b_fcf_pass: true, g1b_fcf_fail: false, g1c_cagr_pass: false, g1c_cagr_fail: true, g1d_cfo_pass: true, g1d_cfo_fail: false, g1e_debt_pass: false, g1e_debt_fail: false, g2a_pe_pass: false, g2a_pe_fail: false, g2b_peg_pass: false, g2b_peg_fail: false, g2c_pb_pass: false, g2c_pb_fail: false, g3a_sales_pass: true, g3a_sales_fail: false, g3b_profit_pass: true, g3b_profit_fail: false, g3c_opm_pass: true, g3c_opm_fail: false, g3d_promoter_pass: true, g3d_promoter_fail: false, g3e_inst_pass: true, g3e_inst_fail: false, g4a_bb_pass: false, g4a_bb_fail: false, g4b_ma50_pass: true, g4b_ma50_fail: false, g4c_52w_pass: false, g4c_52w_fail: false, g4d_vol_pass: false, g4d_vol_fail: false, quality_score: 45, valuation_score: 0, timing_score: 100, technical_score: 25, recommendation: 'Watch'}
+--   {ticker: 'ASIANPAINT', company_name: 'Asian Paints Ltd', sector: 'Consumer Durables', market_cap: 244586, stock_p_e: 51.6, roce: 27.8, roe: 22, book_value: 217, current_price: 2550, sector_median_pe: 50.2, sales_q0: 9183, sales_q1: 7920, sales_q2: 7624, sales_q3: 7356, opm_q0: 22, opm_q1: 21, profit_q0: 1478, profit_q1: 1161, profit_q2: 1027, profit_q3: 956, eps_q0: 15.41, eps_q1: 12.1, profit_now: 4621, sales_now: 32084, interest: 124, profit_3y: 5315, sales_3y: 31227, cfo: 6761, fcf: 5567, debt: 2369, reserves: 20686, equity_capital: 96, promoter: 52.63, fii: 13.32, dii: 20.7, promoter_prev: 52.63, fii_prev: 12.11, dii_prev: 21.74, price: 2625, return_1m: 11.96622352, return_3m: -2.41419583, bb_width: 0.2034445475, min_bb_63d: 0.05911481961, pct_from_52w: -10.59341624, volume_ratio: 1.315716735, dist_from_ma50: 8.706790734, dip_mode: false, profit_cagr: -4.556966719, de: 0.1139928785, is_financial: false, pe_discount_pct: -2.788844622, pb: 11.75115207, peg: NULL, g1a_roce_pass: true, g1a_roce_fail: false, g1b_fcf_pass: true, g1b_fcf_fail: false, g1c_cagr_pass: false, g1c_cagr_fail: true, g1d_cfo_pass: true, g1d_cfo_fail: false, g1e_debt_pass: true, g1e_debt_fail: false, g2a_pe_pass: false, g2a_pe_fail: false, g2b_peg_pass: false, g2b_peg_fail: false, g2c_pb_pass: false, g2c_pb_fail: true, g3a_sales_pass: true, g3a_sales_fail: false, g3b_profit_pass: true, g3b_profit_fail: false, g3c_opm_pass: true, g3c_opm_fail: false, g3d_promoter_pass: true, g3d_promoter_fail: false, g3e_inst_pass: true, g3e_inst_fail: false, g4a_bb_pass: false, g4a_bb_fail: false, g4b_ma50_pass: true, g4b_ma50_fail: false, g4c_52w_pass: false, g4c_52w_fail: false, g4d_vol_pass: true, g4d_vol_fail: false, quality_score: 65, valuation_score: 0, timing_score: 100, technical_score: 50, recommendation: 'Watch'}
+--   {ticker: 'BHEL', company_name: 'Bharat Heavy Electricals Ltd', sector: 'Capital Goods', market_cap: 150356, stock_p_e: 62.3, roce: 8.98, roe: 6.05, book_value: 76.2, current_price: 432, sector_median_pe: 50.2, sales_q0: 7698, sales_q1: 12310, sales_q2: 8473, sales_q3: 7512, opm_q0: 7, opm_q1: 14, profit_q0: 382, profit_q1: 1283, profit_q2: 382, profit_q3: 368, eps_q0: 1.1, eps_q1: 3.68, profit_now: 2415, sales_now: 35993, interest: 715, profit_3y: 260, sales_3y: 23893, cfo: 5837, fcf: 5261, debt: 8187, reserves: 25820, equity_capital: 696, promoter: 58.17, fii: 9.94, dii: 21.8, promoter_prev: 58.17, fii_prev: 9.52, dii_prev: 22.35, price: 430.6499939, return_1m: -0.8290169496, return_3m: 1.329410329, bb_width: 0.1573989866, min_bb_63d: 0.07246733339, pct_from_52w: -7.187501315, volume_ratio: 0.7499457919, dist_from_ma50: 1.949985477, dip_mode: false, profit_cagr: 110.2073654, de: 0.3087569769, is_financial: false, pe_discount_pct: -24.10358566, pb: 5.669291339, peg: 0.5652979707, g1a_roce_pass: false, g1a_roce_fail: false, g1b_fcf_pass: true, g1b_fcf_fail: false, g1c_cagr_pass: true, g1c_cagr_fail: false, g1d_cfo_pass: true, g1d_cfo_fail: false, g1e_debt_pass: true, g1e_debt_fail: false, g2a_pe_pass: false, g2a_pe_fail: false, g2b_peg_pass: true, g2b_peg_fail: false, g2c_pb_pass: false, g2c_pb_fail: false, g3a_sales_pass: false, g3a_sales_fail: true, g3b_profit_pass: false, g3b_profit_fail: true, g3c_opm_pass: false, g3c_opm_fail: true, g3d_promoter_pass: true, g3d_promoter_fail: false, g3e_inst_pass: true, g3e_inst_fail: false, g4a_bb_pass: false, g4a_bb_fail: false, g4b_ma50_pass: true, g4b_ma50_fail: false, g4c_52w_pass: false, g4c_52w_fail: false, g4d_vol_pass: false, g4d_vol_fail: false, quality_score: 80, valuation_score: 33, timing_score: 0, technical_score: 25, recommendation: 'Overvalued'}
+
+-- ===== VIEW gate_score — 335 rows =====
+CREATE VIEW gate_score AS WITH company AS (SELECT COALESCE("nullif"(nse_symbol, ''), ticker) AS ticker, company_name, sector, market_cap, stock_p_e, roce, roe, book_value, current_price FROM general_info QUALIFY (row_number() OVER (PARTITION BY COALESCE("nullif"(nse_symbol, ''), ticker) ORDER BY ticker) = 1)), sector_pe AS (SELECT sector, median(stock_p_e) AS sector_median_pe FROM company WHERE (stock_p_e > 0) GROUP BY sector), qr_ranked AS (SELECT *, dense_rank() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk FROM (SELECT DISTINCT ticker, dt, metric, val FROM quarterly_results)), qr_pivot AS (SELECT ticker, max(CASE  WHEN (((rk = 1) AND (metric = 'Sales'))) THEN (val) ELSE NULL END) AS sales_q0, max(CASE  WHEN (((rk = 2) AND (metric = 'Sales'))) THEN (val) ELSE NULL END) AS sales_q1, max(CASE  WHEN (((rk = 3) AND (metric = 'Sales'))) THEN (val) ELSE NULL END) AS sales_q2, max(CASE  WHEN (((rk = 4) AND (metric = 'Sales'))) THEN (val) ELSE NULL END) AS sales_q3, max(CASE  WHEN (((rk = 1) AND (metric = 'OPM %'))) THEN (val) ELSE NULL END) AS opm_q0, max(CASE  WHEN (((rk = 2) AND (metric = 'OPM %'))) THEN (val) ELSE NULL END) AS opm_q1, max(CASE  WHEN (((rk = 1) AND (metric = 'Net Profit'))) THEN (val) ELSE NULL END) AS profit_q0, max(CASE  WHEN (((rk = 2) AND (metric = 'Net Profit'))) THEN (val) ELSE NULL END) AS profit_q1, max(CASE  WHEN (((rk = 3) AND (metric = 'Net Profit'))) THEN (val) ELSE NULL END) AS profit_q2, max(CASE  WHEN (((rk = 4) AND (metric = 'Net Profit'))) THEN (val) ELSE NULL END) AS profit_q3, max(CASE  WHEN (((rk = 1) AND (metric = 'EPS in Rs'))) THEN (val) ELSE NULL END) AS eps_q0, max(CASE  WHEN (((rk = 2) AND (metric = 'EPS in Rs'))) THEN (val) ELSE NULL END) AS eps_q1 FROM qr_ranked WHERE (rk <= 4) GROUP BY ticker), pl_years AS (SELECT ticker, dt, dense_rank() OVER (PARTITION BY ticker ORDER BY dt DESC) AS yr_rk FROM (SELECT DISTINCT ticker, dt FROM profit_loss WHERE (dt < CURRENT_DATE))), pl_latest AS (SELECT a.ticker, max(CASE  WHEN ((metric = 'Net Profit')) THEN (val) ELSE NULL END) AS profit_now, max(CASE  WHEN ((metric = 'Sales')) THEN (val) ELSE NULL END) AS sales_now, max(CASE  WHEN ((metric = 'Interest')) THEN (val) ELSE NULL END) AS interest FROM profit_loss AS a INNER JOIN pl_years AS y ON (((a.ticker = y.ticker) AND (a.dt = y.dt))) WHERE (y.yr_rk = 1) GROUP BY a.ticker), pl_3y AS (SELECT a.ticker, max(CASE  WHEN ((metric = 'Net Profit')) THEN (val) ELSE NULL END) AS profit_3y, max(CASE  WHEN ((metric = 'Sales')) THEN (val) ELSE NULL END) AS sales_3y FROM profit_loss AS a INNER JOIN pl_years AS y ON (((a.ticker = y.ticker) AND (a.dt = y.dt))) WHERE (y.yr_rk = 4) GROUP BY a.ticker), cf_latest AS (SELECT a.ticker, max(CASE  WHEN ((metric = 'Cash from Operating Activity')) THEN (val) ELSE NULL END) AS cfo, max(CASE  WHEN ((metric = 'Free Cash Flow')) THEN (val) ELSE NULL END) AS fcf FROM cash_flows AS a WHERE (a.dt = (SELECT max(dt) FROM cash_flows WHERE (ticker = a.ticker))) GROUP BY a.ticker), bs_latest AS (SELECT a.ticker, max(CASE  WHEN ((metric IN ('Borrowing', 'Borrowings'))) THEN (val) ELSE NULL END) AS debt, max(CASE  WHEN ((metric = 'Reserves')) THEN (val) ELSE NULL END) AS reserves, max(CASE  WHEN ((metric = 'Equity Capital')) THEN (val) ELSE NULL END) AS equity_capital FROM balance_sheet AS a WHERE (a.dt = (SELECT max(dt) FROM balance_sheet WHERE (ticker = a.ticker))) GROUP BY a.ticker), sh_ranked AS (SELECT ticker, dt, category, val, dense_rank() OVER (PARTITION BY ticker ORDER BY dt DESC) AS rk FROM shareholding_quarterly), sh_latest AS (SELECT ticker, max(CASE  WHEN ((category = 'Promoters')) THEN (val) ELSE NULL END) AS promoter, max(CASE  WHEN ((category = 'FIIs')) THEN (val) ELSE NULL END) AS fii, max(CASE  WHEN ((category = 'DIIs')) THEN (val) ELSE NULL END) AS dii FROM sh_ranked WHERE (rk = 1) GROUP BY ticker), sh_prev AS (SELECT ticker, max(CASE  WHEN ((category = 'Promoters')) THEN (val) ELSE NULL END) AS promoter_prev, max(CASE  WHEN ((category = 'FIIs')) THEN (val) ELSE NULL END) AS fii_prev, max(CASE  WHEN ((category = 'DIIs')) THEN (val) ELSE NULL END) AS dii_prev FROM sh_ranked WHERE (rk = 2) GROUP BY ticker), daily_ind AS (SELECT nse_symbol AS Ticker, Date, "Close", Volume, lag("Close", 21) OVER (PARTITION BY nse_symbol ORDER BY Date) AS close_1m, lag("Close", 63) OVER (PARTITION BY nse_symbol ORDER BY Date) AS close_3m, avg("Close") OVER (PARTITION BY nse_symbol ORDER BY Date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS ma_20, stddev("Close") OVER (PARTITION BY nse_symbol ORDER BY Date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS std_20, avg("Close") OVER (PARTITION BY nse_symbol ORDER BY Date ROWS BETWEEN 49 PRECEDING AND CURRENT ROW) AS ma_50, max("Close") OVER (PARTITION BY nse_symbol ORDER BY Date ROWS BETWEEN 251 PRECEDING AND CURRENT ROW) AS high_52w, avg(Volume) OVER (PARTITION BY nse_symbol ORDER BY Date ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS vol_ma_5, avg(Volume) OVER (PARTITION BY nse_symbol ORDER BY Date ROWS BETWEEN 49 PRECEDING AND CURRENT ROW) AS vol_ma_50 FROM ticker_prices), tech_states AS (SELECT *, ((("Close" - close_1m) / "nullif"(close_1m, 0)) * 100) AS return_1m, ((("Close" - close_3m) / "nullif"(close_3m, 0)) * 100) AS return_3m, ((4.0 * std_20) / "nullif"(ma_20, 0)) AS bb_width, ((("Close" - high_52w) / "nullif"(high_52w, 0)) * 100) AS pct_from_52w, (vol_ma_5 / "nullif"(vol_ma_50, 0)) AS volume_ratio, ((("Close" - ma_50) / "nullif"(ma_50, 0)) * 100) AS dist_from_ma50 FROM daily_ind), tech_latest AS (SELECT *, min(bb_width) OVER (PARTITION BY Ticker ORDER BY Date ROWS BETWEEN 62 PRECEDING AND CURRENT ROW) AS min_bb_63d FROM tech_states QUALIFY (row_number() OVER (PARTITION BY Ticker ORDER BY Date DESC) = 1))SELECT c.ticker, c.company_name, c.sector, c.market_cap, c.stock_p_e, c.roce, c.roe, c.book_value, c.current_price, sp.sector_median_pe, q.sales_q0, q.sales_q1, q.sales_q2, q.sales_q3, q.opm_q0, q.opm_q1, q.profit_q0, q.profit_q1, q.profit_q2, q.profit_q3, q.eps_q0, q.eps_q1, pl.profit_now, pl.sales_now, pl.interest, py.profit_3y, py.sales_3y, cf.cfo, cf.fcf, bs.debt, bs.reserves, bs.equity_capital, sh.promoter, sh.fii, sh.dii, sp2.promoter_prev, sp2.fii_prev, sp2.dii_prev, t."Close" AS price, t.return_1m, t.return_3m, t.bb_width, t.min_bb_63d, t.pct_from_52w, t.volume_ratio, t.dist_from_ma50 FROM company AS c INNER JOIN sector_pe AS sp ON ((c.sector = sp.sector)) INNER JOIN tech_latest AS t ON ((c.ticker = t.Ticker)) LEFT JOIN qr_pivot AS q ON ((c.ticker = q.ticker)) LEFT JOIN pl_latest AS pl ON ((c.ticker = pl.ticker)) LEFT JOIN pl_3y AS py ON ((c.ticker = py.ticker)) LEFT JOIN cf_latest AS cf ON ((c.ticker = cf.ticker)) LEFT JOIN bs_latest AS bs ON ((c.ticker = bs.ticker)) LEFT JOIN sh_latest AS sh ON ((c.ticker = sh.ticker)) LEFT JOIN sh_prev AS sp2 ON ((c.ticker = sp2.ticker));
+-- Columns:
+--   ticker VARCHAR | 335 distinct | samples: 'AUROPHARMA', 'BAJAJHLDNG', 'CONCOR'
+--   company_name VARCHAR | 335 distinct | samples: 'Cyient Ltd', 'Dr Reddys Laboratories Ltd', 'Gland Pharma Ltd'
+--   sector VARCHAR | 21 distinct | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Forest Materials', 'Healthcare', 'Information Technology', 'Media, Entertainment & Publication', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication', 'Textiles')
+--   market_cap DOUBLE | 335 distinct | min=1257, max=1762680 | samples: 15764, 7081, 110130
+--   stock_p_e DOUBLE | 272 distinct | min=5.19, max=2238 | nulls=12 | samples: 15.2, 34.1, 35.5
+--   roce DOUBLE | 259 distinct | min=-32.3, max=157 | samples: 5.61, 9.95, 8.17
+--   roe DOUBLE | 253 distinct | min=-108, max=206 | nulls=1 | samples: 9.63, 14, 25.5
+--   book_value DOUBLE | 286 distinct | min=-5.85, max=48223 | samples: 772, 290, 80.8
+--   current_price DOUBLE | 317 distinct | min=21.8, max=133000 | samples: 8712, 454, 2268
+--   sector_median_pe DOUBLE | 20 distinct | min=13.6, max=140 | ENUM(13.6, 21.3, 22.2, 25.9, 26.1, 31.75, 33.6, 34.65, 34.8, 37.5, 38.4, 45.1, 49.95, 50.2, 50.7, 51.2, 57.9, 64.9, 71.9, 140)
+--   sales_q0 DOUBLE | 297 distinct | min=-0, max=262435 | nulls=32 | samples: 1471, 239145, 587
+--   sales_q1 DOUBLE | 293 distinct | min=-0, max=276206 | nulls=32 | samples: 2270, 737, 6648
+--   sales_q2 DOUBLE | 298 distinct | min=-0, max=235467 | nulls=32 | samples: 1381, 235467, 7122
+--   sales_q3 DOUBLE | 297 distinct | min=-0, max=240690 | nulls=32 | samples: 1261, 1549, 8525
+--   opm_q0 DOUBLE | 98 distinct | min=-2969, max=96 | nulls=33 | samples: 25, 10, 26
+--   opm_q1 DOUBLE | 99 distinct | min=-18605, max=96 | nulls=33 | samples: 12, 8, 23
+--   profit_q0 DOUBLE | 293 distinct | min=-11526, max=21121 | samples: 0.52, 1488, 94
+--   profit_q1 DOUBLE | 292 distinct | min=-2662, max=23420 | samples: 382, 2, 385
+--   profit_q2 DOUBLE | 285 distinct | min=-900, max=21028 | samples: 13, 66, 46
+--   profit_q3 DOUBLE | 289 distinct | min=-3591, max=20160 | samples: 105.72, 10053, 144
+--   eps_q0 DOUBLE | 306 distinct | min=-54.17, max=1118.51 | samples: -1.01, 39.6, 3.32
+--   eps_q1 DOUBLE | 313 distinct | min=-68.86, max=1604.4 | samples: 4.76, 3.01, 11.83
+--   profit_now DOUBLE | 328 distinct | min=-5045, max=81993 | samples: 51, 2988, 230
+--   sales_now DOUBLE | 303 distinct | min=0, max=991507 | nulls=32 | samples: 3553, 5598, 1385
+--   interest DOUBLE | 207 distinct | min=0, max=313657 | samples: 131, 51, 34
+--   profit_3y DOUBLE | 316 distinct | min=-1888, max=61077 | nulls=1 | samples: 11674, 554, 164
+--   sales_3y DOUBLE | 298 distinct | min=3, max=842708 | nulls=33 | samples: 130573, 2633, 3159
+--   cfo DOUBLE | 326 distinct | min=-42324, max=123617 | samples: -3240, -1330, 968
+--   fcf DOUBLE | 320 distinct | min=-42441, max=120903 | samples: -495, -5461, -13290
+--   debt DOUBLE | 289 distinct | min=0, max=731254 | samples: 31481, 127, 363
+--   reserves DOUBLE | 334 distinct | min=-7132, max=561362 | samples: 62650, 43680, 13243
+--   equity_capital DOUBLE | 233 distinct | min=4, max=28826 | samples: 13, 45, 39
+--   promoter DOUBLE | 301 distinct | min=0, max=96.5 | nulls=20 | samples: 51.14, 63.25, 30.54
+--   fii DOUBLE | 316 distinct | min=0.06, max=61.96 | nulls=2 | samples: 3.32, 2.5, 3.97
+--   dii DOUBLE | 323 distinct | min=0.01, max=66.46 | nulls=2 | samples: 21.02, 14.47, 20.34
+--   promoter_prev DOUBLE | 295 distinct | min=0, max=96.5 | nulls=20 | samples: 74.66, 28.02, 77.87
+--   fii_prev DOUBLE | 311 distinct | min=0.06, max=63.33 | nulls=2 | samples: 14.52, 7.29, 6.95
+--   dii_prev DOUBLE | 321 distinct | min=0.01, max=66.11 | nulls=2 | samples: 14.13, 11.9, 3.61
+--   price DOUBLE | 335 distinct | min=18.15999985, max=128082 | samples: 2432.899902, 358, 192.6399994
+--   return_1m DOUBLE | 335 distinct | min=-24.13104806, max=38.42262056 | samples: 7.955403895, 12.14700545, 0.5712129949
+--   return_3m DOUBLE | 335 distinct | min=-62.66892104, max=86.60791975 | samples: -23.8547486, -13.46316218, -2.999997023
+--   bb_width DOUBLE | 335 distinct | min=0.04616940859, max=0.550774837 | samples: 0.1244593496, 0.194513386, 0.2230141786
+--   min_bb_63d DOUBLE | 335 distinct | min=0.0117176029, max=0.16214345 | samples: 0.02974683604, 0.05302255464, 0.06384972858
+--   pct_from_52w DOUBLE | 325 distinct | min=-66.97089369, max=0 | samples: -21.14107244, -27.49996443, -2.686567164
+--   volume_ratio DOUBLE | 335 distinct | min=0.1325220935, max=6.833887527 | samples: 1.910235704, 1.195037451, 1.928593716
+--   dist_from_ma50 DOUBLE | 335 distinct | min=-28.33081614, max=36.86775707 | samples: -5.263811345, 5.577995295, -18.23592414
+-- Sample rows (3):
+--   {ticker: 'AMBUJACEM', company_name: 'Ambuja Cements Ltd', sector: 'Construction Materials', market_cap: 100635, stock_p_e: 26.8, roce: 3.29, roe: 7.7, book_value: 213, current_price: 405, sector_median_pe: 49.95, sales_q0: 6328, sales_q1: 6974, sales_q2: 6351, sales_q3: 5150, opm_q0: 15, opm_q1: 9, profit_q0: 504, profit_q1: 1644, profit_q2: -41, profit_q3: 1388, eps_q0: 2.03, eps_q1: 6.65, profit_now: 3495, sales_now: 24803, interest: 206, profit_3y: 2335, sales_3y: 17919, cfo: 6847, fcf: 2879, debt: 833, reserves: 52064, equity_capital: 494, promoter: 67.33, fii: 5.66, dii: 19.36, promoter_prev: 67.33, fii_prev: 5.63, dii_prev: 19.44, price: 390.2000122, return_1m: 11.19977743, return_3m: -5.383118821, bb_width: 0.1669686609, min_bb_63d: 0.06850873826, pct_from_52w: -31.35554775, volume_ratio: 0.8822334439, dist_from_ma50: 4.665981638}
+--   {ticker: 'BASF', company_name: 'BASF India Ltd', sector: 'Chemicals', market_cap: 15764, stock_p_e: 38.4, roce: 14.5, roe: 10.7, book_value: 919, current_price: 3642, sector_median_pe: 38.4, sales_q0: 4837, sales_q1: 3453, sales_q2: 3877, sales_q3: 3904, opm_q0: 10, opm_q1: 3.2, profit_q0: 362, profit_q1: 64, profit_q2: 105, profit_q3: 101, eps_q0: 83.64, eps_q1: 14.69, profit_now: 632, sales_now: 16071, interest: 20, profit_3y: 563, sales_3y: 13767, cfo: -101, fcf: -292, debt: 132, reserves: 3934, equity_capital: 43, promoter: 73.33, fii: 5.16, dii: 5.95, promoter_prev: 73.33, fii_prev: 5.21, dii_prev: 6.29, price: 2921.899902, return_1m: -13.98840722, return_3m: -29.3236959, bb_width: 0.177991548, min_bb_63d: 0.09117486386, pct_from_52w: -34.95435539, volume_ratio: 1.149426488, dist_from_ma50: -13.21773351}
+--   {ticker: 'BEML', company_name: 'BEML Ltd', sector: 'Capital Goods', market_cap: 17319, stock_p_e: 94, roce: 7.76, roe: 5.12, book_value: 349, current_price: 2079, sector_median_pe: 50.2, sales_q0: 820, sales_q1: 1794, sales_q2: 1083, sales_q3: 839, opm_q0: 0.3, opm_q1: 15, profit_q0: -27, profit_q1: 179, profit_q2: -23, profit_q3: 55, eps_q0: -3.27, eps_q1: 21.53, profit_now: 184, sales_now: 4536, interest: 49, profit_3y: 283, sales_3y: 4054, cfo: 126, fcf: -250, debt: 309, reserves: 2867, equity_capital: 42, promoter: 54.03, fii: 5.48, dii: 19.4, promoter_prev: 54.03, fii_prev: 5.59, dii_prev: 18.71, price: 2061.899902, return_1m: 3.42595945, return_3m: 10.65088943, bb_width: 0.1697632959, min_bb_63d: 0.1010583182, pct_from_52w: -2.992241715, volume_ratio: 2.781869507, dist_from_ma50: 2.816603975}
+
+-- ===== VIEW general_info — 385 rows =====
+CREATE VIEW general_info AS SELECT ticker, bse_code, nse_symbol, company_name, about, broad_sector, sector, broad_industry, industry, market_cap, current_price, high_low, stock_p_e, book_value, dividend_yield, roce, roe, face_value FROM "data/fundamental_clean/general_info.parquet" QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY current_price DESC) = 1);
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   bse_code BIGINT | 379 distinct | min=500002, max=590024 | nulls=6 | samples: 532268, 500043, 532670
+--   nse_symbol VARCHAR | 383 distinct | nulls=1 | samples: '360ONE', 'ALKEM', 'ANGELONE'
+--   company_name VARCHAR | 384 distinct | nulls=1 | samples: 'J B Chemicals & Pharmaceuticals Ltd', 'City Union Bank Ltd', 'Emami Ltd'
+--   about VARCHAR | 384 distinct | nulls=1 | samples: 'Aster DM Healthcare Limited is one of t…', 'Birla corporation It is a company of M.…', 'IDBI Bank is engaged in the business of…'
+--   broad_sector VARCHAR | 12 distinct | nulls=1 | ENUM('Commodities', 'Consumer Discretionary', 'Diversified', 'Energy', 'Fast Moving Consumer Goods', 'Financial Services', 'Healthcare', 'Industrials', 'Information Technology', 'Services', 'Telecommunication', 'Utilities')
+--   sector VARCHAR | 22 distinct | nulls=1 | ENUM('Automobile and Auto Components', 'Capital Goods', 'Chemicals', 'Construction', 'Construction Materials', 'Consumer Durables', 'Consumer Services', 'Diversified', 'Fast Moving Consumer Goods', 'Financial Services', 'Forest Materials', 'Healthcare', 'Information Technology', 'Media, Entertainment & Publication', 'Metals & Mining', 'Oil, Gas & Consumable Fuels', 'Power', 'Realty', 'Services', 'Telecommunication', 'Textiles', 'Utilities')
+--   broad_industry VARCHAR | 52 distinct | nulls=1 | samples: 'Banks', 'Petroleum Products', 'Industrial Manufacturing'
+--   industry VARCHAR | 122 distinct | nulls=1 | samples: 'Port & Port services', 'Lubricants', 'Railway Wagons'
+--   market_cap DOUBLE | 377 distinct | min=104, max=1762680 | nulls=8 | samples: 38979, 59064, 6153
+--   current_price DOUBLE | 356 distinct | min=21.8, max=133000 | nulls=8 | samples: 17704, 434, 2327
+--   high_low DOUBLE | 355 distinct | min=33.5, max=163600 | nulls=8 | samples: 376, 118, 257
+--   stock_p_e DOUBLE | 295 distinct | min=5.19, max=2238 | nulls=22 | samples: 28.1, 59.7, 109
+--   book_value DOUBLE | 318 distinct | min=-5.85, max=48223 | nulls=10 | samples: 187, 131, 155
+--   dividend_yield DOUBLE | 182 distinct | min=0, max=12.6 | nulls=8 | samples: 0, 1.15, 1.27
+--   roce DOUBLE | 278 distinct | min=-32.3, max=157 | nulls=9 | samples: 8.12, 6.51, 27.2
+--   roe DOUBLE | 274 distinct | min=-108, max=206 | nulls=10 | samples: 13.8, 45.9, 16.2
+--   face_value DOUBLE | 6 distinct | min=1, max=323 | nulls=8 | ENUM(1, 2, 4, 5, 10, 323)
+-- Sample rows (3):
+--   {ticker: '360ONE', bse_code: 542772, nse_symbol: '360ONE', company_name: '360 ONE WAM Ltd', about: 'IIFL Wealth Management Limited, founded…', broad_sector: 'Financial Services', sector: 'Financial Services', broad_industry: 'Capital Markets', industry: 'Stockbroking & Allied', market_cap: 47011, current_price: 1153, high_low: 1236, stock_p_e: 128, book_value: 183, dividend_yield: 1.05, roce: 6.89, roe: 6.09, face_value: 1}
+--   {ticker: '3BBLACKBIO', bse_code: 532067, nse_symbol: '3BBLACKBIO', company_name: '3B Blackbio DX Ltd', about: 'Incorporated in 2011, 3B BlackBio Dx Lt…', broad_sector: 'Healthcare', sector: 'Healthcare', broad_industry: 'Healthcare Services', industry: 'Healthcare Service Provider', market_cap: 1257, current_price: 1465, high_low: 1750, stock_p_e: 24.7, book_value: 372, dividend_yield: 0.27, roce: 22.4, roe: 16.7, face_value: 10}
+--   {ticker: '3MINDIA', bse_code: 523395, nse_symbol: '3MINDIA', company_name: '3M India Ltd', about: '3M India is a subsidiary of 3M Company,…', broad_sector: 'Diversified', sector: 'Diversified', broad_industry: 'Diversified', industry: 'Diversified', market_cap: 38979, current_price: 34587, high_low: 38300, stock_p_e: 71.9, book_value: 1570, dividend_yield: 0.47, roce: 50, roe: 30, face_value: 10}
+
+-- ===== VIEW general_info_raw =====
+CREATE VIEW general_info_raw AS SELECT * FROM "data/fundamental/*/general_info.parquet";
+-- (stats unavailable: Invalid Input Error: Failed to read file "data/fundamental/530643/general_info.parquet": schema mismatch in glob: column "last_updated" was read from )
+
+-- ===== VIEW profit_loss — 56,484 rows =====
+CREATE VIEW profit_loss AS SELECT ticker, metric, dt, val FROM "data/fundamental_clean/profit_loss.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: '530643', 'ABSLAMC', 'ADANIENSOL'
+--   metric VARCHAR | 15 distinct | ENUM('Depreciation', 'Dividend Payout %', 'EPS in Rs', 'Expenses', 'Financing Margin %', 'Financing Profit', 'Interest', 'Net Profit', 'OPM %', 'Operating Profit', 'Other Income', 'Profit before tax', 'Revenue', 'Sales', 'Tax %')
+--   dt TIMESTAMP | 68 distinct | min=2002-03-01T00:00:00, max=2026-10-14T00:00:00 | samples: 2017-03-01T00:00:00, 2019-03-01T00:00:00, 2020-03-01T00:00:00
+--   val DOUBLE | 13,406 distinct | min=-159375, max=991507 | nulls=783 | samples: 405, 748, 576
+-- Sample rows (3):
+--   {ticker: '360ONE', metric: 'Sales', dt: 2015-03-01T00:00:00, val: 370}
+--   {ticker: '360ONE', metric: 'Sales', dt: 2016-03-01T00:00:00, val: 405}
+--   {ticker: '360ONE', metric: 'Sales', dt: 2017-03-01T00:00:00, val: 444}
+
+-- ===== VIEW profit_loss_raw — 56,484 rows =====
+CREATE VIEW profit_loss_raw AS SELECT * FROM "data/fundamental/*/profit_loss.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: 'AIAENG', 'ANGELONE', 'BHARATFORG'
+--   period VARCHAR | 80 distinct | samples: 'Mar 2016', 'Mar 2017', 'Mar 2024'
+--   metric VARCHAR | 15 distinct | ENUM('Depreciation', 'Dividend Payout %', 'EPS in Rs', 'Expenses', 'Financing Margin %', 'Financing Profit', 'Interest', 'Net Profit', 'OPM %', 'Operating Profit', 'Other Income', 'Profit before tax', 'Revenue', 'Sales', 'Tax %')
+--   value VARCHAR | 13,848 distinct | samples: '21', '0', '0.59'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Mar 2015', metric: 'Sales', value: '370'}
+--   {ticker: '360ONE', period: 'Mar 2016', metric: 'Sales', value: '405'}
+--   {ticker: '360ONE', period: 'Mar 2017', metric: 'Sales', value: '444'}
+
+-- ===== VIEW pros — 1,668 rows =====
+CREATE VIEW pros AS SELECT ticker, item FROM "data/fundamental_clean/pros.parquet";
+-- Columns:
+--   ticker VARCHAR | 361 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   item VARCHAR | 956 distinct | samples: 'Company is almost debt free.', 'Company has a good return on equity (RO…', 'Company has delivered good profit growt…'
+-- Sample rows (3):
+--   {ticker: '360ONE', item: 'Company is expected to give good quarter'}
+--   {ticker: '360ONE', item: 'Company has delivered good profit growt…'}
+--   {ticker: '360ONE', item: 'Company has been maintaining a healthy …'}
+
+-- ===== VIEW pros_raw — 1,668 rows =====
+CREATE VIEW pros_raw AS SELECT * FROM "data/fundamental/*/pros.parquet";
+-- Columns:
+--   ticker VARCHAR | 361 distinct | samples: 'ADANIGREEN', 'ASHOKLEY', 'AUROPHARMA'
+--   item VARCHAR | 956 distinct | samples: 'Company is almost debt free.', 'Company has been maintaining a healthy …', 'Company''s working capital requirements …'
+-- Sample rows (3):
+--   {ticker: '360ONE', item: 'Company is expected to give good quarter'}
+--   {ticker: '360ONE', item: 'Company has delivered good profit growt…'}
+--   {ticker: '360ONE', item: 'Company has been maintaining a healthy …'}
+
+-- ===== VIEW quarterly_results — 58,905 rows =====
+CREATE VIEW quarterly_results AS SELECT ticker, metric, dt, val FROM "data/fundamental_clean/quarterly_results.parquet";
+-- Columns:
+--   ticker VARCHAR | 376 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   metric VARCHAR | 16 distinct | ENUM('Depreciation', 'EPS in Rs', 'Expenses', 'Financing Margin %', 'Financing Profit', 'Gross NPA %', 'Interest', 'Net NPA %', 'Net Profit', 'OPM %', 'Operating Profit', 'Other Income', 'Profit before tax', 'Revenue', 'Sales', 'Tax %')
+--   dt TIMESTAMP | 33 distinct | min=2005-12-01T00:00:00, max=2026-09-01T00:00:00 | ENUM(2005-12-01T00:00:00, 2006-12-01T00:00:00, 2019-03-01T00:00:00, 2019-06-01T00:00:00, 2019-09-01T00:00:00, 2019-12-01T00:00:00, 2020-03-01T00:00:00, 2020-06-01T00:00:00, 2020-09-01T00:00:00, 2020-12-01T00:00:00, 2021-03-01T00:00:00, 2021-06-01T00:00:00, 2021-09-01T00:00:00, 2021-12-01T00:00:00, 2022-03-01T00:00:00, 2022-06-01T00:00:00, 2022-09-01T00:00:00, 2022-12-01T00:00:00, 2023-03-01T00:00:00, 2023-06-01T00:00:00, 2023-09-01T00:00:00, 2023-12-01T00:00:00, 2024-03-01T00:00:00, 2024-06-01T00:00:00, 2024-09-01T00:00:00, 2024-12-01T00:00:00, 2025-03-01T00:00:00, 2025-06-01T00:00:00, 2025-09-01T00:00:00, 2025-12-01T00:00:00, 2026-03-01T00:00:00, 2026-06-01T00:00:00, 2026-09-01T00:00:00)
+--   val DOUBLE | 10,688 distinct | min=-87373, max=276206 | nulls=188 | samples: 19, -90, 17
+-- Sample rows (3):
+--   {ticker: '360ONE', metric: 'Sales', dt: 2023-03-01T00:00:00, val: 10}
+--   {ticker: '360ONE', metric: 'Expenses', dt: 2023-03-01T00:00:00, val: 19}
+--   {ticker: '360ONE', metric: 'Operating Profit', dt: 2023-03-01T00:00:00, val: -9}
+
+-- ===== VIEW quarterly_results_raw — 58,905 rows =====
+CREATE VIEW quarterly_results_raw AS SELECT * FROM "data/fundamental/*/quarterly_results.parquet";
+-- Columns:
+--   ticker VARCHAR | 376 distinct | samples: 'ABB', 'ADANIGREEN', 'ARVINDFASN'
+--   period VARCHAR | 33 distinct | ENUM('Dec 2005', 'Dec 2006', 'Dec 2019', 'Dec 2020', 'Dec 2021', 'Dec 2022', 'Dec 2023', 'Dec 2024', 'Dec 2025', 'Jun 2019', 'Jun 2020', 'Jun 2021', 'Jun 2022', 'Jun 2023', 'Jun 2024', 'Jun 2025', 'Jun 2026', 'Mar 2019', 'Mar 2020', 'Mar 2021', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025', 'Mar 2026', 'Sep 2019', 'Sep 2020', 'Sep 2021', 'Sep 2022', 'Sep 2023', 'Sep 2024', 'Sep 2025', 'Sep 2026')
+--   metric VARCHAR | 16 distinct | ENUM('Depreciation', 'EPS in Rs', 'Expenses', 'Financing Margin %', 'Financing Profit', 'Gross NPA %', 'Interest', 'Net NPA %', 'Net Profit', 'OPM %', 'Operating Profit', 'Other Income', 'Profit before tax', 'Revenue', 'Sales', 'Tax %')
+--   value VARCHAR | 11,555 distinct | samples: '7.10', '18.61', '2.83'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Mar 2023', metric: 'Sales', value: '10'}
+--   {ticker: '360ONE', period: 'Mar 2023', metric: 'Expenses', value: '19'}
+--   {ticker: '360ONE', period: 'Mar 2023', metric: 'Operating Profit', value: '-9'}
+
+-- ===== VIEW ratios — 23,984 rows =====
+CREATE VIEW ratios AS SELECT ticker, metric, dt, val FROM "data/fundamental_clean/ratios.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   metric VARCHAR | 7 distinct | ENUM('Cash Conversion Cycle', 'Days Payable', 'Debtor Days', 'Inventory Days', 'ROCE %', 'ROE %', 'Working Capital Days')
+--   dt TIMESTAMP | 67 distinct | min=2002-03-01T00:00:00, max=2026-06-01T00:00:00 | samples: 2017-03-01T00:00:00, 2019-03-01T00:00:00, 2020-03-01T00:00:00
+--   val DOUBLE | 1,260 distinct | min=-121728, max=109372 | nulls=2,343 | samples: 628, 16, -212
+-- Sample rows (3):
+--   {ticker: '360ONE', metric: 'Debtor Days', dt: 2015-03-01T00:00:00, val: 31}
+--   {ticker: '360ONE', metric: 'Debtor Days', dt: 2016-03-01T00:00:00, val: 49}
+--   {ticker: '360ONE', metric: 'Debtor Days', dt: 2017-03-01T00:00:00, val: 162}
+
+-- ===== VIEW ratios_raw — 23,984 rows =====
+CREATE VIEW ratios_raw AS SELECT * FROM "data/fundamental/*/ratios.parquet";
+-- Columns:
+--   ticker VARCHAR | 377 distinct | samples: 'AMBUJACEM', 'ASTRAMICRO', 'BHARATFORG'
+--   period VARCHAR | 67 distinct | samples: 'Mar 2018', 'Mar 2022', 'Mar 2023'
+--   metric VARCHAR | 7 distinct | ENUM('Cash Conversion Cycle', 'Days Payable', 'Debtor Days', 'Inventory Days', 'ROCE %', 'ROE %', 'Working Capital Days')
+--   value VARCHAR | 1,426 distinct | samples: '189', '271', '332'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Mar 2015', metric: 'Debtor Days', value: '31'}
+--   {ticker: '360ONE', period: 'Mar 2016', metric: 'Debtor Days', value: '49'}
+--   {ticker: '360ONE', period: 'Mar 2017', metric: 'Debtor Days', value: '162'}
+
+-- ===== VIEW return_on_equity — 1,600 rows =====
+CREATE VIEW return_on_equity AS SELECT ticker, horizon, "years", val FROM "data/fundamental_clean/return_on_equity.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   horizon VARCHAR | 4 distinct | ENUM('10 Years', '3 Years', '5 Years', 'Last Year')
+--   years INTEGER | 3 distinct | min=3, max=10 | nulls=400 | ENUM(3, 5, 10)
+--   val DOUBLE | 77 distinct | min=-92, max=103 | nulls=266 | samples: 14, 30, 22
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', years: 10, val: NULL}
+--   {ticker: '360ONE', horizon: '5 Years', years: 5, val: 19}
+--   {ticker: '360ONE', horizon: '3 Years', years: 3, val: 18}
+
+-- ===== VIEW return_on_equity_raw — 1,600 rows =====
+CREATE VIEW return_on_equity_raw AS SELECT * FROM "data/fundamental/*/return_on_equity.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: '360ONE', 'ACUTAAS', 'AIAENG'
+--   horizon VARCHAR | 4 distinct | ENUM('10 Years', '3 Years', '5 Years', 'Last Year')
+--   value VARCHAR | 78 distinct | samples: '25%', '45%', '23%'
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', value: '%'}
+--   {ticker: '360ONE', horizon: '5 Years', value: '19%'}
+--   {ticker: '360ONE', horizon: '3 Years', value: '18%'}
+
+-- ===== VIEW shareholding_quarterly — 27,094 rows =====
+CREATE VIEW shareholding_quarterly AS SELECT ticker, category, dt, val FROM "data/fundamental_clean/shareholding_quarterly.parquet";
+-- Columns:
+--   ticker VARCHAR | 383 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   category VARCHAR | 7 distinct | ENUM('DIIs', 'FIIs', 'Government', 'No. of Shareholders', 'Others', 'Promoters', 'Public')
+--   dt TIMESTAMP | 24 distinct | min=2022-03-01T00:00:00, max=2026-09-01T00:00:00 | ENUM(2022-03-01T00:00:00, 2022-04-01T00:00:00, 2022-09-01T00:00:00, 2023-03-01T00:00:00, 2023-06-01T00:00:00, 2023-09-01T00:00:00, 2023-11-01T00:00:00, 2023-12-01T00:00:00, 2024-03-01T00:00:00, 2024-05-01T00:00:00, 2024-06-01T00:00:00, 2024-09-01T00:00:00, 2024-12-01T00:00:00, 2025-03-01T00:00:00, 2025-06-01T00:00:00, 2025-09-01T00:00:00, 2025-12-01T00:00:00, 2026-03-01T00:00:00, 2026-04-01T00:00:00, 2026-05-01T00:00:00, 2026-06-01T00:00:00, 2026-07-01T00:00:00, 2026-08-01T00:00:00, 2026-09-01T00:00:00)
+--   val DOUBLE | 9,944 distinct | min=0, max=6159779 | samples: 63.93, 0, 35921
+-- Sample rows (3):
+--   {ticker: '360ONE', category: 'Promoters', dt: 2023-06-01T00:00:00, val: 21.46}
+--   {ticker: '360ONE', category: 'FIIs', dt: 2023-06-01T00:00:00, val: 63.93}
+--   {ticker: '360ONE', category: 'DIIs', dt: 2023-06-01T00:00:00, val: 3.79}
+
+-- ===== VIEW shareholding_quarterly_metric — 27,094 rows =====
+CREATE VIEW shareholding_quarterly_metric AS SELECT ticker, category AS metric, dt, val FROM shareholding_quarterly;
+-- Columns:
+--   ticker VARCHAR | 383 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   metric VARCHAR | 7 distinct | ENUM('DIIs', 'FIIs', 'Government', 'No. of Shareholders', 'Others', 'Promoters', 'Public')
+--   dt TIMESTAMP | 24 distinct | min=2022-03-01T00:00:00, max=2026-09-01T00:00:00 | ENUM(2022-03-01T00:00:00, 2022-04-01T00:00:00, 2022-09-01T00:00:00, 2023-03-01T00:00:00, 2023-06-01T00:00:00, 2023-09-01T00:00:00, 2023-11-01T00:00:00, 2023-12-01T00:00:00, 2024-03-01T00:00:00, 2024-05-01T00:00:00, 2024-06-01T00:00:00, 2024-09-01T00:00:00, 2024-12-01T00:00:00, 2025-03-01T00:00:00, 2025-06-01T00:00:00, 2025-09-01T00:00:00, 2025-12-01T00:00:00, 2026-03-01T00:00:00, 2026-04-01T00:00:00, 2026-05-01T00:00:00, 2026-06-01T00:00:00, 2026-07-01T00:00:00, 2026-08-01T00:00:00, 2026-09-01T00:00:00)
+--   val DOUBLE | 9,944 distinct | min=0, max=6159779 | samples: 63.93, 0, 35921
+-- Sample rows (3):
+--   {ticker: '360ONE', metric: 'Promoters', dt: 2023-06-01T00:00:00, val: 21.46}
+--   {ticker: '360ONE', metric: 'FIIs', dt: 2023-06-01T00:00:00, val: 63.93}
+--   {ticker: '360ONE', metric: 'DIIs', dt: 2023-06-01T00:00:00, val: 3.79}
+
+-- ===== VIEW shareholding_quarterly_raw — 27,094 rows =====
+CREATE VIEW shareholding_quarterly_raw AS SELECT * FROM "data/fundamental/*/shareholding_quarterly.parquet";
+-- Columns:
+--   ticker VARCHAR | 383 distinct | samples: 'ABB', 'ADANIENT', 'ASHOKLEY'
+--   period VARCHAR | 24 distinct | ENUM('Apr 2022', 'Apr 2026', 'Aug 2026', 'Dec 2023', 'Dec 2024', 'Dec 2025', 'Jul 2026', 'Jun 2023', 'Jun 2024', 'Jun 2025', 'Jun 2026', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025', 'Mar 2026', 'May 2024', 'May 2026', 'Nov 2023', 'Sep 2022', 'Sep 2023', 'Sep 2024', 'Sep 2025', 'Sep 2026')
+--   category VARCHAR | 7 distinct | ENUM('DIIs', 'FIIs', 'Government', 'No. of Shareholders', 'Others', 'Promoters', 'Public')
+--   value VARCHAR | 9,945 distinct | samples: '40.95%', '2.97%', '3.27%'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Jun 2023', category: 'Promoters', value: '21.46%'}
+--   {ticker: '360ONE', period: 'Jun 2023', category: 'FIIs', value: '63.93%'}
+--   {ticker: '360ONE', period: 'Jun 2023', category: 'DIIs', value: '3.79%'}
+
+-- ===== VIEW shareholding_yearly — 21,733 rows =====
+CREATE VIEW shareholding_yearly AS SELECT ticker, category, dt, val FROM "data/fundamental_clean/shareholding_yearly.parquet";
+-- Columns:
+--   ticker VARCHAR | 383 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   category VARCHAR | 7 distinct | ENUM('DIIs', 'FIIs', 'Government', 'No. of Shareholders', 'Others', 'Promoters', 'Public')
+--   dt TIMESTAMP | 20 distinct | min=2001-04-01T00:00:00, max=2026-09-01T00:00:00 | ENUM(2001-04-01T00:00:00, 2016-01-01T00:00:00, 2016-02-01T00:00:00, 2016-03-01T00:00:00, 2017-03-01T00:00:00, 2018-03-01T00:00:00, 2019-03-01T00:00:00, 2020-03-01T00:00:00, 2021-03-01T00:00:00, 2022-03-01T00:00:00, 2023-03-01T00:00:00, 2024-03-01T00:00:00, 2025-03-01T00:00:00, 2026-03-01T00:00:00, 2026-04-01T00:00:00, 2026-05-01T00:00:00, 2026-06-01T00:00:00, 2026-07-01T00:00:00, 2026-08-01T00:00:00, 2026-09-01T00:00:00)
+--   val DOUBLE | 8,905 distinct | min=0, max=6025709 | samples: 17.76, 6.2, 20.06
+-- Sample rows (3):
+--   {ticker: '360ONE', category: 'Promoters', dt: 2020-03-01T00:00:00, val: 22.93}
+--   {ticker: '360ONE', category: 'Promoters', dt: 2021-03-01T00:00:00, val: 22.92}
+--   {ticker: '360ONE', category: 'Promoters', dt: 2022-03-01T00:00:00, val: 23.14}
+
+-- ===== VIEW shareholding_yearly_raw — 21,733 rows =====
+CREATE VIEW shareholding_yearly_raw AS SELECT * FROM "data/fundamental/*/shareholding_yearly.parquet";
+-- Columns:
+--   ticker VARCHAR | 383 distinct | samples: 'ADANIGREEN', 'AUROPHARMA', 'BLUEJET'
+--   period VARCHAR | 20 distinct | ENUM('Apr 2001', 'Apr 2026', 'Aug 2026', 'Feb 2016', 'Jan 2016', 'Jul 2026', 'Jun 2026', 'Mar 2016', 'Mar 2017', 'Mar 2018', 'Mar 2019', 'Mar 2020', 'Mar 2021', 'Mar 2022', 'Mar 2023', 'Mar 2024', 'Mar 2025', 'Mar 2026', 'May 2026', 'Sep 2026')
+--   category VARCHAR | 7 distinct | ENUM('DIIs', 'FIIs', 'Government', 'No. of Shareholders', 'Others', 'Promoters', 'Public')
+--   value VARCHAR | 8,907 distinct | samples: '69.99%', '2.05%', '0.43%'
+-- Sample rows (3):
+--   {ticker: '360ONE', period: 'Mar 2020', category: 'Promoters', value: '22.93%'}
+--   {ticker: '360ONE', period: 'Mar 2021', category: 'Promoters', value: '22.92%'}
+--   {ticker: '360ONE', period: 'Mar 2022', category: 'Promoters', value: '23.14%'}
+
+-- ===== VIEW stock_price_cagr — 1,600 rows =====
+CREATE VIEW stock_price_cagr AS SELECT ticker, horizon, "years", val FROM "data/fundamental_clean/stock_price_cagr.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: '3BBLACKBIO', 'ABB', 'ACCELYA'
+--   horizon VARCHAR | 4 distinct | ENUM('1 Year', '10 Years', '3 Years', '5 Years')
+--   years INTEGER | 3 distinct | min=3, max=10 | nulls=400 | ENUM(3, 5, 10)
+--   val DOUBLE | 158 distinct | min=-49, max=321 | nulls=286 | samples: 40, 60, 24
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', years: 10, val: NULL}
+--   {ticker: '360ONE', horizon: '5 Years', years: 5, val: 31}
+--   {ticker: '360ONE', horizon: '3 Years', years: 3, val: 40}
+
+-- ===== VIEW stock_price_cagr_raw — 1,600 rows =====
+CREATE VIEW stock_price_cagr_raw AS SELECT * FROM "data/fundamental/*/stock_price_cagr.parquet";
+-- Columns:
+--   ticker VARCHAR | 388 distinct | samples: 'ALKEM', 'BAJAJ-AUTO', 'BALRAMCHIN'
+--   horizon VARCHAR | 4 distinct | ENUM('1 Year', '10 Years', '3 Years', '5 Years')
+--   value VARCHAR | 159 distinct | samples: '10%', '20%', '15%'
+-- Sample rows (3):
+--   {ticker: '360ONE', horizon: '10 Years', value: '%'}
+--   {ticker: '360ONE', horizon: '5 Years', value: '31%'}
+--   {ticker: '360ONE', horizon: '3 Years', value: '40%'}
+
+-- ===== VIEW ticker_momentum — 631,165 rows =====
+CREATE VIEW ticker_momentum AS SELECT date, "close", "1Y", "6M", "3M", "2M", "1M", "14D", "7D", "5D", "4D", "3D", "2D", "1D", sma20_dist, sma50_dist, sma200_dist, sma50, sma200, trend_stack, vol_ratio, volume_trend, trend_consistency, dist_52w_high, volatility, ulcer, drawdown, rsi, breakout_strength, gap, acceleration, volume_price_signal, kalman_dist, vol_compression, macd, macd_bullish, atr, atr_expansion, adx, strong_trend, bb_width, bb_squeeze, vwap_dist, momentum_quality, days_in_trend, momentum_decay, "year", sma20_low, sma20_mid, sma20_high, sma50_pos, sma200_pos, vol_low, vol_mid, vol_high, volume_trend_up, volatility_low, volatility_mid, volatility_high, "compression", rsi_low, rsi_mid, rsi_high, ulcer_low, ulcer_high, drawdown_shallow, trend_consistent, breakout, kalman_positive, gap_up, near_52w_high, at_52w_high, trend_fresh, trend_mature, momentum_slowing, vps_bullish, vps_bearish, momentum_accelerating, momentum_aligned, ticker, split_part(ticker, '.', 1) AS nse_symbol, sector FROM "data/signal_momentum/year=*/ticker_momentum.parquet";
+-- Columns:
+--   date TIMESTAMP_NS | 2,149 distinct | min=2018-03-13T00:00:00, max=2026-11-17T00:00:00 | samples: 2019-01-03T00:00:00, 2019-01-10T00:00:00, 2019-01-14T00:00:00
+--   close DOUBLE | 570,090 distinct | min=0.3355000019, max=162002.0156 | samples: 294.4087219, 313.1257935, 2598.787842
+--   1Y DOUBLE | 630,644 distinct | min=-98.78582802, max=12925.33547 | samples: 110.7560732, 386.8783788, -2.224805471
+--   6M DOUBLE | 630,468 distinct | min=-98.85267767, max=12511.02865 | samples: -46.17340861, -37.98168046, -10.37946895
+--   3M DOUBLE | 630,271 distinct | min=-98.99442508, max=10663.04036 | samples: 9.728107132, -0.3961378268, 0
+--   2M DOUBLE | 630,113 distinct | min=-99.00630869, max=10809.36115 | samples: 13.35293734, -14.45028487, -6.659569664
+--   1M DOUBLE | 629,529 distinct | min=-99.00895048, max=10400.74496 | samples: 9.086495638, -9.208212267, -17.31945909
+--   14D DOUBLE | 629,345 distinct | min=-98.99591487, max=10347.0936 | samples: -24.78401832, 38.36114194, -3.26145456
+--   7D DOUBLE | 628,789 distinct | min=-98.98965566, max=10168.2565 | samples: 2.213225408, -0.5165331398, -2.650194914
+--   5D DOUBLE | 628,348 distinct | min=-98.99211411, max=10093.16504 | samples: 0.7373810262, 15.47189235, 15.80728358
+--   4D DOUBLE | 628,036 distinct | min=-98.99381042, max=10048.58919 | samples: 5.505614709, 0.5885552788, 13.13472937
+--   3D DOUBLE | 627,536 distinct | min=-98.99680054, max=10004.01222 | samples: 8.682871434, 0, 3.373348366
+--   2D DOUBLE | 626,705 distinct | min=-98.99859709, max=9929.806657 | samples: -2.68671972, -1.516854968, -0.4792421306
+--   1D DOUBLE | 623,227 distinct | min=-99.00136922, max=9900.000779 | samples: -0.6815404745, 0.699583582, 0.5518410063
+--   sma20_dist DOUBLE | 631,129 distinct | min=-0.9899679752, max=0.8781487842 | samples: 0.01509786333, -0.0444071305, 0.03580029715
+--   sma50_dist DOUBLE | 631,144 distinct | min=-0.9900326974, max=1.333836286 | samples: -0.1584561212, 0.001360425431, 0.01292715602
+--   sma200_dist DOUBLE | 631,164 distinct | min=-0.9891820222, max=3.024856596 | samples: 0.01539063708, 0.2323624858, 0.6243745553
+--   sma50 DOUBLE | 630,552 distinct | min=2.097200224, max=155551.51 | samples: 81.66139526, 75.76540092, 73.87124123
+--   sma200 DOUBLE | 631,051 distinct | min=2.425461696, max=147441.865 | samples: 88.63797388, 82.1375654, 3295.389292
+--   trend_stack DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_ratio DOUBLE | 622,362 distinct | min=0, max=472.4698716 | samples: 2.152724099, 2.257081638, 0.6466470665
+--   volume_trend DOUBLE | 624,206 distinct | min=0, max=3.917784482 | samples: 0.9371907757, 1.211657576, 0.4331511796
+--   trend_consistency DOUBLE | 21 distinct | min=0, max=1 | ENUM(0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1)
+--   dist_52w_high DOUBLE | 607,193 distinct | min=-0.9902968778, max=0.2994051123 | samples: -0.4993278559, -0.4522462888, -0.5271749592
+--   volatility DOUBLE | 631,047 distinct | min=2.965067926e-05, max=29.73401292 | samples: 0.02317730241, 0.03112713373, 0.007155993612
+--   ulcer DOUBLE | 630,675 distinct | min=0.04587861582, max=76.77664207 | samples: 10.85494576, 7.233339472, 7.220497517
+--   drawdown DOUBLE | 561,625 distinct | min=-0.9902133808, max=0 | samples: -0.3239565057, -0.01697411741, -0.2598601654
+--   rsi DOUBLE | 629,716 distinct | min=0, max=100 | samples: 55.2304001, 53.97046429, 84.44417091
+--   breakout_strength DOUBLE | 620,783 distinct | min=-0.9900611734, max=0.3997858178 | samples: -0.1261544212, -0.007969872226, -0.07056770808
+--   gap DOUBLE | 619,312 distinct | min=-0.9910108352, max=99.14859365 | samples: 0.06109322265, 0.05026735684, 0.1480088714
+--   acceleration DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volume_price_signal DOUBLE | 622,096 distinct | min=-243.8575861, max=472.4698716 | samples: 1.162310153, -0.986175565, 0.6759150511
+--   kalman_dist DOUBLE | 631,165 distinct | min=-0.9889343714, max=0.5988872613 | samples: 0.01307492867, -0.04405316499, 0.008019554394
+--   vol_compression DOUBLE | 631,147 distinct | min=0, max=1.999857917 | samples: 0.428101096, 0.8133482245, 1.672844097
+--   macd DOUBLE | 631,165 distinct | min=-4823.287976, max=6333.024183 | samples: 1.445274865, 0.9274024814, 12.72994436
+--   macd_bullish BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   atr DOUBLE | 618,915 distinct | min=0.00600024632, max=5237.566507 | samples: 8.183158712, 7.852778365, 23.18620858
+--   atr_expansion BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   adx DOUBLE | 631,165 distinct | min=3.86051997, max=100 | samples: 31.53841802, 74.2815675, 17.0075862
+--   strong_trend BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   bb_width DOUBLE | 630,672 distinct | min=0.0007255941234, max=1.80638009 | samples: 0.1965022277, 0.06305580706, 0.0656581885
+--   bb_squeeze BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vwap_dist DOUBLE | 622,399 distinct | min=-0.9867445497, max=inf | samples: -0.08506732603, -0.1232246278, -0.09715415811
+--   momentum_quality DOUBLE | 630,705 distinct | min=-778543.6652, max=1248722.609 | samples: -647.1641808, 396.0858771, -250.3007529
+--   days_in_trend DOUBLE | 1,730 distinct | min=0, max=7.455876687 | samples: 1.386294361, 1.945910149, 2.48490665
+--   momentum_decay DOUBLE | 630,574 distinct | min=-10090.27481, max=10399.36367 | samples: 5.830920063, -7.055827718, 7.911784
+--   year BIGINT | 9 distinct | min=2018, max=2026 | ENUM(2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026)
+--   sma20_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma20_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma20_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma50_pos DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   sma200_pos DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vol_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volume_trend_up DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volatility_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volatility_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   volatility_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   compression DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   rsi_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   rsi_mid DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   rsi_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   ulcer_low DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   ulcer_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   drawdown_shallow DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   trend_consistent DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   breakout DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   kalman_positive DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   gap_up DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   near_52w_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   at_52w_high DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   trend_fresh DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   trend_mature DOUBLE | 1 distinct | min=0, max=0 | ENUM(0)
+--   momentum_slowing DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vps_bullish DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   vps_bearish DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   momentum_accelerating DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   momentum_aligned DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   ticker VARCHAR | 348 distinct | samples: 'BANKBARODA.NS', 'CANBK.NS', 'GILLETTE.NS'
+--   nse_symbol VARCHAR | 347 distinct | samples: 'BLUEDART', 'GESHIP', 'GODREJCP'
+--   sector VARCHAR | 19 distinct | nulls=3,696 | ENUM('Defence_ETF', 'GOLD', 'Index', 'NIFTY_500', 'NIFTY_Auto_Index', 'NIFTY_Bank_Index', 'NIFTY_Commodities', 'NIFTY_Consumption', 'NIFTY_Energy', 'NIFTY_FMCG', 'NIFTY_IT', 'NIFTY_Infrastructure', 'NIFTY_Media', 'NIFTY_Metal', 'NIFTY_PSU_Bank', 'NIFTY_Pharma_Index', 'NIFTY_Realty', 'Realty', 'SILVER')
+-- Sample rows (3):
+--   {date: 2018-07-20T00:00:00, close: 132.0819092, 1Y: 202.5913923, 6M: 1.047701652, 3M: -11.43126564, 2M: -14.85540177, 1M: -0.6747049887, 14D: 1.120747199, 7D: 2.830899211, 5D: -1.514086158, 4D: 4.678163852, 3D: 1.377311613, 2D: 5.031931703, 1D: 1.340601908, sma20_dist: 0.02405458571, sma50_dist: -0.03509127846, sma200_dist: 0.08696084576, sma50: 136.8853926, sma200: 121.514873, trend_stack: 0, vol_ratio: 0.2414490894, volume_trend: 1.159232022, trend_consistency: 0.55, dist_52w_high: -0.2008571095, volatility: 0.0299916864, ulcer: 3.775141413, drawdown: -0.1623239112, rsi: 51.75935212, breakout_strength: -0.01514086158, gap: 0.03260887677, acceleration: 1, volume_price_signal: 0.2414490894, kalman_dist: 0.01130137543, vol_compression: 1.163921071, macd: -1.563714947, macd_bullish: 1, atr: 9.690770397, atr_expansion: 0, adx: 25.59982519, strong_trend: 1, bb_width: 0.04435541533, bb_squeeze: 1, vwap_dist: 0.9704419281, momentum_quality: -22.49639974, days_in_trend: 0, momentum_decay: 0.8393811689, year: 2018, sma20_low: 0, sma20_mid: 1, sma20_high: 0, sma50_pos: 0, sma200_pos: 1, vol_low: 1, vol_mid: 0, vol_high: 0, volume_trend_up: 1, volatility_low: 1, volatility_mid: 0, volatility_high: 0, compression: 0, rsi_low: 0, rsi_mid: 1, rsi_high: 0, ulcer_low: 1, ulcer_high: 0, drawdown_shallow: 0, trend_consistent: 0, breakout: 0, kalman_positive: 1, gap_up: 1, near_52w_high: 0, at_52w_high: 0, trend_fresh: 0, trend_mature: 0, momentum_slowing: 0, vps_bullish: 0, vps_bearish: 0, momentum_accelerating: 1, momentum_aligned: 0, ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', sector: 'NIFTY_Pharma_Index'}
+--   {date: 2018-07-23T00:00:00, close: 129.2485504, 1Y: 211.5432076, 6M: -1.119925943, 3M: -17.31116084, 2M: -12.30374566, 1M: 1.183004179, 14D: 0.3299228826, 7D: -1.048447334, 5D: 2.432657296, 4D: -0.7973866191, 3D: 2.778836286, 2D: -0.8333088454, 1D: -2.145152794, sma20_dist: 0.0004021895452, sma50_dist: -0.0529541883, sma200_dist: 0.06126006784, sma50: 136.4754997, sma200: 121.7878203, trend_stack: 0, vol_ratio: 0.8527185889, volume_trend: 1.099759699, trend_consistency: 0.55, dist_52w_high: -0.2179999455, volatility: 0.03030885247, ulcer: 3.752375806, drawdown: -0.1802933432, rsi: 50.49835413, breakout_strength: -0.0362675949, gap: -0.003217793575, acceleration: 1, volume_price_signal: 0.8527185889, kalman_dist: -0.009413296439, vol_compression: 0.8654083932, macd: -1.498517604, macd_bullish: 1, atr: 9.478268395, atr_expansion: 0, adx: 25.94213761, strong_trend: 1, bb_width: 0.04059735099, bb_squeeze: 1, vwap_dist: 0.9265861479, momentum_quality: 39.0316374, days_in_trend: 0, momentum_decay: -1.249653117, year: 2018, sma20_low: 0, sma20_mid: 1, sma20_high: 0, sma50_pos: 0, sma200_pos: 1, vol_low: 1, vol_mid: 0, vol_high: 0, volume_trend_up: 1, volatility_low: 0, volatility_mid: 1, volatility_high: 0, compression: 1, rsi_low: 0, rsi_mid: 1, rsi_high: 0, ulcer_low: 1, ulcer_high: 0, drawdown_shallow: 0, trend_consistent: 0, breakout: 0, kalman_positive: 0, gap_up: 0, near_52w_high: 0, at_52w_high: 0, trend_fresh: 0, trend_mature: 0, momentum_slowing: 1, vps_bullish: 0, vps_bearish: 0, momentum_accelerating: 1, momentum_aligned: 0, ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', sector: 'NIFTY_Pharma_Index'}
+--   {date: 2018-07-24T00:00:00, close: 131.7985535, 1Y: 225.4383361, 6M: -0.285824484, 3M: -19.03104793, 2M: -5.868476655, 1M: 6.000768478, 14D: 2.196994911, 7D: -1.725368282, 5D: 1.159826565, 4D: 4.806606388, 3D: 1.123195613, 2D: -0.2145302976, 1D: 1.972945185, sma20_dist: 0.01820430905, sma50_dist: -0.03163584824, sma200_dist: 0.08007485914, sma50: 136.1043294, sma200: 122.0272395, trend_stack: 0, vol_ratio: 0.5606609482, volume_trend: 1.196616293, trend_consistency: 0.55, dist_52w_high: -0.2025715131, volatility: 0.03023617013, ulcer: 3.638787779, drawdown: -0.1641209802, rsi: 53.14464481, breakout_strength: -0.01725368282, gap: 0.01936406608, acceleration: 1, volume_price_signal: 0.5606609482, kalman_dist: 0.009157954148, vol_compression: 0.8983735585, macd: -1.226940894, macd_bullish: 1, atr: 9.373703628, atr_expansion: 0, adx: 25.60605608, strong_trend: 1, bb_width: 0.03929304817, bb_squeeze: 1, vwap_dist: 0.9634810601, momentum_quality: 198.4632397, days_in_trend: 0, momentum_decay: 4.840941913, year: 2018, sma20_low: 0, sma20_mid: 1, sma20_high: 0, sma50_pos: 0, sma200_pos: 1, vol_low: 1, vol_mid: 0, vol_high: 0, volume_trend_up: 1, volatility_low: 0, volatility_mid: 1, volatility_high: 0, compression: 1, rsi_low: 0, rsi_mid: 1, rsi_high: 0, ulcer_low: 1, ulcer_high: 0, drawdown_shallow: 0, trend_consistent: 0, breakout: 0, kalman_positive: 1, gap_up: 1, near_52w_high: 0, at_52w_high: 0, trend_fresh: 0, trend_mature: 0, momentum_slowing: 0, vps_bullish: 0, vps_bearish: 0, momentum_accelerating: 1, momentum_aligned: 0, ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', sector: 'NIFTY_Pharma_Index'}
+
+-- ===== VIEW ticker_prices — 790,652 rows =====
+CREATE VIEW ticker_prices AS SELECT Date, "Close", High, Low, Open, Volume, Ticker, split_part(Ticker, '.', 1) AS nse_symbol, "year" FROM "data/ticker/year=*/*.parquet";
+-- Columns:
+--   Date DATE | 2,608 distinct | min=2016-05-06, max=2026-11-17 | samples: 2019-01-01, 2019-01-03, 2019-01-04
+--   Close DOUBLE | 706,516 distinct | min=0.3355000019, max=162002.0156 | samples: 22.36400032, 22.54199982, 16.35648155
+--   High DOUBLE | 742,772 distinct | min=0.3389999866, max=163304.6725 | samples: 15.16452503, 15.14301109, 93.56916526
+--   Low DOUBLE | 742,023 distinct | min=0.300999999, max=159995.6442 | samples: 21.6779995, 22.03000069, 22.31699944
+--   Open DOUBLE | 739,054 distinct | min=0.3019999862, max=161687.5843 | samples: 21.79400063, 21.95899963, 22.0359993
+--   Volume BIGINT | 648,961 distinct | min=0, max=1210999365 | samples: 0, 2016, 7015
+--   Ticker VARCHAR | 356 distinct | samples: '0P0000AF09.BO', '0P0001B9ZU.BO', 'ABB.NS'
+--   nse_symbol VARCHAR | 355 distinct | samples: '0P0001B9ZU', '3BBLACKBIO', 'ABB'
+--   year BIGINT | 11 distinct | min=2016, max=2026 | ENUM(2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026)
+-- Sample rows (3):
+--   {Date: 2016-09-26, Close: 13.99818325, High: 13.99818325, Low: 13.5184066, Open: 13.5184066, Volume: 13119, Ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', year: 2016}
+--   {Date: 2016-09-27, Close: 14.43092346, High: 14.43092346, Low: 14.43092346, Open: 14.43092346, Volume: 3382, Ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', year: 2016}
+--   {Date: 2016-09-28, Close: 14.11107349, High: 14.43092464, Low: 14.11107349, Open: 14.43092464, Volume: 5693, Ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', year: 2016}
+
+-- ===== VIEW ticker_sector_momentum — 631,165 rows =====
+CREATE VIEW ticker_sector_momentum AS SELECT b.date AS s_date, b."close" AS s_close, b."1Y" AS s_1Y, b."6M" AS s_6M, b."3M" AS s_3M, b."2M" AS s_2M, b."1M" AS s_1M, b."14D" AS s_14D, b."7D" AS s_7D, b."5D" AS s_5D, b."4D" AS s_4D, b."3D" AS s_3D, b."2D" AS s_2D, b."1D" AS s_1D, b.sma20_dist AS s_sma20_dist, b.sma50_dist AS s_sma50_dist, b.sma200_dist AS s_sma200_dist, b.sma50 AS s_sma50, b.sma200 AS s_sma200, b.trend_stack AS s_trend_stack, b.vol_ratio AS s_vol_ratio, b.volume_trend AS s_volume_trend, b.trend_consistency AS s_trend_consistency, b.dist_52w_high AS s_dist_52w_high, b.volatility AS s_volatility, b.ulcer AS s_ulcer, b.drawdown AS s_drawdown, b.rsi AS s_rsi, b.breakout_strength AS s_breakout_strength, b.gap AS s_gap, b.acceleration AS s_acceleration, b.volume_price_signal AS s_volume_price_signal, b.kalman_dist AS s_kalman_dist, b.vol_compression AS s_vol_compression, b.macd AS s_macd, b.macd_bullish AS s_macd_bullish, b.atr AS s_atr, b.atr_expansion AS s_atr_expansion, b.adx AS s_adx, b.strong_trend AS s_strong_trend, b.bb_width AS s_bb_width, b.bb_squeeze AS s_bb_squeeze, b.vwap_dist AS s_vwap_dist, b.momentum_quality AS s_momentum_quality, b.days_in_trend AS s_days_in_trend, b.momentum_decay AS s_momentum_decay, t.date AS t_date, t."close" AS t_close, t."1Y" AS t_1Y, t."6M" AS t_6M, t."3M" AS t_3M, t."2M" AS t_2M, t."1M" AS t_1M, t."14D" AS t_14D, t."7D" AS t_7D, t."5D" AS t_5D, t."4D" AS t_4D, t."3D" AS t_3D, t."2D" AS t_2D, t."1D" AS t_1D, t.sma20_dist AS t_sma20_dist, t.sma50_dist AS t_sma50_dist, t.sma200_dist AS t_sma200_dist, t.sma50 AS t_sma50, t.sma200 AS t_sma200, t.trend_stack AS t_trend_stack, t.vol_ratio AS t_vol_ratio, t.volume_trend AS t_volume_trend, t.trend_consistency AS t_trend_consistency, t.dist_52w_high AS t_dist_52w_high, t.volatility AS t_volatility, t.ulcer AS t_ulcer, t.drawdown AS t_drawdown, t.rsi AS t_rsi, t.breakout_strength AS t_breakout_strength, t.gap AS t_gap, t.acceleration AS t_acceleration, t.volume_price_signal AS t_volume_price_signal, t.kalman_dist AS t_kalman_dist, t.vol_compression AS t_vol_compression, t.macd AS t_macd, t.macd_bullish AS t_macd_bullish, t.atr AS t_atr, t.atr_expansion AS t_atr_expansion, t.adx AS t_adx, t.strong_trend AS t_strong_trend, t.bb_width AS t_bb_width, t.bb_squeeze AS t_bb_squeeze, t.vwap_dist AS t_vwap_dist, t.momentum_quality AS t_momentum_quality, t.days_in_trend AS t_days_in_trend, t.momentum_decay AS t_momentum_decay, t.ticker, t.nse_symbol, t.sector FROM ticker_momentum AS t LEFT JOIN benchmark_momentum AS b ON (((t.date = b.date) AND (t.sector = b.sector)));
+-- Columns:
+--   s_date TIMESTAMP_NS | 2,067 distinct | min=2018-07-03T00:00:00, max=2026-11-17T00:00:00 | nulls=89,364 | samples: 2019-01-08T00:00:00, 2019-01-23T00:00:00, 2019-01-30T00:00:00
+--   s_close DOUBLE | 26,634 distinct | min=0.3355000019, max=66305.20312 | nulls=89,364 | samples: 8078.450195, 8203.099609, 8300.200195
+--   s_1Y DOUBLE | 27,752 distinct | min=-98.78582802, max=12925.33547 | nulls=89,364 | samples: -5.217865401, -8.83623541, -6.482445305
+--   s_6M DOUBLE | 27,751 distinct | min=-98.85267767, max=12511.02865 | nulls=89,364 | samples: -3.849540373, -1.89084049, -0.3753039005
+--   s_3M DOUBLE | 27,754 distinct | min=-98.99442508, max=10663.04036 | nulls=89,364 | samples: -13.07602383, -11.68588309, -9.325334054
+--   s_2M DOUBLE | 27,752 distinct | min=-99.00630869, max=10809.36115 | nulls=89,364 | samples: -9.229229952, -6.242234841, -3.892481493
+--   s_1M DOUBLE | 27,747 distinct | min=-99.00895048, max=10400.74496 | nulls=89,364 | samples: -2.357679834, 1.571934479, 1.019180189
+--   s_14D DOUBLE | 27,751 distinct | min=-98.99591487, max=10347.0936 | nulls=89,364 | samples: 1.547465209, -1.004449107, 0.7064701515
+--   s_7D DOUBLE | 27,739 distinct | min=-98.98965566, max=10168.2565 | nulls=89,364 | samples: 0.3179469973, 2.72472506, 3.682155936
+--   s_5D DOUBLE | 27,738 distinct | min=-98.99211411, max=10093.16504 | nulls=89,364 | samples: 1.785875322, 0.6525667679, -0.4031129276
+--   s_4D DOUBLE | 27,735 distinct | min=-98.99381042, max=10048.58919 | nulls=89,364 | samples: -1.042640156, 0.2805423576, 1.944424626
+--   s_3D DOUBLE | 27,740 distinct | min=-98.99680054, max=10004.01222 | nulls=89,364 | samples: 0.2921422186, 2.314868969, 1.037518437
+--   s_2D DOUBLE | 27,720 distinct | min=-98.99859709, max=9929.806657 | nulls=89,364 | samples: -0.3241737726, 1.404667276, -1.0744946
+--   s_1D DOUBLE | 27,702 distinct | min=-99.00136922, max=9900.000779 | nulls=89,364 | samples: -1.33089427, -0.3620630577, -1.366218911
+--   s_sma20_dist DOUBLE | 27,755 distinct | min=-0.9899679752, max=0.3546071529 | nulls=89,364 | samples: -0.005136415913, 0.01363510926, 0.02537941232
+--   s_sma50_dist DOUBLE | 27,754 distinct | min=-0.9900326974, max=0.6790160186 | nulls=89,364 | samples: -0.02912433671, -0.04319779621, -0.03402632899
+--   s_sma200_dist DOUBLE | 27,755 distinct | min=-0.9891820222, max=1.547548013 | nulls=89,364 | samples: -0.04747434817, -0.04639435567, -0.02473170734
+--   s_sma50 DOUBLE | 27,745 distinct | min=18.49425995, max=63609.15406 | nulls=89,364 | samples: 9000.803008, 8921.735, 8893.25002
+--   s_sma200 DOUBLE | 27,751 distinct | min=21.02792503, max=58818.47176 | nulls=89,364 | samples: 9155.827278, 9157.507029, 9167.418279
+--   s_trend_stack DOUBLE | 2 distinct | min=0, max=1 | nulls=89,364 | ENUM(0, 1)
+--   s_vol_ratio DOUBLE | 23,095 distinct | min=0, max=1.1873e+15 | nulls=89,364 | samples: 0.5701630829, 1.10815845, 0.8785577837
+--   s_volume_trend DOUBLE | 23,242 distinct | min=0, max=4 | nulls=89,364 | samples: 1.48508379, 0.7960913869, 0.7884625979
+--   s_trend_consistency DOUBLE | 17 distinct | min=0.1, max=0.9 | nulls=89,364 | ENUM(0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9)
+--   s_dist_52w_high DOUBLE | 27,416 distinct | min=-0.9902968778, max=0.1179163812 | nulls=89,364 | samples: 0.006662315602, 0.011371341, -0.02968157116
+--   s_volatility DOUBLE | 27,755 distinct | min=0.001487694343, max=29.73401292 | nulls=89,364 | samples: 0.005894939591, 0.00699832125, 0.006444584314
+--   s_ulcer DOUBLE | 27,755 distinct | min=0.4545040125, max=37.79035347 | nulls=89,364 | samples: 1.331625567, 1.278274361, 1.30843446
+--   s_drawdown DOUBLE | 24,124 distinct | min=-0.9902133808, max=0 | nulls=89,364 | samples: -0.09935436283, -0.08763000817, -0.06114747887
+--   s_rsi DOUBLE | 27,732 distinct | min=0, max=100 | nulls=89,364 | samples: 59.47634929, 44.53433531, 53.89717421
+--   s_breakout_strength DOUBLE | 27,624 distinct | min=-0.9900611734, max=0.1439756416 | nulls=89,364 | samples: -0.02012821449, -0.01797470005, -0.01057204652
+--   s_gap DOUBLE | 27,594 distinct | min=-0.9910108352, max=99.14859365 | nulls=89,364 | samples: 0.002463676626, -0.002921677643, 0.003601337205
+--   s_acceleration DOUBLE | 2 distinct | min=0, max=1 | nulls=89,364 | ENUM(0, 1)
+--   s_volume_price_signal DOUBLE | 23,093 distinct | min=-3.742e+14, max=1.1873e+15 | nulls=89,364 | samples: 0.5701630829, 1.10815845, 0.8785577837
+--   s_kalman_dist DOUBLE | 27,755 distinct | min=-0.9889343714, max=0.2794029317 | nulls=89,364 | samples: -0.01328699544, 0.007968600209, 0.01810108725
+--   s_vol_compression DOUBLE | 27,754 distinct | min=0.004653663557, max=1.999857917 | nulls=89,364 | samples: 0.7371161271, 0.88758597, 0.5390821252
+--   s_macd DOUBLE | 27,755 distinct | min=-3340.871291, max=1659.067943 | nulls=89,364 | samples: -79.99052419, -54.25543247, -6.590871342
+--   s_macd_bullish BIGINT | 2 distinct | min=0, max=1 | nulls=89,364 | ENUM(0, 1)
+--   s_atr DOUBLE | 27,229 distinct | min=0.09978566851, max=2206.417202 | nulls=89,364 | samples: 134.5390625, 128.8390765, 110.5179269
+--   s_atr_expansion BIGINT | 2 distinct | min=0, max=1 | nulls=89,364 | ENUM(0, 1)
+--   s_adx DOUBLE | 27,755 distinct | min=4.399268306, max=100 | nulls=89,364 | samples: 25.14330662, 22.36707857, 20.62174135
+--   s_strong_trend BIGINT | 2 distinct | min=0, max=1 | nulls=89,364 | ENUM(0, 1)
+--   s_bb_width DOUBLE | 27,748 distinct | min=0.005209622174, max=0.6790238564 | nulls=89,364 | samples: 0.01959513014, 0.01918058643, 0.01443067131
+--   s_bb_squeeze BIGINT | 2 distinct | min=0, max=1 | nulls=89,364 | ENUM(0, 1)
+--   s_vwap_dist DOUBLE | 27,310 distinct | min=-0.9865891688, max=inf | nulls=89,364 | samples: -0.05797622101, -0.0613009341, -0.0562748657
+--   s_momentum_quality DOUBLE | 27,751 distinct | min=-3514.258953, max=902103.1343 | nulls=89,364 | samples: -460.7828516, 480.4763175, 241.3317696
+--   s_days_in_trend DOUBLE | 312 distinct | min=0, max=5.743003188 | nulls=89,364 | samples: 0, 1.609437912, 2.079441542
+--   s_momentum_decay DOUBLE | 27,750 distinct | min=-10090.27481, max=10399.36367 | nulls=89,364 | samples: 3.596250826, -0.1548064105, -0.9089780089
+--   t_date TIMESTAMP_NS | 2,149 distinct | min=2018-03-13T00:00:00, max=2026-11-17T00:00:00 | samples: 2019-01-03T00:00:00, 2019-01-10T00:00:00, 2019-01-14T00:00:00
+--   t_close DOUBLE | 570,090 distinct | min=0.3355000019, max=162002.0156 | samples: 82.13398743, 57.46835709, 54.25688553
+--   t_1Y DOUBLE | 630,644 distinct | min=-98.78582802, max=12925.33547 | samples: -32.6297614, -50.50712548, -43.73314874
+--   t_6M DOUBLE | 630,468 distinct | min=-98.85267767, max=12511.02865 | samples: -7.983019219, 15.11110263, -12.97029751
+--   t_3M DOUBLE | 630,271 distinct | min=-98.99442508, max=10663.04036 | samples: 9.728107132, -0.3961378268, 0
+--   t_2M DOUBLE | 630,113 distinct | min=-99.00630869, max=10809.36115 | samples: 5.419002679, -2.846414431, 15.23742896
+--   t_1M DOUBLE | 629,529 distinct | min=-99.00895048, max=10400.74496 | samples: 9.086495638, -9.208212267, -17.31945909
+--   t_14D DOUBLE | 629,345 distinct | min=-98.99591487, max=10347.0936 | samples: -6.770549246, -2.46202017, 1.435664816
+--   t_7D DOUBLE | 628,789 distinct | min=-98.98965566, max=10168.2565 | samples: 0.9134812486, 3.202626652, -1.712128745
+--   t_5D DOUBLE | 628,348 distinct | min=-98.99211411, max=10093.16504 | samples: -2.771074616, -4.426788156, 4.744739782
+--   t_4D DOUBLE | 628,036 distinct | min=-98.99381042, max=10048.58919 | samples: 0.5885552788, 3.34952777, 2.981435742
+--   t_3D DOUBLE | 627,536 distinct | min=-98.99680054, max=10004.01222 | samples: -0.2143633898, -2.898542619, 8.682871434
+--   t_2D DOUBLE | 626,705 distinct | min=-98.99859709, max=9929.806657 | samples: -1.516854968, -1.48936092, -3.35443541
+--   t_1D DOUBLE | 623,227 distinct | min=-99.00136922, max=9900.000779 | samples: -6.529611139, -0.7233503879, 0.7490776545
+--   t_sma20_dist DOUBLE | 631,129 distinct | min=-0.9899679752, max=0.8781487842 | samples: -0.04769699701, 0.04660541511, -0.0001604050578
+--   t_sma50_dist DOUBLE | 631,144 distinct | min=-0.9900326974, max=1.333836286 | samples: 0.08143896595, 0.02136310355, 0.1166912678
+--   t_sma200_dist DOUBLE | 631,164 distinct | min=-0.9891820222, max=3.024856596 | samples: -0.2399723322, -0.3783860494, -0.3704284579
+--   t_sma50 DOUBLE | 630,552 distinct | min=2.097200224, max=155551.51 | samples: 118.2210883, 102.6727959, 97.37786011
+--   t_sma200 DOUBLE | 631,051 distinct | min=2.425461696, max=147441.865 | samples: 80.57026628, 80.62278543, 80.2635512
+--   t_trend_stack DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   t_vol_ratio DOUBLE | 622,362 distinct | min=0, max=472.4698716 | samples: 0.07583914611, 0.1587351779, 1.897624904
+--   t_volume_trend DOUBLE | 624,206 distinct | min=0, max=3.917784482 | samples: 0.4331511796, 1.276272729, 0.4206081377
+--   t_trend_consistency DOUBLE | 21 distinct | min=0, max=1 | ENUM(0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1)
+--   t_dist_52w_high DOUBLE | 607,193 distinct | min=-0.9902968778, max=0.2994051123 | samples: -0.4889928733, -0.479806181, -0.5688019162
+--   t_volatility DOUBLE | 631,047 distinct | min=2.965067926e-05, max=29.73401292 | samples: 0.01819993157, 0.0277268505, 0.03471619828
+--   t_ulcer DOUBLE | 630,675 distinct | min=0.04587861582, max=76.77664207 | samples: 6.398627418, 14.51158444, 10.94494277
+--   t_drawdown DOUBLE | 561,625 distinct | min=-0.9902133808, max=0 | samples: -0.3381186977, -0.01007062538, -0.08689854979
+--   t_rsi DOUBLE | 629,716 distinct | min=0, max=100 | samples: 52.65305008, 46.71859108, 54.05902836
+--   t_breakout_strength DOUBLE | 620,783 distinct | min=-0.9900611734, max=0.3997858178 | samples: -0.07029696121, -0.205957857, -0.0494091501
+--   t_gap DOUBLE | 619,312 distinct | min=-0.9910108352, max=99.14859365 | samples: -0.02857117284, 0.05813120472, 0.05992529988
+--   t_acceleration DOUBLE | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   t_volume_price_signal DOUBLE | 622,096 distinct | min=-243.8575861, max=472.4698716 | samples: -0.6437470118, 0.1587351779, -0.1646371874
+--   t_kalman_dist DOUBLE | 631,165 distinct | min=-0.9889343714, max=0.5988872613 | samples: 0.01307492867, -0.04405316499, 0.008019554394
+--   t_vol_compression DOUBLE | 631,147 distinct | min=0, max=1.999857917 | samples: 0.1297005128, 0.5558834563, 1.075582553
+--   t_macd DOUBLE | 631,165 distinct | min=-4823.287976, max=6333.024183 | samples: 1.222248769, 1.239789456, -1.966525877
+--   t_macd_bullish BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   t_atr DOUBLE | 618,915 distinct | min=0.00600024632, max=5237.566507 | samples: 6.886864332, 8.686532117, 6.049729739
+--   t_atr_expansion BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   t_adx DOUBLE | 631,165 distinct | min=3.86051997, max=100 | samples: 15.15778631, 59.48347364, 66.94858645
+--   t_strong_trend BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   t_bb_width DOUBLE | 630,672 distinct | min=0.0007255941234, max=1.80638009 | samples: 0.0619824507, 0.1965022277, 0.2457651716
+--   t_bb_squeeze BIGINT | 2 distinct | min=0, max=1 | ENUM(0, 1)
+--   t_vwap_dist DOUBLE | 622,399 distinct | min=-0.9867445497, max=inf | samples: 0.6484445458, 0.7359376641, 0.1635957181
+--   t_momentum_quality DOUBLE | 630,705 distinct | min=-778543.6652, max=1248722.609 | samples: 4492.722732, -237.8856344, -714.897933
+--   t_days_in_trend DOUBLE | 1,730 distinct | min=0, max=7.455876687 | samples: 2.197224577, 2.397895273, 2.708050201
+--   t_momentum_decay DOUBLE | 630,574 distinct | min=-10090.27481, max=10399.36367 | samples: -29.70890371, -3.00872401, 11.68993473
+--   ticker VARCHAR | 348 distinct | samples: 'BANKBARODA.NS', 'CANBK.NS', 'GILLETTE.NS'
+--   nse_symbol VARCHAR | 347 distinct | samples: '3BBLACKBIO', 'BSE', 'GSPL'
+--   sector VARCHAR | 19 distinct | nulls=3,696 | ENUM('Defence_ETF', 'GOLD', 'Index', 'NIFTY_500', 'NIFTY_Auto_Index', 'NIFTY_Bank_Index', 'NIFTY_Commodities', 'NIFTY_Consumption', 'NIFTY_Energy', 'NIFTY_FMCG', 'NIFTY_IT', 'NIFTY_Infrastructure', 'NIFTY_Media', 'NIFTY_Metal', 'NIFTY_PSU_Bank', 'NIFTY_Pharma_Index', 'NIFTY_Realty', 'Realty', 'SILVER')
+-- Sample rows (3):
+--   {s_date: 2018-08-16T00:00:00, s_close: 9595.349609, s_1Y: 12.60363733, s_6M: 3.742479423, s_3M: 16.84760518, s_2M: 2.962130315, s_1M: 7.497675685, s_14D: 6.678405415, s_7D: 1.98488625, s_5D: 3.095432156, s_4D: 3.734067825, s_3D: 5.002047541, s_2D: 4.449415642, s_1D: 1.204486946, s_sma20_dist: 0.04761273011, s_sma50_dist: 0.05218892122, s_sma200_dist: 0.06018930652, s_sma50: 9119.41707, s_sma200: 9050.600256, s_trend_stack: 1, s_vol_ratio: 2.329017854, s_volume_trend: 1.437712804, s_trend_consistency: 0.65, s_dist_52w_high: -0.04089663558, s_volatility: 0.0129574749, s_ulcer: 3.426748, s_drawdown: 0, s_rsi: 72.65593923, s_breakout_strength: 0.009957067534, s_gap: 0.004044826608, s_acceleration: 0, s_volume_price_signal: -2.329017854, s_kalman_dist: 0.03638377191, s_vol_compression: 1.371969892, s_macd: 96.96499795, s_macd_bullish: 1, s_atr: 179.1929408, s_atr_expansion: 1, s_adx: 33.48940563, s_strong_trend: 1, s_bb_width: 0.04972442089, s_bb_squeeze: 1, s_vwap_dist: 0.01334494558, s_momentum_quality: 578.6370541, s_days_in_trend: 0.6931471806, s_momentum_decay: 4.402243528, t_date: 2018-08-16T00:00:00, t_close: 92.36759949, t_1Y: 86.84358987, t_6M: -32.34175278, t_3M: -39.74121406, t_2M: -28.27283892, t_1M: -29.10475799, t_14D: -28.08823425, t_7D: -20.74554973, t_5D: -15.36131169, t_4D: -9.107796937, t_3D: -9.57004337, t_2D: -7.735848539, t_1D: 0.4106643856, t_sma20_dist: -0.2299819251, t_sma50_dist: -0.2737534312, t_sma200_dist: -0.2616304947, t_sma50: 127.1849031, t_sma200: 125.0967149, t_trend_stack: 0, t_vol_ratio: 10.50348631, t_volume_trend: 1.944447913, t_trend_consistency: 0.45, t_dist_52w_high: -0.4411429173, t_volatility: 0.03708614157, t_ulcer: 16.87797639, t_drawdown: -0.3692357372, t_rsi: 15.64747448, t_breakout_strength: -0.3006794037, t_gap: 0.006160000279, t_acceleration: 1, t_volume_price_signal: 10.50348631, t_kalman_dist: -0.1874016369, t_vol_compression: 0.9267508206, t_macd: -9.142202523, t_macd_bullish: 0, t_atr: 10.50030645, t_atr_expansion: 1, t_adx: 60.32147082, t_strong_trend: 1, t_bb_width: 0.2305339805, t_bb_squeeze: 0, t_vwap_dist: 0.3380736339, t_momentum_quality: -784.7879552, t_days_in_trend: 0, t_momentum_decay: -13.7434463, ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', sector: 'NIFTY_Pharma_Index'}
+--   {s_date: 2018-08-17T00:00:00, s_close: 9693.849609, s_1Y: 10.68439549, s_6M: 5.282102736, s_3M: 21.4281162, s_2M: 4.753639308, s_1M: 9.095555004, s_14D: 7.244713014, s_7D: 3.444649334, s_5D: 4.798938423, s_4D: 6.079934445, s_3D: 5.521629564, s_2D: 2.243390411, s_1D: 1.026538938, s_sma20_dist: 0.05428236074, s_sma50_dist: 0.05982501698, s_sma200_dist: 0.0711669492, s_sma50: 9146.651055, s_sma200: 9049.802756, s_trend_stack: 1, s_vol_ratio: 1.901867576, s_volume_trend: 1.533902522, s_trend_consistency: 0.7, s_dist_52w_high: -0.03105106608, s_volatility: 0.01275784177, s_ulcer: 3.914224181, s_drawdown: 0, s_rsi: 73.72902108, s_breakout_strength: 0.01026538938, s_gap: 0.005033769817, s_acceleration: 0, s_volume_price_signal: -1.901867576, s_kalman_dist: 0.04236015043, s_vol_compression: 1.347057459, s_macd: 119.6522151, s_macd_bullish: 1, s_atr: 183.5822405, s_atr_expansion: 1, s_adx: 34.45000049, s_strong_trend: 1, s_bb_width: 0.04963663431, s_bb_squeeze: 1, s_vwap_dist: 0.02361002071, s_momentum_quality: 712.9383209, s_days_in_trend: 1.098612289, s_momentum_decay: 4.296616581, t_date: 2018-08-17T00:00:00, t_close: 102.5204849, t_1Y: 101.6258429, t_6M: -21.25499043, t_3M: -32.11382311, t_2M: -22.32558529, t_1M: -18.47540183, t_14D: -21.90646791, t_7D: -14.35897485, t_5D: 0.882915498, t_4D: 0.3698597436, t_3D: 2.405666071, t_2D: 11.44762949, t_1D: 10.99182559, t_sma20_dist: -0.1332814281, t_sma50_dist: -0.1899556052, t_sma200_dist: -0.1810344066, t_sma50: 126.5615633, t_sma200: 125.1828963, t_trend_stack: 0, t_vol_ratio: 3.161246598, t_volume_trend: 2.378346978, t_trend_consistency: 0.45, t_dist_52w_high: -0.3797143215, t_volatility: 0.0558641882, t_ulcer: 16.30267982, t_drawdown: -0.2999032295, t_rsi: 25.96685695, t_breakout_strength: -0.2238113034, t_gap: 0.04907976195, t_acceleration: 1, t_volume_price_signal: 3.161246598, t_kalman_dist: -0.08958803873, t_vol_compression: 1.272645681, t_macd: -8.867306702, t_macd_bullish: 0, t_atr: 11.33682231, t_atr_expansion: 1, t_adx: 62.25895947, t_strong_trend: 1, t_bb_width: 0.2354031475, t_bb_squeeze: 0, t_vwap_dist: 0.4789884138, t_momentum_quality: -330.7199496, t_days_in_trend: 0, t_momentum_decay: -19.35831733, ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', sector: 'NIFTY_Pharma_Index'}
+--   {s_date: 2018-08-20T00:00:00, s_close: 9799.150391, s_1Y: 10.60737701, s_6M: 6.734088964, s_3M: 20.69554384, s_2M: 5.465307007, s_1M: 11.99156508, s_14D: 7.499279809, s_7D: 5.285131383, s_5D: 7.232242395, s_4D: 6.667872851, s_3D: 3.354023372, s_2D: 2.123953681, s_1D: 1.086263822, s_sma20_dist: 0.06029206874, s_sma50_dist: 0.06797083194, s_sma200_dist: 0.08283983077, s_sma50: 9175.485039, s_sma200: 9049.492004, s_trend_stack: 1, s_vol_ratio: 1.447860025, s_volume_trend: 1.513138046, s_trend_consistency: 0.7, s_dist_52w_high: -0.02052572436, s_volatility: 0.01289756281, s_ulcer: 4.486523725, s_drawdown: 0, s_rsi: 74.26523859, s_breakout_strength: 0.01086263822, s_gap: 0.003285648862, s_acceleration: 0, s_volume_price_signal: -1.447860025, s_kalman_dist: 0.04832954803, s_vol_compression: 0.8870398137, s_macd: 144.4636047, s_macd_bullish: 1, s_atr: 180.171596, s_atr_expansion: 1, s_adx: 35.69118169, s_strong_trend: 1, s_bb_width: 0.05295897424, s_bb_squeeze: 1, s_vwap_dist: 0.03456527398, s_momentum_quality: 929.7542748, s_days_in_trend: 1.386294361, s_momentum_decay: 4.759322688, t_date: 2018-08-20T00:00:00, t_close: 96.05097198, t_1Y: 96.34942031, t_6M: -27.09676257, t_3M: -35.38755377, t_2M: -29.47296733, t_1M: -26.30434118, t_14D: -24.30220187, t_7D: -11.98614747, t_5D: -5.96393888, t_4D: -4.056601272, t_3D: 4.414772771, t_2D: 3.98773219, t_1D: -6.310458777, t_sma20_dist: -0.1783146399, t_sma50_dist: -0.2374654455, t_sma200_dist: -0.2334681503, t_sma50: 125.9627795, t_sma200: 125.3059113, t_trend_stack: 0, t_vol_ratio: 0.3921938698, t_volume_trend: 2.484334894, t_trend_consistency: 0.4, t_dist_52w_high: -0.4188571935, t_volatility: 0.05757848254, t_ulcer: 17.6250033, t_drawdown: -0.3440825476, t_rsi: 25.09534436, t_breakout_strength: -0.2727923712, t_gap: 0.04099493371, t_acceleration: 1, t_volume_price_signal: 0.3921938698, t_kalman_dist: -0.1349395286, t_vol_compression: 1.372899469, t_macd: -9.066967057, t_macd_bullish: 0, t_atr: 11.33682231, t_atr_expansion: 1, t_adx: 63.34713783, t_strong_trend: 1, t_bb_width: 0.2436615508, t_bb_squeeze: 0, t_vwap_dist: 0.3850093065, t_momentum_quality: -456.8432436, t_days_in_trend: 0, t_momentum_decay: -20.3404023, ticker: '3BBLACKBIO.BO', nse_symbol: '3BBLACKBIO', sector: 'NIFTY_Pharma_Index'}
+
+-- ===== VIEW tickers — 354 rows =====
+CREATE VIEW tickers AS WITH ticker_raw AS (SELECT *, split_part("Yahoo Symbol", '.', 1) AS nse_symbol FROM read_csv("config/tickers.csv"))SELECT t."Name", t."Yahoo Symbol", t.Sector, g.broad_industry AS industry, t.market_cap, t.domestic_market_pct, t.num_clients, t.num_sectors_served, t.nse_symbol, g.market_cap AS market_cap_amt, g.stock_p_e AS p_e, dividend_yield FROM ticker_raw AS t LEFT JOIN general_info AS g ON ((g.ticker = t.nse_symbol));
+-- Columns:
+--   Name VARCHAR | 353 distinct | samples: 'Zen Technologies Ltd', 'Amara Raja Energy & Mobility Ltd', 'Ashok Leyland Ltd'
+--   Yahoo Symbol VARCHAR | 353 distinct | samples: 'BDL.NS', 'HAL.NS', 'APOLLOTYRE.NS'
+--   Sector VARCHAR | 19 distinct | ENUM('Defence_ETF', 'GOLD', 'Index', 'NIFTY_500', 'NIFTY_Auto_Index', 'NIFTY_Bank_Index', 'NIFTY_Commodities', 'NIFTY_Consumption', 'NIFTY_Energy', 'NIFTY_FMCG', 'NIFTY_IT', 'NIFTY_Infrastructure', 'NIFTY_Media', 'NIFTY_Metal', 'NIFTY_PSU_Bank', 'NIFTY_Pharma_Index', 'NIFTY_Realty', 'Realty', 'SILVER')
+--   industry VARCHAR | 49 distinct | nulls=20 | samples: 'Aerospace & Defense', 'Industrial Manufacturing', 'Banks'
+--   market_cap VARCHAR | 3 distinct | ENUM('Large-cap', 'Mid-cap', 'Small-cap')
+--   domestic_market_pct DOUBLE | 14 distinct | min=5, max=100 | ENUM(5, 40, 48, 50, 57, 60, 75, 80, 85, 90, 95, 98, 99, 100)
+--   num_clients DOUBLE | 10 distinct | min=1, max=10 | ENUM(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+--   num_sectors_served DOUBLE | 9 distinct | min=1, max=10 | nulls=1 | ENUM(1, 2, 3, 4, 5, 6, 7, 8, 10)
+--   nse_symbol VARCHAR | 353 distinct | samples: 'ASTRAMICRO', 'BEL', 'KRISHNADEF'
+--   market_cap_amt DOUBLE | 333 distinct | min=1257, max=1762680 | nulls=20 | samples: 28745, 99796, 16345
+--   p_e DOUBLE | 270 distinct | min=5.19, max=2238 | nulls=32 | samples: 34.4, 47, 118
+--   dividend_yield DOUBLE | 178 distinct | min=0, max=12.6 | nulls=20 | samples: 0.94, 0.1, 1.23
+-- Sample rows (3):
+--   {Name: 'ASTRAMICRO', Yahoo Symbol: 'ASTRAMICRO.NS', Sector: 'Defence_ETF', industry: 'Aerospace & Defense', market_cap: 'Small-cap', domestic_market_pct: 95, num_clients: 1, num_sectors_served: 2, nse_symbol: 'ASTRAMICRO', market_cap_amt: 15809, p_e: 90.5, dividend_yield: 0.14}
+--   {Name: 'BDL', Yahoo Symbol: 'BDL.NS', Sector: 'Defence_ETF', industry: 'Aerospace & Defense', market_cap: 'Small-cap', domestic_market_pct: 95, num_clients: 1, num_sectors_served: 1, nse_symbol: 'BDL', market_cap_amt: 46092, p_e: 88.5, dividend_yield: 0.36}
+--   {Name: 'Bharat Electronics Ltd (BEL)', Yahoo Symbol: 'BEL.NS', Sector: 'Defence_ETF', industry: 'Aerospace & Defense', market_cap: 'Large-cap', domestic_market_pct: 95, num_clients: 2, num_sectors_served: 3, nse_symbol: 'BEL', market_cap_amt: 298678, p_e: 48.7, dividend_yield: 0.61}
+
+-- ===== VIEW v_dcf_assumptions_auto — 385 rows =====
+CREATE VIEW v_dcf_assumptions_auto AS WITH pol AS (SELECT * FROM v_dcf_policy), base AS (SELECT g.ticker, COALESCE(h.wgrowth_3y, h.wgrowth_5y, h.cagr_3y_simple, 12.0) AS g_recent, h.growth_wsd, CASE  WHEN (((g.roe IS NOT NULL) AND (g.stock_p_e IS NOT NULL))) THEN ((g.roe * (1 - least(greatest(((COALESCE(g.dividend_yield, 0) / 100.0) * g.stock_p_e), 0), 1)))) ELSE NULL END AS g_sustainable, COALESCE(b.beta_adj, 1.0) AS beta_adj, COALESCE(b.beta_source, 'default 1.0') AS beta_source FROM general_info AS g LEFT JOIN v_dcf_history AS h ON ((h.ticker = g.ticker)) LEFT JOIN v_dcf_beta AS b ON ((b.ticker = g.ticker))), c1 AS (SELECT base.*, pol.*, greatest(least(((pol.shrink * g_recent) + ((1 - pol.shrink) * pol.anchor_growth)), pol.g1_cap, COALESCE(g_sustainable, 1000000000.0)), 0) AS g1 FROM base CROSS JOIN pol), c2 AS (SELECT c1.*, greatest(least(tg_max, g1), 2.0) AS tg FROM c1)SELECT ticker, round(g1, 1) AS g1, round((tg + (fade * (g1 - tg))), 1) AS g2, round(tg, 1) AS tg, round(least(greatest((rf + (beta_adj * erp)), dr_min), dr_max), 1) AS dr, least(greatest((round(((mos_base + (mos_k * COALESCE(growth_wsd, mos_sd_default))) / 5)) * 5), mos_min), mos_max) AS mos, round(g_recent, 1) AS hist_growth_w3y, round(g_sustainable, 1) AS sustainable_growth, round(growth_wsd, 1) AS growth_volatility, round(beta_adj, 2) AS beta, beta_source FROM c2;
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: 'SWIGGY', 'TORNTPHARM', 'TVSMOTOR'
+--   g1 DOUBLE | 161 distinct | min=0, max=25 | samples: 10.6, 0, 3.1
+--   g2 DOUBLE | 109 distinct | min=1, max=15 | samples: 15, 11.4, 8.9
+--   tg DOUBLE | 21 distinct | min=2, max=5 | ENUM(2, 2.2, 2.4, 2.5, 2.8, 2.9, 3, 3.1, 3.2, 3.4, 3.6, 3.7, 3.8, 4, 4.2, 4.4, 4.6, 4.7, 4.8, 4.9, 5)
+--   dr DOUBLE | 53 distinct | min=10, max=15.3 | samples: 11.4, 12.7, 10.5
+--   mos DOUBLE | 6 distinct | min=15, max=40 | ENUM(15, 20, 25, 30, 35, 40)
+--   hist_growth_w3y DOUBLE | 294 distinct | min=-45.3, max=100 | samples: 33.6, 73.8, 63.8
+--   sustainable_growth DOUBLE | 178 distinct | min=-0.8, max=55.5 | nulls=22 | samples: 7.1, 7.9, 10
+--   growth_volatility DOUBLE | 263 distinct | min=3.9, max=96.5 | nulls=27 | samples: 36.4, 31.4, 35.7
+--   beta DOUBLE | 90 distinct | min=0.5, max=1.51 | samples: 1.32, 1.19, 1.01
+--   beta_source VARCHAR | 2 distinct | ENUM('benchmark regression', 'default 1.0')
+-- Sample rows (3):
+--   {ticker: 'MEDPLUS', g1: 4.9, g2: 4.9, tg: 4.9, dr: 10.8, mos: 30, hist_growth_w3y: 88.9, sustainable_growth: 4.9, growth_volatility: 28.2, beta: 0.68, beta_source: 'benchmark regression'}
+--   {ticker: 'MRF', g1: 11.9, g2: 8.5, tg: 5, dr: 11.6, mos: 40, hist_growth_w3y: 58.9, sustainable_growth: 11.9, growth_volatility: 52.2, beta: 0.84, beta_source: 'benchmark regression'}
+--   {ticker: 'COALINDIA', g1: 11.5, g2: 8.2, tg: 5, dr: 11.3, mos: 30, hist_growth_w3y: 48, sustainable_growth: 11.5, growth_volatility: 33.1, beta: 0.79, beta_source: 'benchmark regression'}
+
+-- ===== VIEW v_dcf_beta — 385 rows =====
+CREATE VIEW v_dcf_beta AS WITH pol AS (SELECT * FROM v_dcf_policy), px AS (SELECT "replace"(Ticker, '.NS', '') AS ticker, Date, "Close" FROM ticker_prices WHERE (Date >= (CURRENT_DATE - (SELECT beta_window_days FROM pol)))), ret AS (SELECT ticker, Date, ln(("Close" / lag("Close") OVER (PARTITION BY ticker ORDER BY Date))) AS r FROM px), mkt AS (SELECT Date, r AS rm FROM ret WHERE ((ticker = "replace"((SELECT benchmark_ticker FROM pol), '.NS', '')) AND (r IS NOT NULL))), j AS (SELECT s.ticker, s.r AS rs, m.rm, exp((-(l.lam) * greatest(date_diff('day', s.Date, CURRENT_DATE), 0))) AS w FROM ret AS s INNER JOIN mkt AS m USING (Date) INNER JOIN v_dcf_lambda AS l ON ((l.ticker = s.ticker)) WHERE (s.r IS NOT NULL)), b AS (SELECT ticker, count_star() AS n_obs, (((sum(((w * rs) * rm)) / sum(w)) - ((sum((w * rs)) / sum(w)) * (sum((w * rm)) / sum(w)))) / "nullif"(((sum(((w * rm) * rm)) / sum(w)) - pow((sum((w * rm)) / sum(w)), 2)), 0)) AS beta_raw FROM j GROUP BY ticker HAVING (count_star() >= 100)), vol AS (SELECT r.ticker, sqrt(greatest(((sum(((w * r) * r)) / sum(w)) - pow((sum((w * r)) / sum(w)), 2)), 0)) AS wvol FROM (SELECT x.ticker, x.r, exp((-(l.lam) * greatest(date_diff('day', x.Date, CURRENT_DATE), 0))) AS w FROM ret AS x INNER JOIN v_dcf_lambda AS l ON ((l.ticker = x.ticker)) WHERE (x.r IS NOT NULL)) AS r GROUP BY r.ticker HAVING (count_star() >= 100)), med AS (SELECT median(wvol) AS m FROM vol)SELECT g.ticker, COALESCE(b.beta_raw, least(greatest((v.wvol / "nullif"(med.m, 0)), 0.7), 1.4)) AS beta_raw, CASE  WHEN ((b.beta_raw IS NOT NULL)) THEN ('benchmark regression') WHEN ((v.wvol IS NOT NULL)) THEN ('volatility proxy') ELSE 'default 1.0' END AS beta_source, least(greatest(((0.67 * COALESCE(b.beta_raw, least(greatest((v.wvol / "nullif"(med.m, 0)), 0.7), 1.4), 1.0)) + 0.33), 0.5), 1.8) AS beta_adj FROM general_info AS g LEFT JOIN b ON ((b.ticker = g.ticker)) LEFT JOIN vol AS v ON ((v.ticker = g.ticker)) CROSS JOIN med;
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: 'KRISHNADEF', 'KSB', 'NESCO'
+--   beta_raw DOUBLE | 335 distinct | min=0.1443576931, max=1.765637475 | samples: 0.7136536438, 0.9206552073, 1.442632708
+--   beta_source VARCHAR | 2 distinct | ENUM('benchmark regression', 'default 1.0')
+--   beta_adj DOUBLE | 334 distinct | min=0.5, max=1.512977108 | samples: 0.8604101295, 0.7075041942, 0.9777105362
+-- Sample rows (3):
+--   {ticker: 'LICHSGFIN', beta_raw: 1.21601776, beta_source: 'benchmark regression', beta_adj: 1.144731899}
+--   {ticker: 'LICI', beta_raw: 1.071033454, beta_source: 'benchmark regression', beta_adj: 1.047592414}
+--   {ticker: 'MMTC', beta_raw: 1.315934232, beta_source: 'benchmark regression', beta_adj: 1.211675935}
+
+-- ===== VIEW v_dcf_cfg — 385 rows =====
+CREATE VIEW v_dcf_cfg AS WITH cg AS (SELECT * FROM dcf_assumptions WHERE (COALESCE(main."trim"(ticker), '') = '') LIMIT 1), ct AS (SELECT * FROM dcf_assumptions WHERE (COALESCE(main."trim"(ticker), '') != '') QUALIFY (row_number() OVER (PARTITION BY upper(main."trim"(ticker))) = 1))SELECT g.ticker, COALESCE(ct.g1, au.g1, cg.g1, 12.0) AS g1, COALESCE(ct.g2, au.g2, cg.g2, 10.0) AS g2, COALESCE(ct.tg, au.tg, cg.tg, 5.0) AS tg, COALESCE(ct.dr, au.dr, cg.dr, 12.0) AS dr, COALESCE(ct.mos, au.mos, cg.mos, 25.0) AS mos, COALESCE(ct.zscore_thresh, cg.zscore_thresh, pol.zscore_thresh) AS z_thresh, COALESCE(ct.oi_structural, cg.oi_structural, CAST('f' AS BOOLEAN)) AS oi_structural, lm.lam, CASE  WHEN ((ct.ticker IS NOT NULL)) THEN ('manual override (ticker row) + auto') ELSE 'auto' END AS assump_source FROM general_info AS g CROSS JOIN v_dcf_policy AS pol INNER JOIN v_dcf_lambda AS lm ON ((lm.ticker = g.ticker)) LEFT JOIN v_dcf_assumptions_auto AS au ON ((au.ticker = g.ticker)) LEFT JOIN ct ON ((upper(main."trim"(ct.ticker)) = upper(main."trim"(g.ticker)))) LEFT JOIN cg ON (CAST('t' AS BOOLEAN));
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: 'AUROPHARMA', 'BAJAJHLDNG', 'CONCOR'
+--   g1 DOUBLE | 161 distinct | min=0, max=25 | samples: 11.2, 25, 10.1
+--   g2 DOUBLE | 109 distinct | min=1, max=15 | samples: 5.1, 15, 10.5
+--   tg DOUBLE | 21 distinct | min=2, max=5 | ENUM(2, 2.2, 2.4, 2.5, 2.8, 2.9, 3, 3.1, 3.2, 3.4, 3.6, 3.7, 3.8, 4, 4.2, 4.4, 4.6, 4.7, 4.8, 4.9, 5)
+--   dr DOUBLE | 53 distinct | min=10, max=15.3 | samples: 12.7, 11.9, 11.4
+--   mos DOUBLE | 6 distinct | min=15, max=40 | ENUM(15, 20, 25, 30, 35, 40)
+--   z_thresh DOUBLE | 1 distinct | min=2, max=2 | ENUM(2)
+--   oi_structural BOOLEAN | 1 distinct | ENUM(false)
+--   lam DOUBLE | 1 distinct | min=0.001, max=0.001 | ENUM(0.001)
+--   assump_source VARCHAR | 1 distinct | ENUM('auto')
+-- Sample rows (3):
+--   {ticker: 'LUPIN', g1: 18.6, g2: 11.8, tg: 5, dr: 11, mos: 30, z_thresh: 2, oi_structural: false, lam: 0.001, assump_source: 'auto'}
+--   {ticker: 'MTARTECH', g1: 12.6, g2: 8.8, tg: 5, dr: 12, mos: 40, z_thresh: 2, oi_structural: false, lam: 0.001, assump_source: 'auto'}
+--   {ticker: 'NMDC', g1: 16.6, g2: 10.8, tg: 5, dr: 13.1, mos: 40, z_thresh: 2, oi_structural: false, lam: 0.001, assump_source: 'auto'}
+
+-- ===== VIEW v_dcf_history — 385 rows =====
+CREATE VIEW v_dcf_history AS WITH lam AS (SELECT ticker, lam FROM v_dcf_lambda), np_year AS (SELECT ticker, "year"(dt) AS yr, max(dt) AS dt_end, sum(val) AS net_profit FROM profit_loss WHERE (metric = 'Net Profit') GROUP BY ticker, "year"(dt)), np_pos AS (SELECT *, lag(net_profit) OVER (PARTITION BY ticker ORDER BY yr) AS prev_np, lag(yr) OVER (PARTITION BY ticker ORDER BY yr) AS prev_yr FROM np_year WHERE (net_profit > 0)), g_obs AS (SELECT ticker, yr, dt_end, ln(least(greatest((net_profit / prev_np), 0.5), 2.0)) AS ln_g FROM np_pos WHERE ((prev_np > 0) AND ((yr - prev_yr) = 1))), g_w AS (SELECT o.ticker, o.ln_g, (o.ln_g * 100) AS gp, row_number() OVER (PARTITION BY o.ticker ORDER BY o.yr DESC) AS rk, exp((-(l.lam) * greatest(date_diff('day', o.dt_end, CURRENT_DATE), 0))) AS w FROM g_obs AS o INNER JOIN lam AS l USING (ticker)), growth AS (SELECT ticker, count_star() FILTER (WHERE (rk <= 3)) AS n_g3, count_star() FILTER (WHERE (rk <= 5)) AS n_g5, ((exp((sum((w * ln_g)) FILTER (WHERE (rk <= 3)) / sum(w) FILTER (WHERE (rk <= 3)))) - 1) * 100) AS wgrowth_3y, ((exp((sum((w * ln_g)) FILTER (WHERE (rk <= 5)) / sum(w) FILTER (WHERE (rk <= 5)))) - 1) * 100) AS wgrowth_5y, CASE  WHEN ((count_star() FILTER (WHERE (rk <= 5)) >= 3)) THEN (sqrt(greatest(((sum(((w * gp) * gp)) FILTER (WHERE (rk <= 5)) - (pow(sum((w * gp)) FILTER (WHERE (rk <= 5)), 2) / sum(w) FILTER (WHERE (rk <= 5)))) / "nullif"((sum(w) FILTER (WHERE (rk <= 5)) - (sum((w * w)) FILTER (WHERE (rk <= 5)) / sum(w) FILTER (WHERE (rk <= 5)))), 0)), 0))) ELSE NULL END AS growth_wsd FROM g_w GROUP BY ticker), simple_g AS (SELECT ticker, max(val) FILTER (WHERE (horizon IN ('3 Years', '3Y'))) AS cagr_3y, max(val) FILTER (WHERE (horizon IN ('5 Years', '5Y'))) AS cagr_5y FROM compounded_profit_growth GROUP BY ticker), oi_year AS (SELECT ticker, "year"(dt) AS yr, max(dt) AS dt_end, sum(val) AS oi FROM profit_loss WHERE (metric = 'Other Income') GROUP BY ticker, "year"(dt)), oi_w AS (SELECT y.ticker, y.oi, y.rn, exp((-(l.lam) * greatest(date_diff('day', y.dt_end, CURRENT_DATE), 0))) AS w FROM (SELECT *, row_number() OVER (PARTITION BY ticker ORDER BY yr DESC) AS rn FROM oi_year WHERE (oi IS NOT NULL)) AS y INNER JOIN lam AS l USING (ticker) WHERE (y.rn <= 5)), oi_stats AS (SELECT ticker, count_star() FILTER (WHERE (rn <= 5)) AS n, (sum((w * oi)) FILTER (WHERE (rn <= 5)) / sum(w) FILTER (WHERE (rn <= 5))) AS oi_wmean, count_star() FILTER (WHERE (rn BETWEEN 2 AND 5)) AS n_prior, (sum((w * oi)) FILTER (WHERE (rn BETWEEN 2 AND 5)) / sum(w) FILTER (WHERE (rn BETWEEN 2 AND 5))) AS oi_prior_wmean, sqrt(greatest(((sum(((w * oi) * oi)) FILTER (WHERE (rn BETWEEN 2 AND 5)) - (pow(sum((w * oi)) FILTER (WHERE (rn BETWEEN 2 AND 5)), 2) / sum(w) FILTER (WHERE (rn BETWEEN 2 AND 5)))) / "nullif"((sum(w) FILTER (WHERE (rn BETWEEN 2 AND 5)) - (sum((w * w)) FILTER (WHERE (rn BETWEEN 2 AND 5)) / sum(w) FILTER (WHERE (rn BETWEEN 2 AND 5)))), 0)), 0)) AS oi_prior_wsd FROM oi_w GROUP BY ticker), tax AS (SELECT t.ticker, ((sum((t.w * t.val)) / sum(t.w)) / 100.0) AS wtax FROM (SELECT p.ticker, p.val, exp((-(l.lam) * greatest(date_diff('day', p.dt, CURRENT_DATE), 0))) AS w, row_number() OVER (PARTITION BY p.ticker ORDER BY p.dt DESC) AS rn FROM profit_loss AS p INNER JOIN lam AS l USING (ticker) WHERE (p.metric = 'Tax %')) AS t WHERE (t.rn <= 3) GROUP BY t.ticker)SELECT l.ticker, l.lam, round((ln(2) / l.lam), 0) AS half_life_days, round(gr.wgrowth_3y, 1) AS wgrowth_3y, gr.n_g3, round(gr.wgrowth_5y, 1) AS wgrowth_5y, gr.n_g5, round(gr.growth_wsd, 1) AS growth_wsd, round(sg.cagr_3y, 1) AS cagr_3y_simple, round(sg.cagr_5y, 1) AS cagr_5y_simple, os.n AS oi_n, os.oi_wmean, os.n_prior AS oi_n_prior, os.oi_prior_wmean, os.oi_prior_wsd, tx.wtax FROM lam AS l LEFT JOIN growth AS gr ON ((gr.ticker = l.ticker)) LEFT JOIN simple_g AS sg ON ((sg.ticker = l.ticker)) LEFT JOIN oi_stats AS os ON ((os.ticker = l.ticker)) LEFT JOIN tax AS tx ON ((tx.ticker = l.ticker));
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   lam DOUBLE | 1 distinct | min=0.001, max=0.001 | ENUM(0.001)
+--   half_life_days DOUBLE | 1 distinct | min=693, max=693 | ENUM(693)
+--   wgrowth_3y DOUBLE | 290 distinct | min=-45.3, max=100 | nulls=14 | samples: 60.6, 100, -28
+--   n_g3 BIGINT | 3 distinct | min=1, max=3 | nulls=14 | ENUM(1, 2, 3)
+--   wgrowth_5y DOUBLE | 285 distinct | min=-36, max=100 | nulls=14 | samples: 72.3, 39.4, 68.1
+--   n_g5 BIGINT | 5 distinct | min=1, max=5 | nulls=14 | ENUM(1, 2, 3, 4, 5)
+--   growth_wsd DOUBLE | 263 distinct | min=3.9, max=96.5 | nulls=27 | samples: 72.7, 72.5, 39.1
+--   cagr_3y_simple DOUBLE | 115 distinct | min=-64, max=883 | nulls=48 | samples: 78, -3, 49
+--   cagr_5y_simple DOUBLE | 95 distinct | min=-21, max=238 | nulls=64 | samples: 27, 28, 14
+--   oi_n BIGINT | 3 distinct | min=2, max=5 | nulls=9 | ENUM(2, 4, 5)
+--   oi_wmean DOUBLE | 376 distinct | min=-3252.618609, max=90740.32898 | nulls=9 | samples: 0, 35.44720204, 747.2144775
+--   oi_n_prior BIGINT | 3 distinct | min=1, max=4 | nulls=9 | ENUM(1, 3, 4)
+--   oi_prior_wmean DOUBLE | 376 distinct | min=-1127.453427, max=51545.38599 | nulls=9 | samples: 357.0139315, 176.4894104, 11.7912883
+--   oi_prior_wsd DOUBLE | 371 distinct | min=0, max=12157.14856 | nulls=9 | samples: 5.054265277, 29.67334115, 81.25473614
+--   wtax DOUBLE | 227 distinct | min=-0.7867255896, max=0.6285291607 | nulls=9 | samples: 0.26, 0.03626348079, 0.01238081737
+-- Sample rows (3):
+--   {ticker: '360ONE', lam: 0.001, half_life_days: 693, wgrowth_3y: 24.9, n_g3: 3, wgrowth_5y: 18.2, n_g5: 5, growth_wsd: 66.4, cagr_3y_simple: 23, cagr_5y_simple: 27, oi_n: 5, oi_wmean: 230.3119884, oi_n_prior: 4, oi_prior_wmean: -7.132077053, oi_prior_wsd: 48.64605131, wtax: 0.04727650436}
+--   {ticker: '538882', lam: 0.001, half_life_days: 693, wgrowth_3y: 56, n_g3: 3, wgrowth_5y: 58.3, n_g5: 5, growth_wsd: 18.7, cagr_3y_simple: 53, cagr_5y_simple: 48, oi_n: 5, oi_wmean: 0, oi_n_prior: 4, oi_prior_wmean: 0, oi_prior_wsd: 0, wtax: 0.1229343597}
+--   {ticker: 'ABCAPITAL', lam: 0.001, half_life_days: 693, wgrowth_3y: 64.4, n_g3: 3, wgrowth_5y: 46.2, n_g5: 5, growth_wsd: 55.6, cagr_3y_simple: -7, cagr_5y_simple: 28, oi_n: 5, oi_wmean: 104.5103516, oi_n_prior: 4, oi_prior_wmean: 50.86228342, oi_prior_wsd: 47.03148431, wtax: 0.1436233822}
+
+-- ===== VIEW v_dcf_inputs — 374 rows =====
+CREATE VIEW v_dcf_inputs AS WITH np_year AS (SELECT ticker, "year"(dt) AS yr, sum(val) AS net_profit FROM profit_loss WHERE (metric = 'Net Profit') GROUP BY ticker, "year"(dt)), np_latest AS (SELECT ticker, yr, net_profit AS reported_profit FROM np_year WHERE (net_profit > 0) QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY yr DESC) = 1)), cf_ratio AS (SELECT c.ticker, least(greatest((sum(c.val) / "nullif"(sum(p.val), 0)), 0.1), 1.5) AS raw_fcf_conversion FROM (SELECT ticker, "year"(dt) AS yr, sum(val) AS val FROM cash_flows WHERE (metric = 'Free Cash Flow') GROUP BY ticker, "year"(dt)) AS c INNER JOIN (SELECT ticker, "year"(dt) AS yr, sum(val) AS val FROM profit_loss WHERE (metric = 'Net Profit') GROUP BY ticker, "year"(dt)) AS p ON (((p.ticker = c.ticker) AND (p.yr = c.yr))) WHERE (c.yr >= ("year"(CURRENT_DATE) - 3)) GROUP BY c.ticker), oi_latest AS (SELECT ticker, "year"(dt) AS yr, sum(val) AS oi FROM profit_loss WHERE (metric = 'Other Income') GROUP BY ticker, "year"(dt)), exc_year AS (SELECT ticker, "year"(dt) AS yr, sum(val) AS exc FROM profit_loss WHERE (metric IN ('Exceptional Items', 'Exceptional Item', 'Extraordinary Items')) GROUP BY ticker, "year"(dt)), eq AS (SELECT ticker, val AS equity_cr FROM balance_sheet WHERE (metric = 'Equity Capital') QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY dt DESC) = 1)), eps_latest AS (SELECT ticker, eps FROM (SELECT ticker, "year"(dt) AS yr, avg(val) AS eps FROM profit_loss WHERE (metric = 'EPS in Rs') GROUP BY ticker, "year"(dt)) QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY yr DESC) = 1)), px AS (SELECT "replace"(Ticker, '.NS', '') AS ticker, "Close" AS last_close FROM ticker_prices QUALIFY (row_number() OVER (PARTITION BY "replace"(Ticker, '.NS', '') ORDER BY Date DESC) = 1)), n AS (SELECT c.ticker, c.tg, c.dr, c.mos, c.z_thresh, c.oi_structural, c.lam, greatest(COALESCE(c.g1, h.wgrowth_3y, h.cagr_3y_simple, 12.0), 0) AS g1, COALESCE(c.g2, h.wgrowth_5y, h.cagr_5y_simple, 10.0) AS g2_raw, gi.current_price, gi.face_value, gi.sector, l.reported_profit, COALESCE(oy.oi, 0) AS reported_oi, h.oi_n, h.oi_wmean, h.oi_n_prior, h.oi_prior_wmean, h.oi_prior_wsd, COALESCE(ey.exc, 0) AS exc_latest, COALESCE(h.wtax, 0.25) AS tax_rate, CASE  WHEN ((gi.sector = 'Financial Services')) THEN (1.0) ELSE COALESCE(cfr.raw_fcf_conversion, 0.7) END AS fcf_conversion FROM v_dcf_cfg AS c INNER JOIN general_info AS gi ON ((gi.ticker = c.ticker)) INNER JOIN np_latest AS l ON ((l.ticker = c.ticker)) LEFT JOIN v_dcf_history AS h ON ((h.ticker = c.ticker)) LEFT JOIN oi_latest AS oy ON (((oy.ticker = c.ticker) AND (oy.yr = l.yr))) LEFT JOIN exc_year AS ey ON (((ey.ticker = c.ticker) AND (ey.yr = l.yr))) LEFT JOIN cf_ratio AS cfr ON ((cfr.ticker = c.ticker))), n2 AS (SELECT n.*, ((NOT oi_structural) AND (oi_n_prior >= 3) AND (oi_prior_wsd > 0) AND (abs(((reported_oi - oi_prior_wmean) / oi_prior_wsd)) > z_thresh)) AS oi_spike FROM n), n3 AS (SELECT n2.*, CASE  WHEN (oi_spike) THEN (oi_prior_wmean) WHEN (oi_structural) THEN (reported_oi) WHEN ((oi_n >= 2)) THEN (oi_wmean) ELSE reported_oi END AS norm_oi FROM n2), n4 AS (SELECT n3.*, (greatest((reported_oi - norm_oi), 0) * CASE  WHEN (oi_spike) THEN (1) ELSE 0 END) AS abnormal_oi, (-(((norm_oi - reported_oi) - exc_latest)) * tax_rate) AS tax_adj FROM n3)SELECT n4.ticker, n4.reported_profit, n4.reported_oi, n4.norm_oi, n4.oi_spike, n4.abnormal_oi, n4.exc_latest, n4.tax_adj, n4.tax_rate, n4.fcf_conversion, CASE  WHEN (((((reported_profit + (norm_oi - reported_oi)) - exc_latest) + tax_adj) > 0)) THEN ((((reported_profit + (norm_oi - reported_oi)) - exc_latest) + tax_adj)) ELSE reported_profit END AS norm_profit, (CASE  WHEN (((((reported_profit + (norm_oi - reported_oi)) - exc_latest) + tax_adj) > 0)) THEN ((((reported_profit + (norm_oi - reported_oi)) - exc_latest) + tax_adj)) ELSE reported_profit END * n4.fcf_conversion) AS norm_fcf, COALESCE((eq.equity_cr / COALESCE("nullif"(n4.face_value, 0), 10.0)), (abs(n4.reported_profit) / "nullif"(abs(el.eps), 0))) AS shares_cr, COALESCE(px.last_close, n4.current_price) AS price, n4.g1, least(n4.g2_raw, n4.g1) AS g2, n4.tg, n4.dr, n4.mos, n4.lam FROM n4 LEFT JOIN eq ON ((eq.ticker = n4.ticker)) LEFT JOIN eps_latest AS el ON ((el.ticker = n4.ticker)) LEFT JOIN px ON ((px.ticker = n4.ticker));
+-- Columns:
+--   ticker VARCHAR | 374 distinct | samples: 'ABCAPITAL', 'BALRAMCHIN', 'BEL'
+--   reported_profit DOUBLE | 363 distinct | min=3.43, max=162025 | samples: 929, 24, 5293
+--   reported_oi DOUBLE | 319 distinct | min=-5270, max=145162 | samples: 730, 422, 16
+--   norm_oi DOUBLE | 374 distinct | min=-3252.618609, max=51545.38599 | samples: 62.14455473, 147.4785308, 45.41230514
+--   oi_spike BOOLEAN | 2 distinct | ENUM(false, true)
+--   abnormal_oi DOUBLE | 214 distinct | min=0, max=93616.61401 | samples: 128.1377166, 0, 298.555673
+--   exc_latest DOUBLE | 1 distinct | min=0, max=0 | ENUM(0)
+--   tax_adj DOUBLE | 370 distinct | min=-808.6391846, max=13348.4577 | samples: 163.7229157, 85.38154192, -37.5319114
+--   tax_rate DOUBLE | 226 distinct | min=-0.7867255896, max=0.6285291607 | samples: 0.1436233822, 0.1788498992, 0.1449404042
+--   fcf_conversion DOUBLE | 229 distinct | min=0.1, max=1.5 | samples: 0.5490062112, 0.4278293135, 0.1
+--   norm_profit DOUBLE | 374 distinct | min=2.148719923, max=114809.0339 | samples: 1123, 54839.32025, 920.6251333
+--   norm_fcf DOUBLE | 374 distinct | min=0.2148719923, max=114809.0339 | samples: 18.44974544, 11456.82085, 5027.483802
+--   shares_cr DOUBLE | 287 distinct | min=0.4, max=2882.6 | samples: 9.5, 14, 40
+--   price DOUBLE | 374 distinct | min=18.15999985, max=128082 | samples: 411.5, 187, 1548.5
+--   g1 DOUBLE | 161 distinct | min=0, max=25 | samples: 0, 20.5, 6.4
+--   g2 DOUBLE | 114 distinct | min=0, max=15 | samples: 6.4, 13.8, 5.6
+--   tg DOUBLE | 21 distinct | min=2, max=5 | ENUM(2, 2.2, 2.4, 2.5, 2.8, 2.9, 3, 3.1, 3.2, 3.4, 3.6, 3.7, 3.8, 4, 4.2, 4.4, 4.6, 4.7, 4.8, 4.9, 5)
+--   dr DOUBLE | 53 distinct | min=10, max=15.3 | samples: 12.8, 12.5, 14.2
+--   mos DOUBLE | 6 distinct | min=15, max=40 | ENUM(15, 20, 25, 30, 35, 40)
+--   lam DOUBLE | 1 distinct | min=0.001, max=0.001 | ENUM(0.001)
+-- Sample rows (3):
+--   {ticker: 'ADANIPOWER', reported_profit: 22962, reported_oi: 8619, norm_oi: 6669.584859, oi_spike: false, abnormal_oi: 0, exc_latest: 0, tax_adj: 262.1719637, tax_rate: 0.1344874974, fcf_conversion: 0.5490062112, norm_profit: 21274.75682, norm_fcf: 11679.97364, shares_cr: 1928.5, price: 208.0700073, g1: 22, g2: 13.5, tg: 5, dr: 13.3, mos: 40, lam: 0.001}
+--   {ticker: 'ASIANPAINT', reported_profit: 8865, reported_oi: 1540, norm_oi: 535.5036427, oi_spike: true, abnormal_oi: 1004.496357, exc_latest: 0, tax_adj: 152.4045009, tax_rate: 0.1517223032, fcf_conversion: 0.6767880007, norm_profit: 8012.908144, norm_fcf: 5423.040083, shares_cr: 96, price: 2625, g1: 9.6, g2: 7.3, tg: 5, dr: 11.9, mos: 40, lam: 0.001}
+--   {ticker: 'BHEL', reported_profit: 3993, reported_oi: 1738, norm_oi: 510.2824649, oi_spike: true, abnormal_oi: 1227.717535, exc_latest: 0, tax_adj: 187.8890632, tax_rate: 0.1530393253, fcf_conversion: 0.4278293135, norm_profit: 2953.171528, norm_fcf: 1263.453348, shares_cr: 348, price: 430.6499939, g1: 4.8, g2: 4.8, tg: 4.8, dr: 13.9, mos: 40, lam: 0.001}
+
+-- ===== VIEW v_dcf_lambda — 385 rows =====
+CREATE VIEW v_dcf_lambda AS WITH cg AS (SELECT * FROM dcf_assumptions WHERE (COALESCE(main."trim"(ticker), '') = '') LIMIT 1), ct AS (SELECT * FROM dcf_assumptions WHERE (COALESCE(main."trim"(ticker), '') != '') QUALIFY (row_number() OVER (PARTITION BY upper(main."trim"(ticker))) = 1))SELECT g.ticker, COALESCE(ct.decay_lambda, cg.decay_lambda, pol.decay_lambda) AS lam FROM general_info AS g CROSS JOIN v_dcf_policy AS pol LEFT JOIN ct ON ((upper(main."trim"(ct.ticker)) = upper(main."trim"(g.ticker)))) LEFT JOIN cg ON (CAST('t' AS BOOLEAN));
+-- Columns:
+--   ticker VARCHAR | 385 distinct | samples: '360ONE', '538882', 'ABCAPITAL'
+--   lam DOUBLE | 1 distinct | min=0.001, max=0.001 | ENUM(0.001)
+-- Sample rows (3):
+--   {ticker: '360ONE', lam: 0.001}
+--   {ticker: '538882', lam: 0.001}
+--   {ticker: 'ABCAPITAL', lam: 0.001}
+
+-- ===== VIEW v_dcf_pe_history — 329 rows =====
+CREATE VIEW v_dcf_pe_history AS WITH lam AS (SELECT ticker, lam FROM v_dcf_lambda), px AS (SELECT "replace"(Ticker, '.NS', '') AS ticker, Date, "Close" FROM ticker_prices), px_month AS (SELECT ticker, date_trunc('month', Date) AS ym, "Close" AS close_price FROM px QUALIFY (row_number() OVER (PARTITION BY ticker, date_trunc('month', Date) ORDER BY Date DESC) = 1)), eps_annual AS (SELECT ticker, CAST(dt AS "DATE") AS dt, sum(val) AS eps FROM profit_loss WHERE (metric = 'EPS in Rs') GROUP BY ticker, CAST(dt AS "DATE") HAVING (sum(val) > 0)), annual_pe AS (SELECT e.ticker, e.dt, (avg(p."Close") / e.eps) AS pe FROM eps_annual AS e INNER JOIN px AS p ON (((p.ticker = e.ticker) AND (p.Date BETWEEN (e.dt - CAST('1 year' AS INTERVAL)) AND e.dt))) GROUP BY e.ticker, e.dt, e.eps), q_ttm AS (SELECT ticker, CAST(dt AS "DATE") AS dt, sum(val) OVER (PARTITION BY ticker ORDER BY dt ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS ttm_eps, count() OVER (PARTITION BY ticker ORDER BY dt ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS n4, date_diff('day', CAST(lag(dt, 3) OVER (PARTITION BY ticker ORDER BY dt) AS "DATE"), CAST(dt AS "DATE")) AS days_diff FROM quarterly_results WHERE (metric = 'EPS in Rs')), quarterly_pe AS (SELECT q.ticker, q.dt, (m.close_price / q.ttm_eps) AS pe FROM q_ttm AS q INNER JOIN px_month AS m ON (((m.ticker = q.ticker) AND (m.ym = date_trunc('month', q.dt)))) WHERE ((q.n4 = 4) AND (q.ttm_eps > 0) AND (q.days_diff BETWEEN 350 AND 380))), cutoff AS (SELECT ticker, min(dt) AS qdt FROM quarterly_pe GROUP BY ticker), combined AS (SELECT u.ticker, u.dt, u.pe, u.src, exp((-(l.lam) * greatest(date_diff('day', u.dt, CURRENT_DATE), 0))) AS w FROM ((SELECT a.ticker, a.dt, a.pe, 'annual' AS src FROM annual_pe AS a LEFT JOIN cutoff AS c ON ((c.ticker = a.ticker)) WHERE ((c.qdt IS NULL) OR (a.dt < c.qdt))) UNION ALL (SELECT ticker, dt, pe, 'quarterly' FROM quarterly_pe)) AS u INNER JOIN lam AS l USING (ticker) WHERE ((u.pe > 3) AND (u.pe < 300))), wmed AS (SELECT ticker, pe AS wmedian_pe FROM (SELECT ticker, pe, (sum(w) OVER (PARTITION BY ticker ORDER BY pe, dt ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) / sum(w) OVER (PARTITION BY ticker)) AS cum_w, dt FROM combined) WHERE (cum_w >= 0.5) QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY pe, dt) = 1)), agg AS (SELECT ticker, (sum((pe * w)) / sum(w)) AS wmean_pe, median(pe) AS median_pe, min(pe) AS min_pe, max(pe) AS max_pe, count_star() FILTER (WHERE (src = 'annual')) AS n_annual, count_star() FILTER (WHERE (src = 'quarterly')) AS n_quarterly FROM combined GROUP BY ticker), eps_now AS (SELECT ticker, eps AS latest_eps FROM (SELECT ticker, "year"(dt) AS yr, avg(val) AS eps FROM profit_loss WHERE (metric = 'EPS in Rs') GROUP BY ticker, "year"(dt)) QUALIFY (row_number() OVER (PARTITION BY ticker ORDER BY yr DESC) = 1))SELECT a.ticker, m.wmedian_pe AS wmedian_pe, round(a.wmean_pe, 1) AS wmean_pe, round(a.median_pe, 1) AS median_pe, round(a.min_pe, 1) AS min_pe, round(a.max_pe, 1) AS max_pe, a.n_annual, a.n_quarterly, e.latest_eps FROM agg AS a LEFT JOIN wmed AS m ON ((m.ticker = a.ticker)) LEFT JOIN eps_now AS e ON ((e.ticker = a.ticker));
+-- Columns:
+--   ticker VARCHAR | 329 distinct | samples: 'GALAXYSURF', 'ICRA', 'KAJARIACER'
+--   wmedian_pe DOUBLE | 329 distinct | min=5.421728593, max=287.5571217 | samples: 21.91178017, 113.5935908, 36.13410228
+--   wmean_pe DOUBLE | 281 distinct | min=5.5, max=287.6 | samples: 69.9, 18.7, 13.9
+--   median_pe DOUBLE | 261 distinct | min=4.9, max=287.6 | samples: 28.6, 39.1, 61.3
+--   min_pe DOUBLE | 225 distinct | min=3.1, max=287.6 | samples: 17.1, 10.5, 5.1
+--   max_pe DOUBLE | 302 distinct | min=7.8, max=296.7 | samples: 204.4, 39.4, 60.1
+--   n_annual BIGINT | 12 distinct | min=1, max=12 | ENUM(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+--   n_quarterly BIGINT | 1 distinct | min=0, max=0 | ENUM(0)
+--   latest_eps DOUBLE | 329 distinct | min=-97.615, max=5542.13 | samples: 5.735, 46.83, 363.4
+-- Sample rows (3):
+--   {ticker: 'BLUEDART', wmedian_pe: 53.7530858, wmean_pe: 55.5, median_pe: 64.8, min_pe: 37.4, max_pe: 88.8, n_annual: 10, n_quarterly: 0, latest_eps: 109.39}
+--   {ticker: 'ESCORTS', wmedian_pe: 25.73475906, wmean_pe: 24.6, median_pe: 24.2, min_pe: 15.4, max_pe: 39.4, n_annual: 11, n_quarterly: 0, latest_eps: 170.02}
+--   {ticker: 'HEROMOTOCO', wmedian_pe: 17.99599512, wmean_pe: 17.6, median_pe: 15, min_pe: 10.9, max_pe: 19.8, n_annual: 11, n_quarterly: 0, latest_eps: 271.515}
+
+-- ===== VIEW v_dcf_policy — 1 rows =====
+CREATE VIEW v_dcf_policy AS SELECT COALESCE(p.rf, 7.0) AS rf, COALESCE(p.erp, 5.5) AS erp, COALESCE(p.anchor_growth, 10.0) AS anchor_growth, COALESCE(p.shrink, 0.5) AS shrink, COALESCE(p.g1_cap, 25.0) AS g1_cap, COALESCE(p.tg_max, 5.0) AS tg_max, COALESCE(p.fade, 0.5) AS fade, COALESCE(p.dr_min, 10.0) AS dr_min, COALESCE(p.dr_max, 16.0) AS dr_max, COALESCE(p.mos_base, 15.0) AS mos_base, COALESCE(p.mos_k, 0.5) AS mos_k, COALESCE(p.mos_min, 15.0) AS mos_min, COALESCE(p.mos_max, 40.0) AS mos_max, COALESCE(p.mos_sd_default, 15.0) AS mos_sd_default, COALESCE(p.zscore_thresh, 2.0) AS zscore_thresh, COALESCE(p.decay_lambda, 0.001) AS decay_lambda, COALESCE(p.beta_window_days, 1095) AS beta_window_days, COALESCE(p.benchmark_ticker, '^NSEI') AS benchmark_ticker FROM (SELECT 1) AS _one LEFT JOIN (SELECT * FROM dcf_policy LIMIT 1) AS p ON (CAST('t' AS BOOLEAN));
+-- Columns:
+--   rf DOUBLE | 1 distinct | min=7, max=7 | ENUM(7)
+--   erp DOUBLE | 1 distinct | min=5.5, max=5.5 | ENUM(5.5)
+--   anchor_growth DOUBLE | 1 distinct | min=10, max=10 | ENUM(10)
+--   shrink DOUBLE | 1 distinct | min=0.5, max=0.5 | ENUM(0.5)
+--   g1_cap DOUBLE | 1 distinct | min=25, max=25 | ENUM(25)
+--   tg_max DOUBLE | 1 distinct | min=5, max=5 | ENUM(5)
+--   fade DOUBLE | 1 distinct | min=0.5, max=0.5 | ENUM(0.5)
+--   dr_min DOUBLE | 1 distinct | min=10, max=10 | ENUM(10)
+--   dr_max DOUBLE | 1 distinct | min=16, max=16 | ENUM(16)
+--   mos_base DOUBLE | 1 distinct | min=15, max=15 | ENUM(15)
+--   mos_k DOUBLE | 1 distinct | min=0.5, max=0.5 | ENUM(0.5)
+--   mos_min DOUBLE | 1 distinct | min=15, max=15 | ENUM(15)
+--   mos_max DOUBLE | 1 distinct | min=40, max=40 | ENUM(40)
+--   mos_sd_default DOUBLE | 1 distinct | min=15, max=15 | ENUM(15)
+--   zscore_thresh DOUBLE | 1 distinct | min=2, max=2 | ENUM(2)
+--   decay_lambda DOUBLE | 1 distinct | min=0.001, max=0.001 | ENUM(0.001)
+--   beta_window_days INTEGER | 1 distinct | min=1095, max=1095 | ENUM(1095)
+--   benchmark_ticker VARCHAR | 1 distinct | ENUM('^NSEI')
+-- Sample rows (1):
+--   {rf: 7, erp: 5.5, anchor_growth: 10, shrink: 0.5, g1_cap: 25, tg_max: 5, fade: 0.5, dr_min: 10, dr_max: 16, mos_base: 15, mos_k: 0.5, mos_min: 15, mos_max: 40, mos_sd_default: 15, zscore_thresh: 2, decay_lambda: 0.001, beta_window_days: 1095, benchmark_ticker: '^NSEI'}
+
+-- ===== VIEW v_dcf_projection — 11,220 rows =====
+CREATE VIEW v_dcf_projection AS WITH scn (scenario, g_mult, dr_shift) AS (SELECT * FROM (VALUES ('bear', 0.6, 1.0), ('base', 1.0, 0.0), ('bull', 1.3, -1.0)) AS valueslist), sp AS (SELECT i.ticker, s.scenario, i.norm_fcf, i.tg, (i.g1 * s.g_mult) AS g1s, (i.g2 * s.g_mult) AS g2s, CASE  WHEN ((s.dr_shift < 0)) THEN (greatest((i.dr + s.dr_shift), (i.tg + 0.5))) ELSE (i.dr + s.dr_shift) END AS drs FROM v_dcf_inputs AS i CROSS JOIN scn AS s)SELECT sp.ticker, sp.scenario, sp.g1s, sp.g2s, sp.tg, sp.drs, y.yr, ((sp.norm_fcf * pow((1 + (sp.g1s / 100)), least(y.yr, 5))) * pow((1 + (sp.g2s / 100)), greatest((y.yr - 5), 0))) AS projected_fcf, (((sp.norm_fcf * pow((1 + (sp.g1s / 100)), least(y.yr, 5))) * pow((1 + (sp.g2s / 100)), greatest((y.yr - 5), 0))) / pow((1 + (sp.drs / 100)), y.yr)) AS pv FROM sp CROSS JOIN generate_series(1, 10) AS y(yr);
+-- Columns:
+--   ticker VARCHAR | 374 distinct | samples: 'AUROPHARMA', 'BAJAJHLDNG', 'CONCOR'
+--   scenario VARCHAR | 3 distinct | ENUM('base', 'bear', 'bull')
+--   g1s DOUBLE | 455 distinct | min=0, max=32.5 | samples: 0.78, 6.9, 3.84
+--   g2s DOUBLE | 319 distinct | min=0, max=19.5 | samples: 4.38, 2.88, 0
+--   tg DOUBLE | 21 distinct | min=2, max=5 | ENUM(2, 2.2, 2.4, 2.5, 2.8, 2.9, 3, 3.1, 3.2, 3.4, 3.6, 3.7, 3.8, 4, 4.2, 4.4, 4.6, 4.7, 4.8, 4.9, 5)
+--   drs DOUBLE | 73 distinct | min=9, max=16.3 | samples: 13.6, 13.3, 13
+--   yr BIGINT | 10 distinct | min=1, max=10 | ENUM(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+--   projected_fcf DOUBLE | 10,234 distinct | min=0.2307295453, max=1142602.001 | samples: 753.2978146, 219.2257854, 1526.140761
+--   pv DOUBLE | 11,204 distinct | min=0.122920745, max=374521.6643 | samples: 747.9246894, 2878.513053, 46.76598705
+-- Sample rows (3):
+--   {ticker: 'ACCELYA', scenario: 'bear', g1s: 0, g2s: 0, tg: 2, drs: 12.7, yr: 1, projected_fcf: 159.85043, pv: 141.8371163}
+--   {ticker: 'ADANIGREEN', scenario: 'bear', g1s: 4.26, g2s: 3.66, tg: 5, drs: 15.8, yr: 1, projected_fcf: 1756.2597, pv: 1516.631865}
+--   {ticker: 'APOLLOHOSP', scenario: 'bear', g1s: 7.38, g2s: 5.16, tg: 5, drs: 12, yr: 1, projected_fcf: 1452.190768, pv: 1296.5989}
+
+-- ===== VIEW v_dcf_valuation — 374 rows =====
+CREATE VIEW v_dcf_valuation AS WITH tv AS (SELECT ticker, scenario, sum(pv) AS pv_explicit, max(projected_fcf) FILTER (WHERE (yr = 10)) AS fcf_y10, any_value(tg) AS tg, any_value(drs) AS drs FROM v_dcf_projection GROUP BY ticker, scenario), tot AS (SELECT ticker, scenario, pv_explicit, CASE  WHEN ((drs > tg)) THEN ((((fcf_y10 * (1 + (tg / 100))) / ((drs - tg) / 100)) / pow((1 + (drs / 100)), 10))) ELSE 0 END AS pv_terminal FROM tv), ps AS (SELECT t.ticker, max(((t.pv_explicit + t.pv_terminal) / i.shares_cr)) FILTER (WHERE (t.scenario = 'bear')) AS iv_bear, max(((t.pv_explicit + t.pv_terminal) / i.shares_cr)) FILTER (WHERE (t.scenario = 'base')) AS iv_base, max(((t.pv_explicit + t.pv_terminal) / i.shares_cr)) FILTER (WHERE (t.scenario = 'bull')) AS iv_bull, max((t.pv_terminal / (t.pv_explicit + t.pv_terminal))) FILTER (WHERE (t.scenario = 'base')) AS tv_share FROM tot AS t INNER JOIN v_dcf_inputs AS i USING (ticker) GROUP BY t.ticker)SELECT i.ticker, round(i.price, 2) AS price, round(i.norm_profit, 0) AS norm_profit_cr, round(i.norm_fcf, 0) AS norm_fcf_cr, round(i.shares_cr, 2) AS shares_cr, i.g1, i.g2, i.tg, i.dr, i.mos, i.lam AS decay_lambda, round(ps.iv_bear, 0) AS iv_bear, round(ps.iv_base, 0) AS iv_base, round(ps.iv_bull, 0) AS iv_bull, round((ps.iv_base * (1 - (i.mos / 100))), 0) AS mos_price, round(pe.wmedian_pe, 1) AS pe_wmedian, pe.latest_eps AS latest_eps, round((pe.wmedian_pe * pe.latest_eps), 0) AS pe_fair_value, round((((i.price - (pe.wmedian_pe * pe.latest_eps)) / "nullif"((pe.wmedian_pe * pe.latest_eps), 0)) * 100), 1) AS pe_premium_pct, CASE  WHEN (((pe.wmedian_pe * pe.latest_eps) IS NULL)) THEN (NULL) WHEN ((i.price <= (pe.wmedian_pe * pe.latest_eps))) THEN ('CHEAP vs own P/E history') ELSE 'RICH vs own P/E history' END AS pe_verdict, round((((i.price - ps.iv_base) / ps.iv_base) * 100), 1) AS premium_to_base_pct, round((((ps.iv_base - i.price) / ps.iv_base) * 100), 1) AS margin_of_safety_pct, round((ps.tv_share * 100), 0) AS terminal_value_pct, CASE  WHEN ((i.price <= (ps.iv_base * (1 - (i.mos / 100))))) THEN ('BUY (inside MoS)') WHEN ((i.price <= ps.iv_base)) THEN ('UNDERVALUED') WHEN ((i.price <= ps.iv_bull)) THEN ('OVERVALUED vs base') ELSE 'OVERVALUED even vs bull' END AS verdict FROM v_dcf_inputs AS i INNER JOIN ps USING (ticker) LEFT JOIN v_dcf_pe_history AS pe ON ((pe.ticker = i.ticker)) WHERE ((i.shares_cr > 0) AND (i.price IS NOT NULL));
+-- Columns:
+--   ticker VARCHAR | 374 distinct | samples: 'METROPOLIS', 'MGL', 'MPHASIS'
+--   price DOUBLE | 374 distinct | min=18.16, max=128082 | samples: 147.65, 947.2, 1130
+--   norm_profit_cr DOUBLE | 358 distinct | min=2, max=114809 | samples: 6285, 236, 921
+--   norm_fcf_cr DOUBLE | 337 distinct | min=0, max=114809 | samples: 28, 1765, 222
+--   shares_cr DOUBLE | 287 distinct | min=0.4, max=2882.6 | samples: 2.4, 657.5, 24
+--   g1 DOUBLE | 161 distinct | min=0, max=25 | samples: 16.2, 0, 10.6
+--   g2 DOUBLE | 114 distinct | min=0, max=15 | samples: 0, 15, 11.4
+--   tg DOUBLE | 21 distinct | min=2, max=5 | ENUM(2, 2.2, 2.4, 2.5, 2.8, 2.9, 3, 3.1, 3.2, 3.4, 3.6, 3.7, 3.8, 4, 4.2, 4.4, 4.6, 4.7, 4.8, 4.9, 5)
+--   dr DOUBLE | 53 distinct | min=10, max=15.3 | samples: 14.8, 11.9, 12.7
+--   mos DOUBLE | 6 distinct | min=15, max=40 | ENUM(15, 20, 25, 30, 35, 40)
+--   decay_lambda DOUBLE | 1 distinct | min=0.001, max=0.001 | ENUM(0.001)
+--   iv_bear DOUBLE | 281 distinct | min=0, max=81642 | samples: 101, 149, 338
+--   iv_base DOUBLE | 300 distinct | min=0, max=127851 | samples: 396, 2210, 217
+--   iv_bull DOUBLE | 323 distinct | min=0, max=192605 | samples: 1145, 15, 2181
+--   mos_price DOUBLE | 284 distinct | min=0, max=76710 | samples: 18496, 1859, 14
+--   pe_wmedian DOUBLE | 282 distinct | min=5.4, max=287.6 | nulls=45 | samples: 16.2, 99.4, 20.2
+--   latest_eps DOUBLE | 329 distinct | min=-97.615, max=5542.13 | nulls=45 | samples: 12.43, 7.965, 104.845
+--   pe_fair_value DOUBLE | 310 distinct | min=-3253, max=141826 | nulls=45 | samples: 312, 305, 3674
+--   pe_premium_pct DOUBLE | 284 distinct | min=-3158.5, max=153200.6 | nulls=45 | samples: 4, -24.2, 28.9
+--   pe_verdict VARCHAR | 2 distinct | nulls=45 | ENUM('CHEAP vs own P/E history', 'RICH vs own P/E history')
+--   premium_to_base_pct DOUBLE | 365 distinct | min=-94.6, max=845902.5 | samples: -0.2, 1065.8, 248.8
+--   margin_of_safety_pct DOUBLE | 365 distinct | min=-845902.5, max=94.6 | samples: 56.7, -58.3, 6.8
+--   terminal_value_pct DOUBLE | 41 distinct | min=27, max=70 | ENUM(27, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 70)
+--   verdict VARCHAR | 4 distinct | ENUM('BUY (inside MoS)', 'OVERVALUED even vs bull', 'OVERVALUED vs base', 'UNDERVALUED')
+-- Sample rows (3):
+--   {ticker: 'ACCELYA', price: 978.6, norm_profit_cr: 194, norm_fcf_cr: 160, shares_cr: 1.5, g1: 0, g2: 0, tg: 2, dr: 11.7, mos: 30, decay_lambda: 0.001, iv_bear: 893, iv_base: 980, iv_bull: 1088, mos_price: 686, pe_wmedian: 16.2, latest_eps: 70.07, pe_fair_value: 1136, pe_premium_pct: -13.9, pe_verdict: 'CHEAP vs own P/E history', premium_to_base_pct: -0.2, margin_of_safety_pct: 0.2, terminal_value_pct: 38, verdict: 'UNDERVALUED'}
+--   {ticker: 'ADANIGREEN', price: 1429.9, norm_profit_cr: 1123, norm_fcf_cr: 1685, shares_cr: 164.7, g1: 7.1, g2: 6.1, tg: 5, dr: 14.8, mos: 25, decay_lambda: 0.001, iv_bear: 94, iv_base: 123, iv_bull: 157, mos_price: 92, pe_wmedian: 267.4, latest_eps: 3.41, pe_fair_value: 912, pe_premium_pct: 56.8, pe_verdict: 'RICH vs own P/E history', premium_to_base_pct: 1065.8, margin_of_safety_pct: -1065.8, terminal_value_pct: 43, verdict: 'OVERVALUED even vs bull'}
+--   {ticker: 'APOLLOHOSP', price: 8771, norm_profit_cr: 2630, norm_fcf_cr: 1352, shares_cr: 14.4, g1: 12.3, g2: 8.6, tg: 5, dr: 11, mos: 30, decay_lambda: 0.001, iv_bear: 1563, iv_base: 2514, iv_bull: 3896, mos_price: 1760, pe_wmedian: 72.6, latest_eps: 106.535, pe_fair_value: 7735, pe_premium_pct: 13.4, pe_verdict: 'RICH vs own P/E history', premium_to_base_pct: 248.8, margin_of_safety_pct: -248.8, terminal_value_pct: 62, verdict: 'OVERVALUED even vs bull'}
