@@ -16,7 +16,7 @@ NIFTY_CACHE_FILE = "cache_nifty_df.parquet"
 
 # Strategy Rules & Filters
 CONFIDENCE_CUTOFF = 75.0        
-STOCK_STOP_LOSS_PCT = -0.20     # Exact stop-loss threshold
+STOCK_STOP_LOSS_PCT = -2.00     # Exact stop-loss threshold
 PORTFOLIO_HALT_PCT = -5.0       
 MIN_HISTORY_PERIODS = 10        
 DECAY_FACTOR = 0.98             
