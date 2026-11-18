@@ -593,7 +593,7 @@ def render():
             "GOLDBEES.NS:45\n"
             "NIFTYBEES.NS:25\n"
             "NIFTYMIDCAP150.NS:15\n"
-            "0P0001B9ZU.BO:10\n"
+            "NIFTYSMLCAP250.NS:10\n"
             "0P0000AF09.BO:5"
         )
 

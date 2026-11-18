@@ -143,4 +143,5 @@ def _run_blocking(gen) -> str:
         for chunk in gen:
             text += chunk
             box.markdown(text)
+    print (text)
     return text

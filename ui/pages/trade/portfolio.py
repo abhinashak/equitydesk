@@ -5,6 +5,7 @@ Full-featured portfolio view.
 
 Features:
   - Portfolio movement across 1D / 7D / 1M / 3M / 6M / 1Y / 2Y / 3Y / 4Y / 5Y / 10Y
+    or a custom Start date → End date range
   - Portfolio weight % alongside each ticker
   - Full-width Sector Distribution + Index comparison charts
   - Today's gain % per holding
@@ -14,6 +15,7 @@ Features:
 """
 
 import os
+import json
 import datetime
 import streamlit as st
 import pandas as pd
@@ -133,6 +135,54 @@ PERIODS = [
 # Benchmark index ticker used for comparison (must exist in price_history)
 INDEX_TICKER = "NIFTYBEES"
 
+# Extra tickers that get the same SMA50 trend banner as INDEX_TICKER
+# {symbol: banner heading}
+TREND_BANNER_TICKERS = {
+    "GOLDBEES":   "Gold Trend",
+    "SILVERBEES": "Silver Trend",
+}
+
+
+# ==============================================================================
+# PERSISTENT SETTINGS  (survives app restarts)
+# ==============================================================================
+# JSON layout:
+#   {"portfolio_movement": {"period": "30D", "custom_start": "2026-10-01",
+#                           "custom_end": "2026-10-31"}}   # custom_end null = today
+# Other sections can be added to the same file without clobbering each other.
+
+SETTINGS_PATH = "../../outputs/trade_portfolio_settings.json"
+
+
+def _resolve_settings_path(path: str) -> str:
+    """Relative paths are resolved against this file's folder (same as PINNED_FILE)."""
+    if os.path.isabs(path):
+        return path
+    return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), path))
+
+
+def load_portfolio_settings(path: str = SETTINGS_PATH) -> dict:
+    """Load saved settings. Returns {} if the file is missing, empty or corrupt."""
+    try:
+        with open(_resolve_settings_path(path), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_portfolio_settings(settings: dict, path: str = SETTINGS_PATH) -> None:
+    """Atomically write settings to disk (temp file + replace, so no half-written JSON)."""
+    full = _resolve_settings_path(path)
+    try:
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        tmp = full + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+        os.replace(tmp, full)
+    except OSError as e:
+        st.warning(f"Could not save portfolio settings: {e}")
+
 
 # ==============================================================================
 # HISTORICAL DATA HELPERS
@@ -185,9 +235,12 @@ def _render_sql_log(slot) -> None:
                                  use_container_width=True, height=180)
 
 
-def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = False) -> pd.DataFrame:
+def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = False,
+                      end_date: "datetime.date | None" = None) -> pd.DataFrame:
     """
     Pull close prices from DuckDB `ticker_prices` using nse_symbol column.
+    `days` counts back from today (window start); `end_date` (optional) caps the
+    window on the right, so a custom Start → End range can be queried.
     Returns DataFrame with columns: date, ticker (=nse_symbol), close.
     Returns empty DataFrame if DuckDB unavailable or no data found.
     """
@@ -202,6 +255,7 @@ def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = Fa
         initialize_views_or_mock(conn)
 
         sym_list = ", ".join(f"'{s}'" for s in nse_symbols)
+        end_clause = f"AND Date <= DATE '{end_date:%Y-%m-%d}'" if end_date else ""
         query = f"""
             SELECT Date       AS date,
                    nse_symbol AS ticker,
@@ -209,11 +263,13 @@ def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = Fa
             FROM {table_name}
             WHERE nse_symbol IN ({sym_list})
               AND Date >= CURRENT_DATE - INTERVAL '{days} days'
+              {end_clause}
             ORDER BY nse_symbol, Date
         """
         df = conn.execute(query).df()
         df["date"] = pd.to_datetime(df["date"])
-        _log_sql(f"get_price_history → {table_name} ({len(nse_symbols)} symbols, {days} days)",
+        _log_sql(f"get_price_history → {table_name} ({len(nse_symbols)} symbols, {days} days"
+                 + (f", to {end_date}" if end_date else "") + ")",
                  query, df, (time.perf_counter() - t0) * 1000)
         return df
     except Exception as exc:
@@ -272,6 +328,83 @@ def compute_period_return(port_series: pd.Series) -> float:
     start = clean.iloc[0]
     end   = clean.iloc[-1]
     return ((end - start) / start * 100) if start else 0.0
+
+
+def _trend_snapshot(ticker: str, lookback_days: int = 150):
+    """Return (last_price, sma50) for `ticker`, or (None, None) if unavailable.
+
+    Looks in benchmark_prices first, then falls back to ticker_prices, so it
+    works whether the ETF is stored as a benchmark or as a regular ticker.
+    benchmark_prices lags ~3 days, so the latest close is topped up from
+    ticker_prices when a newer one exists (SMA50 stays as last computed).
+    """
+    hist = pd.DataFrame()
+    for is_bench in (True, False):
+        hist = get_price_history([ticker], lookback_days, is_benchmark=is_bench)
+        if not hist.empty:
+            break
+    if hist.empty:
+        return None, None
+
+    close = (hist.set_index("date")["close"]
+             .pipe(lambda s: s[~s.index.duplicated(keep="last")])
+             .sort_index().dropna())
+    if len(close) < 50:
+        return None, None
+
+    sma50 = close.rolling(window=50, min_periods=50).mean().iloc[-1]
+    last  = close.iloc[-1]
+    try:
+        live = get_price_history([ticker], 15)
+        if not live.empty:
+            live = live[live["date"] > close.index.max()].sort_values("date")
+            if not live.empty:
+                last = live["close"].iloc[-1]
+    except Exception:
+        pass
+    return float(last), float(sma50)
+
+
+def _render_trend_banner(ticker: str, last: float, sma50: float,
+                         label: str = "Market Trend", panic: bool = False) -> None:
+    """Compact SMA50 trend banner (sized to sit in one of three columns).
+    green = above SMA50, red = below. panic=True uses 'EXIT PANIC' wording."""
+    gap = (last - sma50) / sma50 * 100
+    if last < sma50:
+        kicker   = "Market Risk Alert" if panic else f"{label} Alert"
+        headline = f"{ticker} is below its SMA50"
+        tail     = "— EXIT PANIC" if panic else "— trend weakening"
+        icon, icon_sz, pad = "🚨", "2rem", "16px 18px"
+        bg, border = "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)", "#ef4444"
+        kick_c = "#fca5a5"
+    else:
+        kicker   = label
+        headline = f"{ticker} is above its SMA50"
+        tail     = "— trend intact"
+        icon, icon_sz, pad = "✅", "1.8rem", "16px 18px"
+        bg, border = "linear-gradient(135deg, #14532d 0%, #166534 100%)", "#22c55e"
+        kick_c = "#86efac"
+
+    def _chip(lbl, val, color="#fff"):
+        return (f'<span style="white-space:nowrap;">{lbl}: '
+                f'<strong style="color:{color}">{val}</strong></span>')
+
+    html = (
+        f'<div style="background:{bg};border:2px solid {border};border-radius:12px;'
+        f'padding:{pad};margin-bottom:16px;min-height:150px;'
+        f'display:flex;align-items:center;gap:14px;">'
+        f'<span style="font-size:{icon_sz};">{icon}</span><div>'
+        f'<div style="color:{kick_c};font-size:0.74rem;font-weight:700;'
+        f'letter-spacing:0.12em;text-transform:uppercase;">{kicker}</div>'
+        f'<div style="color:#fff;font-size:1.05rem;font-weight:800;margin:2px 0 0;">{headline}</div>'
+        f'<div style="color:#fff;font-size:1.05rem;font-weight:800;margin:0 0 4px;">{tail}</div>'
+        f'<div style="color:{kick_c};font-size:0.82rem;display:flex;flex-wrap:wrap;gap:2px 10px;">'
+        f'{_chip(ticker, f"₹{last:,.2f}")}'
+        f'{_chip("SMA50", f"₹{sma50:,.2f}")}'
+        f'{_chip("Gap", f"{gap:+.2f}%", kick_c)}'
+        f'</div></div></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ==============================================================================
@@ -631,19 +764,110 @@ def render():
 
     # ── PORTFOLIO MOVEMENT (period selector) ──────────────────────────────────
     st.subheader("Portfolio Movement")
-    period_labels = [p[0] for p in PERIODS]
-    sel_period    = st.radio("Period", period_labels, index=2,
-                             horizontal=True, label_visibility="collapsed")
+    _CUSTOM_LABEL = "📅 Custom"
+    period_labels = [p[0] for p in PERIODS] + [_CUSTOM_LABEL]
+    _today_d = datetime.date.today()
+    _min_d   = _today_d - datetime.timedelta(days=3650)
+    _max_d   = _today_d - datetime.timedelta(days=1)
 
-    days = next(p[1] for p in PERIODS if p[0] == sel_period)
+    # First run of this session → restore last saved choice from disk.
+    if "mv_period" not in st.session_state:
+        _saved = load_portfolio_settings().get("portfolio_movement", {})
+        _saved_period = _saved.get("period")
+        if _saved_period not in period_labels:
+            _saved_period = "30D"
+        try:
+            _saved_start = datetime.date.fromisoformat(str(_saved.get("custom_start", "")))
+        except ValueError:
+            _saved_start = _today_d - datetime.timedelta(days=30)
+        try:
+            _saved_end = datetime.date.fromisoformat(str(_saved.get("custom_end", "")))
+        except ValueError:
+            _saved_end = _today_d          # none saved → follow "today"
+        st.session_state["mv_period"]       = _saved_period
+        st.session_state["pm_custom_start"] = _saved_start
+        st.session_state["pm_custom_end"]   = _saved_end
+        st.session_state["_pm_saved"] = {
+            "period": _saved_period,
+            "custom_start": _saved_start.isoformat(),
+            "custom_end": None if _saved_end >= _today_d else _saved_end.isoformat(),
+        }
+
+    # Keep the remembered custom dates inside the allowed window (they may have aged out).
+    _custom_start = min(max(st.session_state.get("pm_custom_start", _max_d), _min_d), _max_d)
+    _custom_end   = min(max(st.session_state.get("pm_custom_end", _today_d),
+                            _custom_start + datetime.timedelta(days=1)), _today_d)
+
+    sel_period = st.radio("Period", period_labels, key="mv_period",
+                          horizontal=True, label_visibility="collapsed")
+    _period_choice = sel_period   # raw choice, kept for saving
+    end_date = None               # None = open-ended (up to today)
+
+    if sel_period == _CUSTOM_LABEL:
+        # Specific Start → End range. `days` (look-back from today to the start
+        # date) keeps every downstream query / SMA lookback working unchanged;
+        # `end_date` additionally caps the queries on the right.
+        _dc1, _dc2, _dc3 = st.columns([2, 2, 6])
+        _start_d = _dc1.date_input(
+            "Start date",
+            value=_custom_start,
+            min_value=_min_d,
+            max_value=_max_d,
+            format="DD/MM/YYYY",
+            key="mv_custom_start",
+        )
+        # End must be after Start: clamp any stale widget value *before* the
+        # widget is created (Streamlit raises if the stored value is out of range).
+        _end_min = _start_d + datetime.timedelta(days=1)
+        if "mv_custom_end" in st.session_state:
+            st.session_state["mv_custom_end"] = min(
+                max(st.session_state["mv_custom_end"], _end_min), _today_d)
+        _end_d = _dc2.date_input(
+            "End date",
+            value=min(max(_custom_end, _end_min), _today_d),
+            min_value=_end_min,
+            max_value=_today_d,
+            format="DD/MM/YYYY",
+            key="mv_custom_end",
+        )
+        _custom_start, _custom_end = _start_d, _end_d
+        days       = max(1, (_today_d - _start_d).days)
+        window_days = max(1, (_end_d - _start_d).days)
+        if _end_d < _today_d:
+            end_date   = _end_d
+            sel_period = f"{_start_d:%d %b %Y} → {_end_d:%d %b %Y}"
+        else:
+            sel_period = f"since {_start_d:%d %b %Y}"
+        _dc3.caption(f"Showing movement from **{_start_d:%d %b %Y}** to "
+                     f"**{_end_d:%d %b %Y}** ({window_days} days).")
+    else:
+        days = next(p[1] for p in PERIODS if p[0] == sel_period)
+        window_days = days
+
+    # Remember the custom dates even while another period is selected, and
+    # write to disk only when something actually changed.
+    st.session_state["pm_custom_start"] = _custom_start
+    st.session_state["pm_custom_end"]   = _custom_end
+    _pm_now = {
+        "period": _period_choice,
+        "custom_start": _custom_start.isoformat(),
+        # null when the end is "today", so it keeps following today's date
+        "custom_end": None if _custom_end >= _today_d else _custom_end.isoformat(),
+    }
+    if st.session_state.get("_pm_saved") != _pm_now:
+        _all_settings = load_portfolio_settings()
+        _all_settings["portfolio_movement"] = _pm_now
+        save_portfolio_settings(_all_settings)
+        st.session_state["_pm_saved"] = _pm_now
 
     with st.spinner("Loading price history…"):
         # Fetch holdings and benchmark separately: the index history lives in
         # benchmark_prices, while individual holdings live in ticker_prices.
         # Previously NIFTYBEES was requested from ticker_prices, so the index
         # trace was silently missing whenever that table did not contain it.
-        _holdings_ph = get_price_history(tickers_all, days)
-        _benchmark_ph = get_price_history([INDEX_TICKER], days, is_benchmark=True)
+        _holdings_ph = get_price_history(tickers_all, days, end_date=end_date)
+        _benchmark_ph = get_price_history([INDEX_TICKER], days, is_benchmark=True,
+                                          end_date=end_date)
         _frames = [frame for frame in (_holdings_ph, _benchmark_ph) if not frame.empty]
         ph_df = pd.concat(_frames, ignore_index=True) if _frames else pd.DataFrame(
             columns=["date", "ticker", "close"]
@@ -655,7 +879,7 @@ def render():
             ticker_counts    = ph_df.groupby("ticker")["date"].count()
             # A ticker is "newly listed" only if it has data for less than 25% of
             # the requested window — this avoids dropping real tickers on short
-            min_days         = max(1, days // 4)
+            min_days         = max(1, window_days // 4)
             new_listings     = set(ticker_counts[ticker_counts < min_days].index) - {INDEX_TICKER}
             if new_listings:
                 ph_df = ph_df[~ph_df["ticker"].isin(new_listings)]
@@ -700,8 +924,11 @@ def render():
             _sma50_full  = _idx_full.rolling(window=50,  min_periods=50).mean()
             _sma200_full = _idx_full.rolling(window=200, min_periods=200).mean()
             _chart_start = idx_pivot.index[0] if not idx_pivot.empty else _idx_full.index[0]
-            _sma50_chart  = _sma50_full[_sma50_full.index   >= _chart_start].dropna()
-            _sma200_chart = _sma200_full[_sma200_full.index >= _chart_start].dropna()
+            _chart_end   = pd.Timestamp(end_date) if end_date else _idx_full.index[-1]
+            _sma50_chart  = _sma50_full[(_sma50_full.index   >= _chart_start)
+                                        & (_sma50_full.index   <= _chart_end)].dropna()
+            _sma200_chart = _sma200_full[(_sma200_full.index >= _chart_start)
+                                         & (_sma200_full.index <= _chart_end)].dropna()
             _idx_last    = _idx_full.iloc[-1]   if not _idx_full.empty   else None
             _sma50_last  = _sma50_full.iloc[-1] if not _sma50_full.empty else None
             # benchmark_prices lags ~3 days. Best effort: if ticker_prices has
@@ -728,7 +955,7 @@ def render():
         # benchmark table lags ~3 days: skip the missing days by carrying the
         # last known index SMA50/SMA200 forward to today's date
         if not port_ser.empty:
-            _today = pd.Timestamp.today().normalize()
+            _today = pd.Timestamp(end_date) if end_date else pd.Timestamp.today().normalize()
             _carry_idx = port_ser.index.union(
                 pd.bdate_range(port_ser.index.max(), _today))
             _sma50_chart  = _carry_forward(_sma50_chart,  _carry_idx)
@@ -745,7 +972,7 @@ def render():
         _port_sma200_chart = pd.Series(dtype=float)
         if not port_ser.empty:
             _full_syms = [s for s in tickers_all if s in holdings_qty_hist]
-            _port_full_ph = get_price_history(_full_syms, _sma_lookback)
+            _port_full_ph = get_price_history(_full_syms, _sma_lookback, end_date=end_date)
             if not _port_full_ph.empty:
                 _port_full_ph = (_port_full_ph
                                  .sort_values(["ticker", "date"])
@@ -757,74 +984,21 @@ def render():
                 _port_sma50_chart  = _p50[_p50.index   >= port_ser.index[0]].dropna()
                 _port_sma200_chart = _p200[_p200.index >= port_ser.index[0]].dropna()
 
-    # ── EXIT PANIC BANNER ─────────────────────────────────────────────────────
-    if _idx_last is not None and _sma50_last is not None:
-        _below_sma50 = _idx_last < _sma50_last
-        _gap_pct     = (_idx_last - _sma50_last) / _sma50_last * 100
-        if _below_sma50:
-            st.markdown(
-                f"""
-                <div style="
-                    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
-                    border: 2px solid #ef4444;
-                    border-radius: 12px;
-                    padding: 18px 24px;
-                    margin-bottom: 16px;
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                ">
-                    <span style="font-size: 2.2rem;">🚨</span>
-                    <div>
-                        <div style="color: #fca5a5; font-size: 0.78rem; font-weight: 700;
-                                    letter-spacing: 0.12em; text-transform: uppercase;">
-                            Market Risk Alert
-                        </div>
-                        <div style="color: #fff; font-size: 1.25rem; font-weight: 800; margin: 2px 0;">
-                            EXIT PANIC — {INDEX_TICKER} is below its SMA50
-                        </div>
-                        <div style="color: #fca5a5; font-size: 0.9rem;">
-                            {INDEX_TICKER}: <strong style="color:#fff">₹{_idx_last:,.2f}</strong>
-                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">₹{_sma50_last:,.2f}</strong>
-                            &nbsp;·&nbsp; Gap: <strong style="color:#fca5a5">{_gap_pct:+.2f}%</strong>
-                        </div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    # ── SMA50 TREND BANNERS (NIFTYBEES, GOLDBEES, SILVERBEES) — 3 columns ─────
+    _banner_cols = st.columns(1 + len(TREND_BANNER_TICKERS))
+    with _banner_cols[0]:
+        if _idx_last is not None and _sma50_last is not None:
+            _render_trend_banner(INDEX_TICKER, _idx_last, _sma50_last,
+                                 "Market Trend", panic=True)
         else:
-            st.markdown(
-                f"""
-                <div style="
-                    background: linear-gradient(135deg, #14532d 0%, #166534 100%);
-                    border: 2px solid #22c55e;
-                    border-radius: 12px;
-                    padding: 14px 24px;
-                    margin-bottom: 16px;
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                ">
-                    <span style="font-size: 1.8rem;">✅</span>
-                    <div>
-                        <div style="color: #86efac; font-size: 0.78rem; font-weight: 700;
-                                    letter-spacing: 0.12em; text-transform: uppercase;">
-                            Market Trend
-                        </div>
-                        <div style="color: #fff; font-size: 1.1rem; font-weight: 700;">
-                            {INDEX_TICKER} is above its SMA50 — trend intact
-                        </div>
-                        <div style="color: #86efac; font-size: 0.85rem;">
-                            {INDEX_TICKER}: <strong style="color:#fff">₹{_idx_last:,.2f}</strong>
-                            &nbsp;·&nbsp; SMA50: <strong style="color:#fff">₹{_sma50_last:,.2f}</strong>
-                            &nbsp;·&nbsp; Gap: <strong style="color:#86efac">{_gap_pct:+.2f}%</strong>
-                        </div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.caption(f"⚠️ {INDEX_TICKER}: not enough price history to compute SMA50.")
+    for _col, (_t_sym, _t_label) in zip(_banner_cols[1:], TREND_BANNER_TICKERS.items()):
+        with _col:
+            _t_last, _t_sma = _trend_snapshot(_t_sym)
+            if _t_last is None:
+                st.caption(f"⚠️ {_t_sym}: not enough price history to compute SMA50.")
+            else:
+                _render_trend_banner(_t_sym, _t_last, _t_sma, _t_label)
 
     if not port_ser.empty:
         port_ret = compute_period_return(port_ser)
@@ -949,7 +1123,11 @@ def render():
         sel_abs_pnl    = sel_curr_value - sel_invested
         sel_abs_pct    = (sel_abs_pnl / sel_invested * 100) if sel_invested else 0.0
 
-        _ar1, _ar2, _ar3, _ar4 = st.columns(4)
+        # Estimated annual dividend = current value × dividend yield (from tickers table)
+        sel_div_amt = (sel_df["Curr Value"] * sel_df["Div Yield%"].fillna(0) / 100).sum()
+        sel_div_pct = (sel_div_amt / sel_curr_value * 100) if sel_curr_value else 0.0
+
+        _ar1, _ar2, _ar3, _ar4, _ar5 = st.columns(5)
         _ar1.metric("Selected Holdings", len(abs_ret_selected))
         _ar2.metric("Invested (Selected)", f"₹{sel_invested:,.0f}")
         _ar3.metric("Current Value (Selected)", f"₹{sel_curr_value:,.0f}")
@@ -958,6 +1136,14 @@ def render():
             f"₹{sel_abs_pnl:+,.0f}",
             f"{sel_abs_pct:+.2f}%",
             delta_color="normal" if sel_abs_pnl >= 0 else "inverse",
+        )
+        _ar5.metric(
+            "Est. Annual Dividend (Selected)",
+            f"₹{sel_div_amt:,.0f}",
+            f"{sel_div_pct:.2f}% yield",
+            delta_color="off",
+            help="Estimated from each holding's current value × its dividend yield. "
+                 "Not the dividends actually received.",
         )
     else:
         st.info("Select at least one stock above to see the Absolute Return.")
@@ -1226,7 +1412,7 @@ def render():
     st.divider()
     st.subheader("Per-Ticker Period Returns")
 
-    ph_strip = get_price_history(tickers_all, days)
+    ph_strip = get_price_history(tickers_all, days, end_date=end_date)
     strip_rows = []
     for nse_sym in tickers_all:
         if not ph_strip.empty and "ticker" in ph_strip.columns:
