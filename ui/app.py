@@ -75,6 +75,8 @@ elif page == "algo_ga":
     page_algo_ga.render()
 elif page == "algo_momentum":
     page_algo_momentum.render()
+elif page == "algo_fasta":
+    from algo.fasta.fasta_ui import render; render()
 elif page == "quality_gates":
     one_ticker_gates.render()
 elif page == "fundamental_analysis":
