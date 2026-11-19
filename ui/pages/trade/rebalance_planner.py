@@ -18,8 +18,6 @@ Usage (in app.py):
 
 from __future__ import annotations
 
-import io
-import csv
 import re
 import json
 import os
@@ -86,43 +84,39 @@ def _fetch_price(symbol: str) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Parse target weights from text  (TICKER<TAB>weight  or  TICKER,weight)
+# Parse manual orders  (TICKER<TAB>+amount = BUY,  TICKER<TAB>-amount = SELL)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _parse_weights_text(text: str) -> dict[str, float]:
+def _parse_amount(raw: str) -> float | None:
+    """Parse a signed INR amount: '+150000', '-1,50,000', '+₹1.5L', '-2cr', '75k'.
+    No sign = positive (BUY)."""
+    t = raw.strip().lower().replace("₹", "").replace("rs.", "").replace("rs", "")
+    t = t.replace(",", "").replace(" ", "")
+    mult = 1.0
+    for suffix, m in (("cr", 1e7), ("l", 1e5), ("k", 1e3)):
+        if t.endswith(suffix):
+            t, mult = t[: -len(suffix)], m
+            break
+    try:
+        return float(t) * mult
+    except ValueError:
+        return None
+
+
+def _parse_orders_text(text: str) -> dict[str, float]:
+    """Return {TICKER: signed ₹ amount}.  + = BUY, - = SELL (unsigned = BUY).
+    Accepts 'TICKER<TAB>amt', 'TICKER, amt', 'TICKER: amt' or 'TICKER amt'.
+    If a ticker appears twice, the amounts are netted."""
     out: dict[str, float] = {}
     for line in text.strip().splitlines():
-        parts = re.split(r"[\t,]+", line.strip())
-        if len(parts) >= 2:
-            ticker = parts[0].strip().upper()
-            try:
-                out[ticker] = float(parts[1].strip())
-            except ValueError:
-                pass
-    return out
-
-
-def _parse_weights_csv(uploaded) -> dict[str, float]:
-    raw    = uploaded.read().decode("utf-8", errors="replace")
-    reader = csv.DictReader(io.StringIO(raw))
-    fields = reader.fieldnames or []
-    t_col  = next((c for c in fields if "ticker" in c.lower()), None)
-    w_col  = next((c for c in fields if "weight" in c.lower()), None)
-    if not t_col:
-        return {}
-    out: dict[str, float] = {}
-    for row in reader:
-        ticker = row[t_col].strip().upper().split(".")[0]
-        if not ticker:
+        m = re.match(r"^\s*([A-Za-z0-9&_\-\.]+)\s*(?:[\t,:=]|\s)\s*(.+?)\s*$", line)
+        if not m:
             continue
-        if w_col:
-            try:
-                out[ticker] = float(row[w_col])
-                continue
-            except (ValueError, KeyError):
-                pass
-        # No weight column — equal weight (filled in later)
-        out[ticker] = 0.0
+        amt = _parse_amount(m.group(2))
+        if amt is None or amt == 0:
+            continue
+        tk = m.group(1).upper()
+        out[tk] = out.get(tk, 0.0) + amt
     return out
 
 
@@ -164,8 +158,7 @@ def render() -> None:
 
     # ── session defaults ──────────────────────────────────────────────────────
     for k, v in [
-        ("rb_target_weights",  {}),
-        ("rb_rebal_pct",       100.0),
+        ("rb_manual_orders",   {}),   # {TICKER: signed ₹}  + buy / - sell
         ("rb_ignored",         set()),
     ]:
         if k not in st.session_state:
@@ -200,13 +193,13 @@ def render() -> None:
     # ══════════════════════════════════════════════════════════════════════════
     mode = st.radio(
         "Rebalance mode",
-        ["🔀 Rebalance with new weights", "💰 Scale capital (keep existing weights)"],
+        ["💰 Scale Capital (+/- %)", "✏️ Manual (+ Buy / - Sell ₹)"],
         horizontal=True,
-        key="rb_mode",
+        key="rb_mode_v2",
         help=(
-            "**Rebalance**: supply new target weights and move the portfolio to match them.\n\n"
-            "**Scale capital**: keep the current weightings; add fresh capital to buy more "
-            "of everything proportionally, or reduce capital to sell proportionally."
+            "**Scale Capital**: add or remove a % of capital; every holding is bought "
+            "or sold proportionally so current weights are preserved.\n\n"
+            "**Manual**: enter `TICKER +amount` to buy or `TICKER -amount` to sell."
         ),
     )
     is_scale_mode = mode.startswith("💰")
@@ -244,152 +237,91 @@ def render() -> None:
         )
 
     # ══════════════════════════════════════════════════════════════════════════
-    # STEP 2 — TARGET WEIGHTS  (Rebalance mode only)
+    # STEP 2 — INPUT
+    #   Scale Capital : +/- %  applied to every holding
+    #   Manual        : TICKER +amount (BUY) / -amount (SELL)
     # ══════════════════════════════════════════════════════════════════════════
+    REBAL_PCT = 100.0          # always execute 100% of the computed delta
+    scale_pct = 0.0
+    capital_delta = 0.0
+
     if is_scale_mode:
-        # In scale mode: use current weights as target, skip weight input UI
-        if not curr_df.empty:
-            tw_from_curr = {
-                row["ticker"]: round(float(row["curr_wt%"]), 4)
-                for _, row in curr_df.iterrows()
-            }
-            st.session_state["rb_target_weights"] = tw_from_curr
-        st.info(
-            "💰 **Scale Capital mode** — target weights are locked to your current portfolio. "
-            "Set the capital change amount in Step 3 below."
-        )
-
-    if not is_scale_mode:
-        with st.expander("🎯 Step 2 — Target Weights", expanded=True):
-            st.markdown('<div class="rb-section">Choose how to supply target weights</div>',
-                        unsafe_allow_html=True)
-
-            tab_manual, tab_file = st.tabs(["✏️ Manual", "📂 File Upload"])
-
-            # ── Manual ────────────────────────────────────────────────────────────
-            with tab_manual:
-                st.caption("One per line:  `TICKER<TAB>weight%`  or  `TICKER, weight%`")
-                manual_txt = st.text_area(
-                    "target weights manual", height=160,
-                    label_visibility="collapsed",
-                    key="rb_manual_txt",
-                    placeholder="RELIANCE\t15\nINFY\t10\nHDFCBANK\t12",
-                )
-                if st.button("✅ Apply Manual Weights", key="rb_apply_manual"):
-                    parsed = _parse_weights_text(manual_txt)
-                    if parsed:
-                        st.session_state["rb_target_weights"] = parsed
-                        st.success(f"Applied {len(parsed)} target weights.")
-                    else:
-                        st.error("Could not parse any weights. Use TICKER<TAB>weight format.")
-
-            # ── File Upload ───────────────────────────────────────────────────────
-            with tab_file:
-                st.caption("CSV with `ticker` column + optional `weight` column. "
-                           "If no weight column, equal weights are assigned.")
-                uw = st.file_uploader("Upload weights CSV", type=["csv", "txt"],
-                                      key="rb_weights_upload",
-                                      label_visibility="collapsed")
-                if uw:
-                    parsed_file = _parse_weights_csv(uw)
-                    if parsed_file:
-                        # Fill equal weights if all zero
-                        if all(v == 0.0 for v in parsed_file.values()):
-                            eq = round(100 / len(parsed_file), 4)
-                            parsed_file = {k: eq for k in parsed_file}
-                        st.session_state["rb_file_weights_parsed"] = parsed_file
-                        st.caption(f"Parsed {len(parsed_file)} tickers from file.")
-                        tickers_preview = ", ".join(list(parsed_file.keys())[:10])
-                        if len(parsed_file) > 10:
-                            tickers_preview += f" … +{len(parsed_file)-10} more"
-                        st.info(f"**Tickers:** {tickers_preview}")
-                    else:
-                        st.error("Could not parse file. Ensure it has a `ticker` column.")
-                if st.button("✅ Apply File Weights", key="rb_apply_file",
-                             disabled="rb_file_weights_parsed" not in st.session_state):
-                    st.session_state["rb_target_weights"] = \
-                        st.session_state["rb_file_weights_parsed"]
-                    st.success(f"Applied {len(st.session_state['rb_target_weights'])} weights.")
-
-            # ── Show active target ────────────────────────────────────────────────
-            tw: dict[str, float] = st.session_state["rb_target_weights"]
-            if tw:
-                total_tw = sum(tw.values())
-                ok = abs(total_tw - 100) < 0.5
-                st.divider()
-                cash_pct = max(0.0, 100 - total_tw)
-                if total_tw > 100:
-                    st.markdown(
-                        f"**Active target:** {len(tw)} tickers · "
-                        f"🔴 Sum = **{total_tw:.2f}%** — exceeds 100%, weights rationalised proportionally."
-                    )
-                elif cash_pct > 0:
-                    st.markdown(
-                        f"**Active target:** {len(tw)} tickers · "
-                        f"🟡 Sum = **{total_tw:.2f}%** · "
-                        f"💵 **{cash_pct:.2f}% held as cash** (not rebalanced)"
-                    )
+        with st.expander("💰 Step 2 — Scale Capital", expanded=True):
+            scale_pct = st.number_input(
+                "Capital change (%)",
+                min_value=-100.0, max_value=1000.0, step=1.0, format="%.2f",
+                value=0.0, key="rb_scale_pct",
+                help=(
+                    "Positive = deploy fresh capital: buy that % more of every holding.\n\n"
+                    "Negative = withdraw capital: sell that % of every holding.\n\n"
+                    "Current weights are preserved."
+                ),
+            )
+            capital_delta = total_curr * scale_pct / 100
+            if scale_pct > 0:
+                st.caption(f"➕ Deploying **₹{capital_delta:,.0f}** (+{scale_pct:.2f}% of "
+                           f"₹{total_curr:,.0f}) across all holdings proportionally.")
+            elif scale_pct < 0:
+                st.caption(f"➖ Withdrawing **₹{abs(capital_delta):,.0f}** ({scale_pct:.2f}% of "
+                           f"₹{total_curr:,.0f}) by selling every holding proportionally.")
+            else:
+                st.caption("No change — enter a positive % to buy more or a negative % to sell.")
+    else:
+        with st.expander("✏️ Step 2 — Manual Orders", expanded=True):
+            st.caption(
+                "One per line:  `TICKER<TAB>+amount` to **BUY**,  `TICKER<TAB>-amount` to **SELL** "
+                "(₹; accepts `50000`, `1,50,000`, `75k`, `1.5L`, `2cr`). No sign = BUY. "
+                "Tickers you don't list are left unchanged."
+            )
+            manual_txt = st.text_area(
+                "manual orders", height=160,
+                label_visibility="collapsed",
+                key="rb_manual_txt",
+                placeholder="RELIANCE\t+150000\nINFY\t-50000\nHDFCBANK\t+1,20,000",
+            )
+            if st.button("✅ Apply Orders", key="rb_apply_manual"):
+                parsed_orders = _parse_orders_text(manual_txt)
+                if parsed_orders:
+                    st.session_state["rb_manual_orders"] = parsed_orders
+                    st.success(f"Applied {len(parsed_orders)} orders.")
                 else:
-                    st.markdown(
-                        f"**Active target:** {len(tw)} tickers · 🟢 Sum = **100.00%**"
-                    )
+                    st.error("Could not parse any orders. Use TICKER<TAB>+amount (buy) "
+                             "or TICKER<TAB>-amount (sell).")
 
-    if not is_scale_mode and not st.session_state["rb_target_weights"]:
+            _orders: dict[str, float] = st.session_state["rb_manual_orders"]
+            if _orders:
+                st.divider()
+                _buy_tot  = sum(v for v in _orders.values() if v > 0)
+                _sell_tot = -sum(v for v in _orders.values() if v < 0)
+                st.markdown(
+                    f"**Active orders:** {len(_orders)} tickers · "
+                    f"🟢 Buy **₹{_buy_tot:,.0f}** · 🔴 Sell **₹{_sell_tot:,.0f}** · "
+                    f"Net **₹{_buy_tot - _sell_tot:+,.0f}**"
+                )
+                st.dataframe(
+                    pd.DataFrame({
+                        "Ticker":   list(_orders.keys()),
+                        "Side":     ["BUY" if v > 0 else "SELL" for v in _orders.values()],
+                        "Amount ₹": [abs(v) for v in _orders.values()],
+                    }),
+                    use_container_width=True, hide_index=True,
+                    column_config={"Amount ₹": st.column_config.NumberColumn(format="₹%.0f")},
+                )
+                _held = set(curr_df["ticker"])
+                _not_held_sells = [t for t, v in _orders.items() if v < 0 and t not in _held]
+                if _not_held_sells:
+                    st.warning("SELL entered for tickers you don't hold (ignored): "
+                               + ", ".join(_not_held_sells))
+
+    if not is_scale_mode and not st.session_state["rb_manual_orders"]:
         # Allow bypass if a saved plan was loaded from disk
         if not st.session_state.get("rebalance_plan"):
             st.stop()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # STEP 3 — REBALANCE PARAMETERS
+    # BUILD DIFF TABLE — skip if no manual orders (show saved plan only)
     # ══════════════════════════════════════════════════════════════════════════
-    with st.expander("⚙️ Step 3 — Parameters", expanded=True):
-        pc1, pc2 = st.columns(2)
-
-        rebal_pct = pc1.number_input(
-            "% of delta to execute today",
-            min_value=1.0, max_value=100.0, step=5.0,
-            value=float(st.session_state["rb_rebal_pct"]),
-            format="%.0f",
-            help="10% means only 10% of each delta is traded today. "
-                 "Lets you phase in a rebalance gradually.",
-            key="rb_rebal_pct_input",
-        )
-        st.session_state["rb_rebal_pct"] = rebal_pct
-        pc1.caption(f"Only **{rebal_pct:.0f}%** of each BUY/SELL delta will be executed.")
-
-        if is_scale_mode:
-            capital_delta = pc2.number_input(
-                "Capital change (₹)",
-                min_value=-float(curr_df["curr_value"].sum()) if not curr_df.empty else -1e9,
-                step=10_000.0, format="%.0f",
-                value=0.0, key="rb_capital_delta",
-                help=(
-                    "Positive = fresh capital to deploy (buy more of each holding proportionally).\n\n"
-                    "Negative = capital to withdraw (sell proportionally to maintain weights)."
-                ),
-            )
-            fresh_capital = max(capital_delta, 0.0)   # used in total_val below
-            total_curr_val = curr_df["curr_value"].sum() if not curr_df.empty else 0.0
-            if capital_delta > 0:
-                pc2.caption(f"➕ Deploying **₹{capital_delta:,.0f}** across all holdings proportionally.")
-            elif capital_delta < 0:
-                pct_exit = abs(capital_delta) / total_curr_val * 100 if total_curr_val else 0
-                pc2.caption(f"➖ Withdrawing **₹{abs(capital_delta):,.0f}** ({pct_exit:.1f}% of portfolio).")
-            else:
-                pc2.caption("No capital change — enter a positive or negative amount.")
-        else:
-            capital_delta = 0.0
-            fresh_capital = pc2.number_input(
-                "Fresh Capital to deploy (₹)",
-                min_value=0.0, step=10_000.0, format="%.0f",
-                value=0.0, key="rb_fresh_capital",
-                help="Added to total portfolio value when computing target quantities.",
-            )
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # BUILD DIFF TABLE — skip if no target weights (show saved plan only)
-    # ══════════════════════════════════════════════════════════════════════════
-    if not st.session_state["rb_target_weights"]:
+    if not is_scale_mode and not st.session_state["rb_manual_orders"]:
         # No weights yet — just show the last approved plan and stop
         with st.expander("📌 Last Approved Plan", expanded=True):
             plan_df = pd.DataFrame(st.session_state["rebalance_plan"])
@@ -418,39 +350,46 @@ def render() -> None:
                     time.sleep(4)
                     st.session_state["active_page"] = "trade_live_execution"
                     st.rerun()
-        st.info("Set target weights in Step 2 above to build a new rebalance plan.")
+        st.info("Enter orders in Step 2 above to build a new rebalance plan.")
         return
 
-    tw        = st.session_state["rb_target_weights"]
-    # In scale mode with a capital withdrawal, total_val shrinks
-    total_val = curr_df["curr_value"].sum() + (capital_delta if is_scale_mode else fresh_capital)
+    curr_map = curr_df.set_index("ticker").to_dict("index")
 
-    # > 100: rationalise (scale down proportionally)
-    # < 100: keep as-is; remainder treated as cash (not allocated to any ticker)
-    tw_sum = sum(tw.values())
-    if tw_sum > 100:
-        tw_norm = {k: v / tw_sum * 100 for k, v in tw.items()}
+    # Signed ₹ order per ticker  (+ buy / - sell)
+    if is_scale_mode:
+        order_amt = {tk: float(c["curr_value"]) * scale_pct / 100 for tk, c in curr_map.items()}
     else:
-        tw_norm = dict(tw)   # use weights exactly as supplied; cash = 100 - tw_sum
+        order_amt = dict(st.session_state["rb_manual_orders"])
 
-    # Merge current + target
-    all_tickers = sorted(set(curr_df["ticker"].tolist()) | set(tw_norm.keys()))
-    curr_map    = curr_df.set_index("ticker").to_dict("index")
+    all_tickers = sorted(set(curr_map.keys()) | set(order_amt.keys()))
 
     diff_rows: list[dict] = []
+    capped_sells: list[str] = []
+    no_price: list[str] = []
     for tk in all_tickers:
-        c       = curr_map.get(tk, {})
-        curr_w  = float(curr_df.loc[curr_df["ticker"] == tk, "curr_wt%"].values[0]) \
+        c         = curr_map.get(tk, {})
+        curr_w    = float(curr_df.loc[curr_df["ticker"] == tk, "curr_wt%"].values[0]) \
             if tk in curr_map else 0.0
-        tgt_w   = tw_norm.get(tk, 0.0)
-        price   = float(c.get("last_price", 0))
+        price     = float(c.get("last_price", 0))
         if price == 0:
             price = _fetch_price(tk)
-        curr_qty   = int(c.get("qty", 0))
-        tgt_qty    = int((total_val * tgt_w / 100) / price) if price > 0 else 0
-        delta_qty  = tgt_qty - curr_qty
-        today_qty  = int(delta_qty * rebal_pct / 100)   # scaled by rebalance %
-        today_val  = round(today_qty * price, 2)
+        curr_qty  = int(c.get("qty", 0))
+        amt       = order_amt.get(tk, 0.0)
+
+        if price > 0:
+            delta_qty = int(amt / price)          # truncates toward zero
+        else:
+            delta_qty = 0
+            if amt > 0 or (amt < 0 and tk in curr_map):
+                no_price.append(tk)
+        if delta_qty < -curr_qty:                 # can't sell more than held
+            if amt < 0:
+                capped_sells.append(tk)
+            delta_qty = -curr_qty
+
+        tgt_qty   = curr_qty + delta_qty
+        today_qty = int(delta_qty * REBAL_PCT / 100)
+        today_val = round(today_qty * price, 2)
 
         if delta_qty > 0:
             action = "BUY"
@@ -462,8 +401,7 @@ def render() -> None:
         diff_rows.append({
             "Ticker":      tk,
             "Curr Wt%":    round(curr_w, 2),
-            "Target Wt%":  round(tgt_w, 2),
-            "Δ Wt%":       round(tgt_w - curr_w, 2),
+            "_tgt_val":    tgt_qty * price,
             "Curr Qty":    curr_qty,
             "Target Qty":  tgt_qty,
             "Δ Qty":       delta_qty,
@@ -474,13 +412,26 @@ def render() -> None:
             "_ignore":     tk in st.session_state["rb_ignored"],
         })
 
+    # Target weight = share of the post-trade portfolio
+    _tgt_total = sum(r["_tgt_val"] for r in diff_rows)
+    for r in diff_rows:
+        tgt_w = (r.pop("_tgt_val") / _tgt_total * 100) if _tgt_total else 0.0
+        r["Target Wt%"] = round(tgt_w, 2)
+        r["Δ Wt%"]      = round(tgt_w - r["Curr Wt%"], 2) + 0.0   # +0.0 avoids "-0.0"
+
+    if capped_sells:
+        st.warning("Sell amount exceeds holding — capped at full position: "
+                   + ", ".join(capped_sells))
+    if no_price:
+        st.warning("No price available, order skipped: " + ", ".join(no_price))
+
     diff_df = pd.DataFrame(diff_rows)
 
     # ══════════════════════════════════════════════════════════════════════════
-    # STEP 4 — DIFF VIEW + IGNORE
+    # STEP 3 — DIFF VIEW + IGNORE
     # ══════════════════════════════════════════════════════════════════════════
-    with st.expander("📊 Step 4 — Portfolio Diff", expanded=True):
-        st.caption("Review the difference between your current and target portfolio. "
+    with st.expander("📊 Step 3 — Portfolio Diff", expanded=True):
+        st.caption("Review the difference between your current and post-trade portfolio. "
                    "Toggle **Ignore** to skip any ticker from this rebalance.")
 
         edit_diff = st.data_editor(
@@ -536,9 +487,9 @@ def render() -> None:
             st.caption(f"⏭ Below ₹5,000 threshold (skipped): {skipped_list}")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # STEP 5 — FINAL REBALANCE PLAN
+    # STEP 4 — FINAL REBALANCE PLAN
     # ══════════════════════════════════════════════════════════════════════════
-    with st.expander("🚀 Step 5 — Rebalance Plan", expanded=True):
+    with st.expander("🚀 Step 4 — Rebalance Plan", expanded=True):
 
         MIN_TRADE = 1_000
         active = edit_diff[
@@ -584,30 +535,20 @@ def render() -> None:
             f3.metric("Net Outflow", f"₹{buy_val - sell_val:,.0f}")
             f4.metric("Est. STT",    f"₹{est_fees:,.0f}")
             if is_scale_mode:
-                cap_lbl = f"₹{capital_delta:+,.0f}" if capital_delta != 0 else "₹0"
-                f5.metric("Capital Change", cap_lbl)
+                f5.metric("Capital Change", f"{scale_pct:+.2f}%",
+                          f"₹{capital_delta:+,.0f}", delta_color="off")
             else:
-                f5.metric("Rebalance %", f"{rebal_pct:.0f}%")
+                f5.metric("Orders", len(active))
 
             if is_scale_mode:
                 if capital_delta > 0:
-                    st.caption(
-                        f"➕ Deploying **₹{capital_delta:,.0f}** across holdings at current weights. "
-                        f"Today's execution is **{rebal_pct:.0f}%** of the full amount."
-                    )
+                    st.caption(f"➕ Deploying **₹{capital_delta:,.0f}** (+{scale_pct:.2f}%) "
+                               f"across holdings at current weights.")
                 elif capital_delta < 0:
-                    st.caption(
-                        f"➖ Withdrawing **₹{abs(capital_delta):,.0f}** by selling proportionally. "
-                        f"Today's execution is **{rebal_pct:.0f}%** of the full amount."
-                    )
+                    st.caption(f"➖ Withdrawing **₹{abs(capital_delta):,.0f}** ({scale_pct:.2f}%) "
+                               f"by selling proportionally.")
                 else:
-                    st.caption("No capital change specified — enter an amount in Step 3.")
-            else:
-                st.caption(
-                    f"⚠️ Today's plan is **{rebal_pct:.0f}%** of the full delta. "
-                    f"Run again to continue phasing in the remaining "
-                    f"**{100 - rebal_pct:.0f}%**."
-                )
+                    st.caption("No capital change specified — enter a % in Step 2.")
 
             st.divider()
             approve_col, _ = st.columns([1, 3])
@@ -625,7 +566,7 @@ def render() -> None:
                         "target_wt":        float(row["Target Wt%"]),
                         "delta_wt":         float(row["Δ Wt%"]),
                         "side":             row["Action"],   # alias for order engine
-                        "rebalance_mode":   "scale_capital" if is_scale_mode else "new_weights",
+                        "rebalance_mode":   "scale_capital" if is_scale_mode else "manual_orders",
                     })
                 st.session_state["rebalance_plan"] = plan
                 _save_plan_to_disk(plan)

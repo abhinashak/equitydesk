@@ -27,7 +27,7 @@ NAV: dict[str, dict[str, str]] = {
         "🔮 Genetic Algorithm":      "algo_ga",
         "⚡ Momentum Rules":         "algo_momentum",
         "🧮 Rule Discovery":         "algo_rules",
-        "⚡ FASTA":                  "algo_fasta",
+        "🧬 FASTA":                  "algo_fasta",
     },
     "DATA": {
         "📈 Market Data":            "data_ticker",
