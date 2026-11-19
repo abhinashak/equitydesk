@@ -175,6 +175,49 @@ def cancel_order(token: str, order_id: str, mock: bool = False) -> dict:
         raise requests.HTTPError(f"Kite API error: {msg}", response=r)
     return r.json()
 
+def fetch_gtts(token: str) -> list:
+    """Fetch active/recent GTT triggers from Kite."""
+    logger.info("REQUEST GET %s/gtt/triggers", KITE_PROXY_URL)
+    r = requests.get(f"{KITE_PROXY_URL}/gtt/triggers", headers=kite_headers(token), timeout=10)
+    if not r.ok:
+        try:
+            msg = r.json().get("message", r.text)
+        except Exception:
+            msg = r.text
+        raise requests.HTTPError(f"Kite GTT API error: {msg}", response=r)
+    resp = r.json()
+    if resp.get("status") != "success":
+        raise ValueError(resp.get("message", "GTT API error"))
+    return resp.get("data", [])
+
+def place_gtt_market_sell(token: str, symbol: str, exchange: str, qty: int,
+                          trigger_price: float, reference_price: float, product: str = "CNC") -> dict:
+    """Place single-trigger GTT SELL using MARKET + automatic market protection.
+    Public Kite Connect GTT docs currently describe LIMIT legs; MARKET support
+    here is based on the Kite web UI and may be rejected for API clients.
+    """
+    condition = {"exchange": exchange, "tradingsymbol": symbol,
+                 "trigger_values": [float(trigger_price)], "last_price": float(reference_price)}
+    order_leg = {"exchange": exchange, "tradingsymbol": symbol,
+                 "transaction_type": "SELL", "quantity": int(qty),
+                 "order_type": "MARKET", "product": product, "market_protection": -1}
+    data = {"type": "single", "condition": json.dumps(condition),
+            "orders": json.dumps([order_leg])}
+    logger.info("REQUEST POST %s/gtt/triggers | MARKET SELL GTT %s qty=%s trigger=%s",
+                KITE_PROXY_URL, symbol, qty, trigger_price)
+    r = requests.post(f"{KITE_PROXY_URL}/gtt/triggers",
+                      headers=kite_headers(token), data=data, timeout=10)
+    if not r.ok:
+        try:
+            msg = r.json().get("message", r.text)
+        except Exception:
+            msg = r.text
+        raise requests.HTTPError(f"Kite GTT API error: {msg}", response=r)
+    resp = r.json()
+    if resp.get("status") != "success":
+        raise ValueError(resp.get("message", "GTT placement failed"))
+    return resp
+
 def fetch_trades(token: str, mock: bool = False, live_orders: list = None) -> list:
     """Fetch executed trades via the proxy.  In mock mode returns live_orders list."""
     if mock:

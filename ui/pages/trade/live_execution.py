@@ -17,7 +17,7 @@ import streamlit as st
 
 # ── import trade_utils — all Kite API calls go through here ──────────────────
 from ui.pages.trade.trade_utils import (
-    fetch_trades, fetch_orders, place_order, cancel_order,
+    fetch_trades, fetch_orders, place_order, cancel_order, fetch_gtts, place_gtt_market_sell,
     get_fluctuation_pct, fetch_price_yf, calc_fees,
     save_live_orders, load_live_orders, kite_headers,
     geo_buy_orders, geo_sell_orders,
@@ -101,7 +101,7 @@ def _build_orders(sym: str, exch: str, side: str, ltp: float,
         })
     return out
 
-def _do_place(token: str, o: dict, mock: bool) -> dict:
+def _do_place(token: str, o: dict) -> dict:
     """Route all order placement through trade_utils → proxy."""
     price = float(o["price"])
     if o.get("order_type", "LIMIT") == "LIMIT":
@@ -111,12 +111,12 @@ def _do_place(token: str, o: dict, mock: bool) -> dict:
         token, o["ticker"], o["exchange"], o["side"],
         int(o["qty"]), price,
         order_type=o.get("order_type", "LIMIT"),
-        mock=mock,
+        mock=False,
     )
 
-def _do_cancel(token: str, order_id: str, mock: bool) -> dict:
+def _do_cancel(token: str, order_id: str) -> dict:
     """Route all cancellations through trade_utils → proxy."""
-    return cancel_order(token, order_id, mock=mock)
+    return cancel_order(token, order_id, mock=False)
 
 def _normalise_kite_order(o: dict) -> dict:
     """Map Kite API field names to internal names for display."""
@@ -148,10 +148,6 @@ def render() -> None:
     first_tok  = next(iter(token_map.values()), "")
 
     st.markdown("## ⚡ Live Execution")
-    mock_mode = st.toggle("🧪 Mock Mode", value=False, key="le_mock",
-                          help="No real orders sent when ON")
-    if mock_mode:
-        st.caption("⚠️ Mock mode ON — orders are simulated.")
 
     # ═══════════════════════════════════════════════════════════════════════
     # PART 1 — EXCHANGE ORDERS  (open + executed today from Kite)
@@ -171,7 +167,7 @@ def render() -> None:
         if first_tok:
             try:
                 # fetch_orders → proxy /orders  (open + all today's terminal orders)
-                raw = fetch_orders(first_tok, mock=mock_mode,
+                raw = fetch_orders(first_tok, mock=False,
                                    live_orders=st.session_state["live_orders"])
             except Exception as e:
                 st.error(f"Exchange error: {e}")
@@ -223,6 +219,81 @@ def render() -> None:
                              use_container_width=True, hide_index=True,
                              column_config=col_cfg)
 
+    # ── Protective GTTs for COMPLETE BUY orders ──────────────────────────
+    st.markdown("### 🛡 Protective GTT — −2% MARKET SELL")
+    complete_buys = [o for o in ex_orders
+                     if str(o.get("status", "")).upper() == "COMPLETE"
+                     and str(o.get("transaction_type", "")).upper() == "BUY"
+                     and int(o.get("filled_quantity", 0) or 0) > 0
+                     and float(o.get("average_price", 0) or 0) > 0]
+    if not first_tok:
+        st.warning("Connect a Kite account to view/place protective GTTs.")
+    elif not complete_buys:
+        st.caption("No COMPLETE BUY orders to protect.")
+    else:
+        try:
+            gtt_existing = fetch_gtts(first_tok)
+            gtt_fetch_ok = True
+        except Exception as gtt_err:
+            gtt_existing = []
+            gtt_fetch_ok = False
+            st.error(f"Unable to fetch existing GTTs; placement disabled to prevent duplicates: {gtt_err}")
+
+        def _gtt_match(buy_order, trigger):
+            sym = str(buy_order.get("tradingsymbol", "")).upper()
+            qty = int(buy_order.get("filled_quantity", 0) or 0)
+            for g in gtt_existing:
+                if str(g.get("status", "")).lower() != "active":
+                    continue
+                cond = g.get("condition", {}) or {}
+                legs = g.get("orders", []) or []
+                if str(cond.get("tradingsymbol", "")).upper() != sym:
+                    continue
+                if str(cond.get("exchange", "")).upper() != str(buy_order.get("exchange", "NSE")).upper():
+                    continue
+                vals = cond.get("trigger_values", []) or []
+                if not vals or abs(float(vals[0]) - trigger) > 0.051:
+                    continue
+                if any(str(leg.get("transaction_type", "")).upper() == "SELL"
+                       and int(leg.get("quantity", 0) or 0) == qty for leg in legs):
+                    return g.get("id")
+            return None
+
+        for buy in complete_buys:
+            symbol = str(buy.get("tradingsymbol", "")).upper()
+            exch = str(buy.get("exchange", "NSE")).upper()
+            qty = int(buy.get("filled_quantity", 0) or 0)
+            avg = float(buy.get("average_price", 0) or 0)
+            trigger = round(round((avg * 0.98) / 0.05) * 0.05, 2)
+            existing_id = _gtt_match(buy, trigger) if gtt_fetch_ok else None
+            order_id = str(buy.get("order_id", ""))
+            with st.container(border=True):
+                c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+                c1.markdown(f"**{symbol}** · BUY order `{order_id}`")
+                c2.metric("Filled Qty", qty)
+                c3.metric("Avg Buy", f"₹{avg:,.2f}")
+                c4.metric("Stop Trigger", f"₹{trigger:,.2f}")
+                if existing_id:
+                    st.success(f"Protective GTT already exists (ID: {existing_id}) — no duplicate placement.")
+                elif not gtt_fetch_ok:
+                    st.button("Place MARKET SELL GTT", disabled=True, key=f"gtt_disabled_{order_id}")
+                else:
+                    confirm = st.checkbox(
+                        f"Confirm protective GTT: {symbol} SELL {qty} at ₹{trigger:.2f} (−2%)",
+                        key=f"gtt_confirm_{order_id}")
+                    if st.button("🛡 Place MARKET SELL GTT", disabled=not confirm,
+                                 key=f"gtt_place_{order_id}", type="primary"):
+                        try:
+                            result = place_gtt_market_sell(first_tok, symbol, exch, qty, trigger, avg, "CNC")
+                            st.success(f"GTT submitted for {symbol}. Trigger ID: {result.get('data', {}).get('trigger_id', 'unknown')}")
+                            st.session_state.pop("le_exchange_orders", None)
+                            st.rerun()
+                        except Exception as gtt_place_err:
+                            st.error(f"GTT placement failed for {symbol}: {gtt_place_err}")
+        st.caption("Stop trigger is calculated from the completed BUY average price (−2%); no Kite Quote API call is needed. Active GTTs are checked before placement. API rejection is shown and does not mark the order protected.")
+
+    st.divider()
+
     # Cancel orders — source of truth is the exchange, not session state
     live_now = st.session_state.get("live_orders", [])
     CANCELLABLE = {"OPEN", "TRIGGER PENDING", "AMO REQ RECEIVED"}
@@ -241,7 +312,7 @@ def render() -> None:
             if not oid:
                 continue
             try:
-                _do_cancel(first_tok, oid, mock_mode)
+                _do_cancel(first_tok, oid)
                 cancelled += 1
             except Exception as e:
                 st.warning(f"❌ {o.get('tradingsymbol','')} ({oid}): {e}")
@@ -266,7 +337,7 @@ def render() -> None:
                 oid = opts.get(chosen_label, "")
                 if oid:
                     try:
-                        _do_cancel(first_tok, oid, mock_mode)
+                        _do_cancel(first_tok, oid)
                         st.session_state.pop("le_exchange_orders", None)
                         st.success(f"✅ Cancelled {oid}")
                         st.rerun()
@@ -552,6 +623,9 @@ def render() -> None:
         return
 
     # ── Render editable Order Builder table ───────────────────────────────
+    removed_builder_keys = set(st.session_state.get("le_builder_removed_keys", []))
+    builder_rows = [r for r in builder_rows
+                    if f"{r['Ticker']}_{r['Side']}" not in removed_builder_keys]
     builder_df = pd.DataFrame(builder_rows)
 
     st.markdown("##### 📋 Order Builder — Review & Edit")
@@ -581,10 +655,11 @@ def render() -> None:
 
     # Apply persisted checkbox state to the dataframe before rendering
     builder_df["✓"] = [check_state.get(k, True) for k in row_keys]
+    builder_df["🗑 Delete"] = False
 
     edited_builder = st.data_editor(
         builder_df[[
-            "✓", "Account", "Ticker", "Exchange", "Side",
+            "✓", "🗑 Delete", "Account", "Ticker", "Exchange", "Side",
             "Ask Qty", "Plan Qty", "Filled", "Sellable", "Send Qty",
             "LTP ₹", "Exec Price ₹", "Send Value ₹",
             "Day Fluc%", "Order Type", "Tiers",
@@ -595,6 +670,7 @@ def render() -> None:
                   "Day Fluc%", "Tiers"],
         column_config={
             "✓":            st.column_config.CheckboxColumn("Send",     width="small"),
+            "🗑 Delete":    st.column_config.CheckboxColumn("Delete row", width="small"),
             "Account":      st.column_config.TextColumn("Account",      width="medium"),
             "Ask Qty":      st.column_config.NumberColumn("Ask Qty",    width="small"),
             "Filled":       st.column_config.NumberColumn("Sent",       width="small",
@@ -610,8 +686,24 @@ def render() -> None:
                 "Type", options=["LIMIT", "MARKET"], width="small"),
             "Tiers":        st.column_config.TextColumn("Tier Preview", width="large"),
         },
-        key="le_builder_editor",
+        key=f"le_builder_editor_{st.session_state.get('le_builder_editor_version', 0)}",
     )
+
+    # Delete selected Order Builder rows. Keep this as a review-only removal;
+    # it does not cancel or alter orders already sent to the exchange.
+    if "🗑 Delete" in edited_builder.columns and edited_builder["🗑 Delete"].any():
+        delete_mask = edited_builder["🗑 Delete"].fillna(False).astype(bool)
+        deleted_keys = [k for k, remove in zip(row_keys, delete_mask.tolist()) if remove]
+        removed_keys = set(st.session_state.get("le_builder_removed_keys", []))
+        removed_keys.update(deleted_keys)
+        st.session_state["le_builder_removed_keys"] = list(removed_keys)
+        for k in deleted_keys:
+            check_state.pop(k, None)
+        st.session_state["le_check_state"] = check_state
+        st.session_state["le_builder_editor_version"] = st.session_state.get("le_builder_editor_version", 0) + 1
+        st.rerun()
+    else:
+        edited_builder = edited_builder.drop(columns=["🗑 Delete"], errors="ignore")
 
     # Persist any manual checkbox changes back to session state
     for k, checked in zip(row_keys, edited_builder["✓"].tolist()):
@@ -837,7 +929,7 @@ def render() -> None:
             btn_a, btn_b = c9.columns(2)
             if btn_a.button("📤", key=f"le_send_{i}", use_container_width=True,
                             help="Send To Exchange"):
-                if not bulk_acct and not mock_mode:
+                if not bulk_acct:
                     st.error("Select an account before sending live orders.")
                 else:
                     # Apply latest qty/price edits before placing
@@ -847,7 +939,7 @@ def render() -> None:
                     o2["value"] = round(o2["qty"] * o2["price"], 2)
                     tk = token_map.get(o2.get("account","") or bulk_acct, first_tok)
                     try:
-                        resp = _do_place(tk, o2, mock_mode)
+                        resp = _do_place(tk, o2)
                         oid  = resp.get("data",{}).get("order_id","?")
                         o2.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
                         st.success(f"✅ {o2['ticker']} sent — order_id {oid}")
@@ -879,14 +971,14 @@ def render() -> None:
     if s1.button("⚡ Send All Pending", type="primary",
                  use_container_width=True, disabled=not pending_indices,
                  key="le_send_all"):
-        if not bulk_acct and not mock_mode:
+        if not bulk_acct:
             st.error("Select an account before sending live orders.")
         else:
             for idx, i in enumerate(pending_indices):
                 o  = dict(updated_staged[i])
                 tk = token_map.get(o.get("account","") or bulk_acct, first_tok)
                 try:
-                    resp = _do_place(tk, o, mock_mode)
+                    resp = _do_place(tk, o)
                     oid  = resp.get("data",{}).get("order_id","?")
                     o.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
                 except Exception as e:
