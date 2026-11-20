@@ -255,7 +255,7 @@ def render():
     # CHART BUILDER — returns a Plotly figure for any (tickers, metrics, days) combo
     # ==============================================================================
     def build_chart(all_tickers: tuple, primary: str, metrics: list, days: int | None = None,
-                    start_date=None, end_date=None) -> go.Figure | None:
+                    start_date=None, end_date=None, primary_color: str | None = None) -> go.Figure | None:
         """
         Build and return a Plotly figure.
         all_tickers : (selected, *compare_tickers)
@@ -305,15 +305,16 @@ def render():
                 # Colour by metric so multiple metrics for one ticker are distinguishable.
                 metric_color = METRIC_COLORS[metric_idx % len(METRIC_COLORS)]
                 metric_pale = METRIC_COLORS_PALE[metric_idx % len(METRIC_COLORS_PALE)]
+                metric_dash = st.session_state.get("metric_line_styles", {}).get(metric, TICKER_DASHES[metric_idx % len(TICKER_DASHES)])
                 if metric == "Price (Close)":
                     for i, tk in enumerate(ticker_order):
                         s = pivot[tk].dropna()
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} Price",
-                            line=dict(color=metric_color,
+                            line=dict(color=st.session_state.get("ticker_colors", {}).get(tk, primary_color if tk == primary and primary_color else metric_color),
                                       width=2.8 if i == 0 else 2.0,
-                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
+                                      dash=metric_dash),
                             hovertemplate="%{x|%d %b %Y}<br>₹%{y:,.2f}<extra>" + tk + "</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -339,9 +340,9 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} {col_raw}",
-                            line=dict(color=metric_color,
+                            line=dict(color=st.session_state.get("ticker_colors", {}).get(tk, primary_color if tk == primary and primary_color else metric_color),
                                       width=2.8 if i == 0 else 2.0,
-                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
+                                      dash=metric_dash),
                             hovertemplate=f"%{{x|%d %b %Y}}<br>%{{y:,.2f}}{sfx}<extra>{tk}</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -365,8 +366,8 @@ def render():
                         trace = go.Bar(
                             x=tk_data['dt'], y=tk_data['val'],
                             name=f"{tk} {fund_metric}",
-                            marker_color=metric_pale,
-                            marker_line=dict(color=metric_color, width=1),
+                            marker_color=st.session_state.get("ticker_colors", {}).get(tk, metric_pale),
+                            marker_line=dict(color=st.session_state.get("ticker_colors", {}).get(tk, primary_color if tk == primary and primary_color else metric_color), width=1),
                             opacity=0.75, width=bw,
                             hovertemplate=f"%{{x|%b %Y}}<br>%{{y:,.2f}}{sfx}<extra>{tk} {fund_metric}</extra>",
                         )
@@ -393,9 +394,9 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} (100)",
-                            line=dict(color=metric_color,
+                            line=dict(color=st.session_state.get("ticker_colors", {}).get(tk, primary_color if tk == primary and primary_color else metric_color),
                                       width=2.8 if i == 0 else 2.0,
-                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
+                                      dash=metric_dash),
                             hovertemplate="%{x|%d %b %Y}<br>%{y:,.1f}<extra>" + tk + "</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -411,9 +412,9 @@ def render():
                         trace = go.Scatter(
                             x=s.index, y=s.values, mode="lines",
                             name=f"{tk} Ret%",
-                            line=dict(color=metric_color,
+                            line=dict(color=st.session_state.get("ticker_colors", {}).get(tk, primary_color if tk == primary and primary_color else metric_color),
                                       width=2.8 if i == 0 else 2.0,
-                                      dash=TICKER_DASHES[i % len(TICKER_DASHES)]),
+                                      dash=metric_dash),
                             hovertemplate="%{x|%d %b %Y}<br>%{y:+.2f}%<extra>" + tk + "</extra>",
                             yaxis="y2" if (dual and secondary) else "y",
                         )
@@ -677,6 +678,66 @@ def render():
 
     all_tickers_to_plot = tuple([selected] + compare_tickers)
 
+    # ── Editable default style configuration: ticker = color, metric = line style ──
+    DEFAULT_TICKER_COLORS = ["#2563eb", "#f59e0b", "#16a34a", "#9333ea", "#dc2626",
+                             "#0891b2", "#db2777", "#65a30d", "#475569", "#ea580c"]
+    DEFAULT_METRIC_DASHES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"]
+    _style_tickers = list(dict.fromkeys(all_tickers_to_plot))
+    _style_metrics = [m for m in compare_metrics if _is_ts(m)]
+    if "ticker_colors" not in st.session_state:
+        st.session_state["ticker_colors"] = {}
+    if "metric_line_styles" not in st.session_state:
+        st.session_state["metric_line_styles"] = {}
+    for _tk in _style_tickers:
+        _stable_color_idx = ticker_list.index(_tk) if _tk in ticker_list else 0
+        st.session_state["ticker_colors"].setdefault(_tk, DEFAULT_TICKER_COLORS[_stable_color_idx % len(DEFAULT_TICKER_COLORS)])
+    def _default_dash_for_metric(metric):
+        if metric == "Price (Close)": return "solid"
+        if metric == REBASED_METRIC: return "dot"
+        if metric == "Return %": return "dash"
+        if metric.startswith("[M] "): return "dashdot"
+        if metric.startswith("[F] "): return "longdash"
+        return "solid"
+    for _metric in _style_metrics:
+        st.session_state["metric_line_styles"].setdefault(_metric, _default_dash_for_metric(_metric))
+
+    def _sync_ticker_color(ticker, widget_key):
+        st.session_state["ticker_colors"][ticker] = st.session_state[widget_key]
+
+    def _sync_metric_dash(metric, widget_key):
+        st.session_state["metric_line_styles"][metric] = st.session_state[widget_key]
+
+    with st.expander("🎨 Default configuration grid · Edit colors and line styles", expanded=False):
+        st.caption("Ticker color is shared across metrics; metric line style is shared across tickers.")
+        _ticker_cols = st.columns(max(1, min(5, len(_style_tickers))))
+        for _i, _tk in enumerate(_style_tickers):
+            _widget_key = f"ticker_color_widget_{_tk}"
+            st.session_state.setdefault(_widget_key, st.session_state["ticker_colors"][_tk])
+            with _ticker_cols[_i % len(_ticker_cols)]:
+                st.color_picker(f"{_tk} color", key=_widget_key,
+                                on_change=_sync_ticker_color, args=(_tk, _widget_key))
+        if _style_metrics:
+            st.markdown("**Metric line styles**")
+            _metric_cols = st.columns(max(1, min(4, len(_style_metrics))))
+            for _i, _metric in enumerate(_style_metrics):
+                _widget_key = f"metric_dash_widget_{_metric}"
+                st.session_state.setdefault(_widget_key, st.session_state["metric_line_styles"][_metric])
+                with _metric_cols[_i % len(_metric_cols)]:
+                    st.selectbox(_metric, DEFAULT_METRIC_DASHES, key=_widget_key,
+                                 on_change=_sync_metric_dash, args=(_metric, _widget_key))
+        st.markdown("**Preview grid**")
+        _grid_cols = st.columns([2] + [1] * max(1, len(_style_metrics)))
+        _grid_cols[0].markdown("**Ticker**")
+        for _j, _metric in enumerate(_style_metrics):
+            _grid_cols[_j + 1].markdown(f"**{_metric}**")
+        for _tk in _style_tickers:
+            _row = st.columns([2] + [1] * max(1, len(_style_metrics)))
+            _row[0].markdown(f"<span style='color:{st.session_state['ticker_colors'][_tk]}'>●</span> {_tk}", unsafe_allow_html=True)
+            for _j, _metric in enumerate(_style_metrics):
+                _dash = st.session_state["metric_line_styles"].get(_metric, "solid")
+                _samples = {"solid":"━━━━", "dash":"┅┅┅", "dot":"····", "dashdot":"━·━·", "longdash":"━━ ━", "longdashdot":"━━· ━·"}
+                _row[_j + 1].markdown(f"<span style='color:{st.session_state['ticker_colors'][_tk]}'> {_samples.get(_dash, '━━━━')} </span>", unsafe_allow_html=True)
+
     _bench_in_use = [t for t in all_tickers_to_plot if t in _bench_extra]
     if _bench_in_use and any(not (m in TIMESERIES_METRICS or m.startswith("[M] ")) for m in compare_metrics):
         st.caption(f"ℹ️ {', '.join(_bench_in_use)} is a benchmark/ETF — price metrics only "
@@ -685,10 +746,37 @@ def render():
     # ==============================================================================
     # PERIOD TABS + MAIN CHART
     # ==============================================================================
-    with st.expander("➕ Playground"):
+    with st.expander("➕ Playground", expanded=True):
         PERIOD_TABS  = ["📅 10Y", "📅 5Y", "📅 3Y", "📅 2Y", "📅 1Y", "📅 6M", "📅 3M", "📅 1M", "📅 7D", "🗓️ Custom"]
         PERIOD_DAYS  = [3650,     1825,    1095,    730,    365,    182,    91,     30,     7]
         PERIOD_LABEL = ["10Y",    "5Y",    "3Y",    "2Y",   "1Y",   "6M",   "3M",   "1M",   "7D"]
+
+        # Custom-range defaults are stored in session state so NEXT can roll the
+        # selected window forward without losing the user's chosen duration.
+        _today = pd.Timestamp.today().date()
+        _custom_start_key = "playground_custom_start"
+        _custom_end_key = "playground_custom_end"
+        if _custom_start_key not in st.session_state:
+            st.session_state[_custom_start_key] = (pd.Timestamp.today() - pd.DateOffset(years=10)).date()
+        if _custom_end_key not in st.session_state:
+            st.session_state[_custom_end_key] = _today
+
+        def _advance_custom_range():
+            start = st.session_state[_custom_start_key]
+            end = st.session_state[_custom_end_key]
+            duration = end - start
+            # As requested, the old End becomes the new Start; advance End by
+            # the same selected range length.
+            st.session_state[_custom_start_key] = end
+            st.session_state[_custom_end_key] = end + duration
+
+        def _retreat_custom_range():
+            start = st.session_state[_custom_start_key]
+            end = st.session_state[_custom_end_key]
+            duration = end - start
+            # The old Start becomes the new End; move Start back by the same range.
+            st.session_state[_custom_end_key] = start
+            st.session_state[_custom_start_key] = start - duration
 
         period_tabs = st.tabs(PERIOD_TABS)
         for tab_idx, tab in enumerate(period_tabs):
@@ -698,16 +786,25 @@ def render():
                                       PERIOD_DAYS[tab_idx])
                     period_label = PERIOD_LABEL[tab_idx]
                 else:
-                    custom_col1, custom_col2 = st.columns(2)
+                    custom_col1, custom_col2, custom_prev, custom_next = st.columns([2, 2, 1, 1], vertical_alignment="top")
                     with custom_col1:
                         custom_start = st.date_input(
-                            "Start date",
-                            value=(pd.Timestamp.today() - pd.DateOffset(years=10)).date(),
-                            key="playground_custom_start")
+                            "Start date", key=_custom_start_key)
                     with custom_col2:
                         custom_end = st.date_input(
-                            "End date", value=pd.Timestamp.today().date(),
-                            key="playground_custom_end")
+                            "End date", key=_custom_end_key)
+                    with custom_prev:
+                        st.button(
+                            "◀ PREVIOUS", key="playground_custom_previous",
+                            help="Move backward by the current custom date-range duration.",
+                            on_click=_retreat_custom_range,
+                            use_container_width=True)
+                    with custom_next:
+                        st.button(
+                            "NEXT ▶", key="playground_custom_next",
+                            help="Move the start to the current end date and advance the end by the same duration.",
+                            on_click=_advance_custom_range,
+                            use_container_width=True)
                     if custom_start > custom_end:
                         st.warning("Start date must be on or before End date.")
                         fig = None
@@ -767,25 +864,26 @@ def render():
     # GRAFANA-STYLE SAVED PANEL DASHBOARD
     # ==============================================================================
     if pins:
-        st.markdown("---")
-        st.markdown("#### 🗂 Saved Panel Dashboard")
+        with st.expander("🗂 Saved Panel Dashboard", expanded=False):
+            st.markdown("---")
+            st.markdown("#### 🗂 Saved Panel Dashboard")
 
-        dash_period_label = st.radio(
-            "Period", PERIOD_LABEL, index=PERIOD_LABEL.index("1Y"),
-            horizontal=True, key="dash_period", label_visibility="collapsed"
-        )
-        dash_days        = PERIOD_DAYS[PERIOD_LABEL.index(dash_period_label)]
-        dash_all_tickers = tuple([selected] + compare_tickers)
+            dash_period_label = st.radio(
+                "Period", PERIOD_LABEL, index=PERIOD_LABEL.index("1Y"),
+                horizontal=True, key="dash_period", label_visibility="collapsed"
+            )
+            dash_days        = PERIOD_DAYS[PERIOD_LABEL.index(dash_period_label)]
+            dash_all_tickers = tuple([selected] + compare_tickers)
 
-        panel_names = list(pins.keys())
-        for name in panel_names:
-            metrics = pins[name]
-            with st.expander(f"**{name}** · {'  +  '.join(metrics)} · {'  ·  '.join(dash_all_tickers)}", expanded=True):
-                panel_fig = build_chart(dash_all_tickers, selected, metrics, dash_days)
-                if panel_fig:
-                    panel_fig.update_layout(height=320, margin=dict(l=0, r=0, t=8, b=0))
-                    st.plotly_chart(panel_fig, use_container_width=True,
-                                    key=f"panel_{name}_{'_'.join(dash_all_tickers)}_{dash_days}")
-                else:
-                    st.info("No data.")
+            panel_names = list(pins.keys())
+            for name in panel_names:
+                metrics = pins[name]
+                with st.expander(f"**{name}** · {'  +  '.join(metrics)} · {'  ·  '.join(dash_all_tickers)}", expanded=False):
+                    panel_fig = build_chart(dash_all_tickers, selected, metrics, dash_days)
+                    if panel_fig:
+                        panel_fig.update_layout(height=320, margin=dict(l=0, r=0, t=8, b=0))
+                        st.plotly_chart(panel_fig, use_container_width=True,
+                                        key=f"panel_{name}_{'_'.join(dash_all_tickers)}_{dash_days}")
+                    else:
+                        st.info("No data.")
 
