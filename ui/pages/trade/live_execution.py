@@ -14,6 +14,14 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 import streamlit as st
 
+# ── Force IPv4 for outbound connections in this process ───────────────────
+import socket
+_original_getaddrinfo = socket.getaddrinfo
+
+def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return _original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
+socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 # ── import trade_utils — all Kite API calls go through here ──────────────────
 from ui.pages.trade.trade_utils import (
@@ -27,8 +35,6 @@ from ui.pages.trade.trade_utils import (
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants / paths
 # ─────────────────────────────────────────────────────────────────────────────
-PLAN_FILE        = os.path.join("outputs", "rebalance_plan.json")
-LIVE_ORDERS_FILE = os.path.join("outputs", "live_orders.json")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers (used when trade_utils not available)
@@ -42,24 +48,12 @@ def _save_orders(orders: list):
 def _load_orders() -> list:
     return load_live_orders()
 
-def _load_plan() -> list:
-    if not os.path.exists(PLAN_FILE): return []
-    try:
-        with open(PLAN_FILE) as f:
-            p = json.load(f)
-        saved = datetime.fromisoformat(p["saved_at"])
-        if datetime.now(timezone.utc) - saved > timedelta(hours=24): return []
-        return p.get("plan", [])
-    except: return []
-
 def _kite_hdr(token: str) -> dict:
     return kite_headers(token)
 
-@st.cache_data(ttl=300, show_spinner=False)
 def _ltp(symbol: str, exchange: str = "NSE") -> float:
     return fetch_price_yf(symbol, exchange)
 
-@st.cache_data(ttl=300, show_spinner=False)
 def _fluc(symbol: str, exchange: str = "NSE") -> float:
     return get_fluctuation_pct(symbol, exchange)
 
@@ -138,6 +132,17 @@ def _normalise_kite_order(o: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 def render() -> None:
 
+    # One-time cleanup of stale Order Builder cache/state from older app runs.
+    # Preserve active plans, staged orders, and live orders.
+    if not st.session_state.get("le_cache_cleanup_v1_done", False):
+        for key in list(st.session_state.keys()):
+            if key.startswith("le_builder_editor_"):
+                st.session_state.pop(key, None)
+        for key in ("le_prices", "le_exchange_orders", "le_check_state",
+                    "le_builder_removed_keys"):
+            st.session_state.pop(key, None)
+        st.session_state["le_cache_cleanup_v1_done"] = True
+
     for k, v in [("live_orders",[]), ("staged_orders",[]),
                  ("le_staged_built", False)]:
         if k not in st.session_state: st.session_state[k] = v
@@ -158,7 +163,7 @@ def render() -> None:
     p1h.markdown("Open, executed and cancelled orders for today from the exchange.")
     refresh = p1r.button("🔄 Refresh", key="le_p1_refresh", use_container_width=True)
     if refresh:
-        _ltp.clear(); _fluc.clear()
+        #_ltp.clear(); _fluc.clear()
         st.session_state.pop("le_exchange_orders", None)
         st.rerun()
 
@@ -402,13 +407,51 @@ def render() -> None:
     elif order_mode == "STAGGER":
         g3.caption("Tiers built from **Day Fluc%** via trade_utils.")
 
-    # ── Compute already-accounted qty per ticker (FILLED + PLACED/OPEN) ───
-    # Both filled and open/placed orders should reduce Send Qty to avoid double-sending.
-    filled_map: dict = {}
+    # ── Ticker-level reconciliation: actual FILLED + remaining OPEN qty ────
+    # Key by ticker + exchange + side so one symbol/order side never offsets another.
+    def _order_key(ticker, exchange, side):
+        return (str(ticker or "").upper(), str(exchange or "NSE").upper(), str(side or "").upper())
+
+    exch_filled_map: dict[tuple, int] = {}
+    exch_open_map: dict[tuple, int] = {}
+    exch_order_ids: set[str] = set()
+    OPEN_STATUSES = {"OPEN", "TRIGGER PENDING", "PENDING", "AMO REQ RECEIVED"}
+    for o in ex_orders:
+        status = str(o.get("status") or o.get("Status") or o.get("state") or "").upper()
+        side = str(o.get("transaction_type") or o.get("Type") or o.get("side") or "").upper()
+        ticker = o.get("tradingsymbol") or o.get("Ticker") or o.get("ticker") or ""
+        exchange = o.get("exchange") or o.get("Exchange") or "NSE"
+        key = _order_key(ticker, exchange, side)
+        filled_qty = int(o.get("filled_quantity") or 0)
+        total_qty = int(o.get("quantity") or 0)
+        order_id = str(o.get("order_id") or o.get("Order ID") or "")
+        if order_id:
+            exch_order_ids.add(order_id)
+        if ticker and side:
+            exch_filled_map[key] = exch_filled_map.get(key, 0) + filled_qty
+            if status in OPEN_STATUSES:
+                exch_open_map[key] = exch_open_map.get(key, 0) + max(0, total_qty - filled_qty)
+
+    # Local placed/filled records are counted only when their order ID is not
+    # present in the exchange response, avoiding duplicate tallying.
+    local_filled_map: dict[tuple, int] = {}
+    local_open_map: dict[tuple, int] = {}
     for o in live_now:
-        if o.get("state") in ("FILLED", "PLACED"):
-            k = f"{o.get('ticker','')}_{o.get('side','').upper()}"
-            filled_map[k] = filled_map.get(k, 0) + int(o.get("qty", 0))
+        state = str(o.get("state", "")).upper()
+        oid = str(o.get("order_id") or "")
+        if oid and oid in exch_order_ids:
+            continue
+        key = _order_key(o.get("ticker"), o.get("exchange", "NSE"), o.get("side"))
+        qty = int(o.get("qty") or 0)
+        if state == "FILLED":
+            local_filled_map[key] = local_filled_map.get(key, 0) + qty
+        elif state == "PLACED":
+            local_open_map[key] = local_open_map.get(key, 0) + qty
+
+    filled_map = {k: exch_filled_map.get(k, 0) + local_filled_map.get(k, 0)
+                  for k in set(exch_filled_map) | set(local_filled_map)}
+    open_map = {k: exch_open_map.get(k, 0) + local_open_map.get(k, 0)
+                for k in set(exch_open_map) | set(local_open_map)}
 
     # ── Fetch / cache LTP + day-fluc ──────────────────────────────────────
     if "le_prices" not in st.session_state:
@@ -455,34 +498,7 @@ def render() -> None:
         sellable       = max(0, total_qty - t1_qty - authorised_qty)
         portfolio_qty_map[sym] = portfolio_qty_map.get(sym, 0) + sellable
 
-    # ── Open-order qty map from Exchange Orders (both BUY and SELL) ────────
-    # Source: exchange orders fetched in Part 1 that are still OPEN/PLACED.
-    # These count against Send Qty just like filled orders — to avoid double-sending.
-    SENT_STATUSES = {"OPEN", "TRIGGER PENDING", "AMO REQ RECEIVED", "COMPLETE"}
-    exch_sent_sell_map: dict[str, int] = {}  # COMPLETE + OPEN on exchange
-    exch_sent_buy_map:  dict[str, int] = {}  # COMPLETE + OPEN on exchange
-    for o in ex_orders:
-        # ex_orders are raw Kite dicts — use lowercase keys; also handle normalised keys
-        status = str(o.get("status") or o.get("Status") or o.get("state") or "").upper()
-        ttype  = str(o.get("transaction_type") or o.get("Type") or o.get("side") or "").upper()
-        if status not in SENT_STATUSES:
-            continue
-        sym = (o.get("tradingsymbol") or o.get("Ticker") or o.get("ticker") or "").upper()
-        if not sym:
-            continue
-        try:
-            # Raw Kite API uses 'quantity' (total ordered); never 'Qty'
-            # Fall back to normalised "filled/total" string only if raw key missing
-            raw_qty = o.get("quantity") or o.get("Qty") or "0"
-            qty_str = str(raw_qty)
-            # Handle "filled / total" format from _normalise_kite_order
-            qty_val = int(qty_str.split("/")[-1].strip())
-        except (ValueError, AttributeError):
-            qty_val = 0
-        if ttype == "SELL":
-            exch_sent_sell_map[sym] = exch_sent_sell_map.get(sym, 0) + qty_val
-        elif ttype == "BUY":
-            exch_sent_buy_map[sym]  = exch_sent_buy_map.get(sym, 0)  + qty_val
+    # ── Build ticker-level reconciliation rows from exchange/local tallies ──
 
     # ── Build the Order Builder table ──────────────────────────────────────
     builder_rows: list[dict] = []
@@ -494,20 +510,21 @@ def render() -> None:
         # ask_qty: always a positive number (exchange always receives positive qty)
         ask_qty = abs(plan_qty)
 
-        filled       = filled_map.get(f"{tk}_{side}", 0)
+        exch = str(row.get("exchange", "NSE")).upper()
+        tally_key = _order_key(tk, exch, side)
+        filled = filled_map.get(tally_key, 0)
+        open_qty = open_map.get(tally_key, 0)
+        remaining = max(0, ask_qty - filled - open_qty)
 
         if side == "SELL":
-            # COMPLETE + OPEN on exchange = total already sent
-            already_sold  = exch_sent_sell_map.get(tk, 0)
-            # sellable = held qty minus T1 (unsettled) and unauthorised qty
-            sellable_qty  = portfolio_qty_map.get(tk, 0)
-            rebalance_remaining = max(0, ask_qty - already_sold)
-            # Never sell more than what is actually sellable today
-            residual = max(0, min(rebalance_remaining, sellable_qty))
+            # Sellable holdings are an execution constraint, not order completion.
+            sellable_qty = portfolio_qty_map.get(tk, 0)
+            residual = max(0, min(remaining, sellable_qty))
         else:  # BUY
-            # COMPLETE + OPEN on exchange = total already sent
-            already_bought = exch_sent_buy_map.get(tk, 0)
-            residual = max(0, ask_qty - already_bought)
+            sellable_qty = ""
+            residual = remaining
+        already_sold = filled
+        already_bought = filled
 
         if residual == 0:
             continue
@@ -549,8 +566,10 @@ def render() -> None:
             "Side":         side,
             "Ask Qty":      ask_qty,
             "Plan Qty":     ask_qty,       # kept for display compatibility (always positive)
-            "Filled":       already_sold if side == "SELL" else already_bought,
-            "Sellable":     sellable_qty  if side == "SELL" else "",
+            "Filled":       filled,
+            "Open":          open_qty,
+            "Remaining":     remaining,
+            "Sellable":     sellable_qty if side == "SELL" else "",
             "Send Qty":     residual,
             "LTP ₹":        ltp,
             "Exec Price ₹": exec_price,
@@ -561,65 +580,36 @@ def render() -> None:
             "_exchange":    exch,
         })
 
-    # ── All filled? Show summary ───────────────────────────────────────────
+    # ── Ticker reconciliation summary when no executable rows ──────────────
     if not builder_rows:
-        st.success("🎉 All plan orders already filled!")
-        plan_keys = {(r["ticker"], (r.get("action") or r.get("side", "")).upper()) for r in plan}
-        fill_rows = []
-        for o in live_now:
-            tk   = o.get("ticker", "")
-            side = (o.get("side") or o.get("action", "")).upper()
-            if o.get("state") != "FILLED": continue
-            if (tk, side) not in plan_keys: continue
-            qty   = int(o.get("qty", 0))
-            price = float(o.get("price") or o.get("average_price") or 0)
-            fill_rows.append({
-                "Ticker":       tk, "Side":     side,
-                "Qty":          qty, "Fill Price ₹": round(price, 2),
-                "Value ₹":      round(qty * price, 2),
-                "Tier":         o.get("tier", ""),
-                "Account":      o.get("account", ""),
-                "Filled At":    o.get("filled_at", "") or o.get("placed_at", ""),
-                "Order ID":     o.get("order_id", ""),
-            })
-        if fill_rows:
-            fill_df = pd.DataFrame(fill_rows)
-            def _fill_style(row):
-                c = "background-color:#dcfce7;color:#15803d" \
-                    if str(row.get("Side","")).upper() == "BUY" \
-                    else "background-color:#fee2e2;color:#b91c1c"
-                return [c] * len(row)
-            st.markdown("##### 📑 Fill Details")
-            st.dataframe(fill_df.style.apply(_fill_style, axis=1),
-                         use_container_width=True, hide_index=True,
-                         column_config={
-                             "Fill Price ₹": st.column_config.NumberColumn(format="₹%.2f"),
-                             "Value ₹":      st.column_config.NumberColumn(format="₹%.0f"),
-                         })
-            summary = (fill_df.groupby(["Ticker","Side"])
-                       .agg(Total_Qty=("Qty","sum"),
-                            Avg_Price=("Fill Price ₹", lambda x: round(
-                                (x * fill_df.loc[x.index,"Qty"]).sum()
-                                / fill_df.loc[x.index,"Qty"].sum(), 2)
-                            if fill_df.loc[x.index,"Qty"].sum() else 0),
-                            Total_Value=("Value ₹","sum"),
-                            Fills=("Order ID","count"))
-                       .reset_index()
-                       .rename(columns={"Total_Qty":"Total Qty","Avg_Price":"Avg Fill ₹","Total_Value":"Total Value ₹"})
-                       )
-            st.markdown("##### 🗂 Summary by Ticker")
-            st.dataframe(summary.style.apply(_fill_style, axis=1),
-                         use_container_width=True, hide_index=True,
-                         column_config={"Avg Fill ₹": st.column_config.NumberColumn(format="₹%.2f"),
-                                        "Total Value ₹": st.column_config.NumberColumn(format="₹%.0f")})
-            bv = fill_df[fill_df["Side"].str.upper()=="BUY"]["Value ₹"].sum()
-            sv = fill_df[fill_df["Side"].str.upper()=="SELL"]["Value ₹"].sum()
-            m1, m2, m3 = st.columns(3)
-            m1.metric("🟢 BUY filled",  f"₹{bv:,.0f}", f"{int((fill_df['Side'].str.upper()=='BUY').sum())} fills")
-            m2.metric("🔴 SELL filled", f"₹{sv:,.0f}", f"{int((fill_df['Side'].str.upper()=='SELL').sum())} fills")
-            m3.metric("Net deployed",   f"₹{bv-sv:,.0f}")
+        # Report the plan ticker-by-ticker; empty builder rows alone do NOT prove
+        # the plan is filled (e.g. SELL qty may be blocked by sellable holdings).
+        recon_rows = []
+        all_accounted = True
+        for row in plan:
+            tk = str(row.get("ticker", "")).upper()
+            side = str((row.get("action") or row.get("side", "")).upper())
+            exch = str(row.get("exchange", "NSE")).upper()
+            plan_qty = abs(int(row.get("today_qty", row.get("qty", 0)) or 0))
+            key = _order_key(tk, exch, side)
+            filled = filled_map.get(key, 0)
+            open_qty = open_map.get(key, 0)
+            remaining = max(0, plan_qty - filled - open_qty)
+            sellable = portfolio_qty_map.get(tk, 0) if side == "SELL" else "—"
+            executable = min(remaining, sellable) if side == "SELL" else remaining
+            if remaining > 0:
+                all_accounted = False
+            recon_rows.append({"Ticker": tk, "Exchange": exch, "Side": side,
+                               "Plan Qty": plan_qty, "Filled": filled,
+                               "Open": open_qty, "Remaining": remaining,
+                               "Sellable": sellable, "Executable": executable})
+        if recon_rows:
+            st.markdown("##### 📊 Plan reconciliation by ticker")
+            st.dataframe(pd.DataFrame(recon_rows), use_container_width=True, hide_index=True)
+        if all_accounted:
+            st.success("🎉 All planned quantities are filled or currently open on the exchange.")
         else:
-            st.caption("No fill detail found in live orders for this plan.")
+            st.warning("No executable rows currently. Review ticker reconciliation above—remaining quantity may be blocked by sellable holdings or order state.")
         return
 
     # ── Render editable Order Builder table ───────────────────────────────
@@ -660,21 +650,25 @@ def render() -> None:
     edited_builder = st.data_editor(
         builder_df[[
             "✓", "🗑 Delete", "Account", "Ticker", "Exchange", "Side",
-            "Ask Qty", "Plan Qty", "Filled", "Sellable", "Send Qty",
+            "Ask Qty", "Plan Qty", "Filled", "Open", "Remaining", "Sellable", "Send Qty",
             "LTP ₹", "Exec Price ₹", "Send Value ₹",
             "Day Fluc%", "Order Type", "Tiers",
         ]],
         use_container_width=True, hide_index=True,
         disabled=["Account", "Ticker", "Exchange", "Side",
-                  "Ask Qty", "Plan Qty", "Filled", "Sellable", "LTP ₹", "Send Value ₹",
+                  "Ask Qty", "Plan Qty", "Filled", "Open", "Remaining", "Sellable", "LTP ₹", "Send Value ₹",
                   "Day Fluc%", "Tiers"],
         column_config={
             "✓":            st.column_config.CheckboxColumn("Send",     width="small"),
             "🗑 Delete":    st.column_config.CheckboxColumn("Delete row", width="small"),
             "Account":      st.column_config.TextColumn("Account",      width="medium"),
             "Ask Qty":      st.column_config.NumberColumn("Ask Qty",    width="small"),
-            "Filled":       st.column_config.NumberColumn("Sent",       width="small",
-                                                          help="COMPLETE + OPEN orders already on exchange"),
+            "Filled":       st.column_config.NumberColumn("Filled",     width="small",
+                                                          help="Actual filled quantity tallied by ticker/exchange/side"),
+            "Open":          st.column_config.NumberColumn("Open",        width="small",
+                                                           help="Remaining quantity in currently open exchange orders"),
+            "Remaining":      st.column_config.NumberColumn("Remaining",   width="small",
+                                                            help="Plan qty minus filled and open quantities"),
             "Sellable":     st.column_config.TextColumn("Sellable",     width="small",
                                                         help="Qty available to sell today (excl. T1 & unauthorised)"),
             "LTP ₹":        st.column_config.NumberColumn("LTP ₹",     format="₹%.2f", width="small"),
@@ -718,7 +712,7 @@ def render() -> None:
     # ── Refresh price controls ─────────────────────────────────────────────
     rc1, _ = st.columns([1, 5])
     if rc1.button("🔄 Re-fetch Prices", key="le_refetch", use_container_width=True):
-        _ltp.clear(); _fluc.clear()
+        #_ltp.clear(); _fluc.clear()
         st.session_state.pop("le_prices", None)
         st.session_state["le_staged_built"] = False
         st.rerun()

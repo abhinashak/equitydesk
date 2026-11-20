@@ -4,6 +4,10 @@ Hook-up (app.py):
     elif page == "algo_fasta":
         from utils.fasta import render; render()
 
+Multi-strategy: the final selection combines several strategies (see STRATEGIES). Every selected strategy
+is run on the same market data and, each week, the capital pool is split between them in proportion to
+their recency-weighted win ratio. To add one: subclass `Strategy`, implement `visit()`, decorate with `@register`.
+
 The strategy / simulation / cost-model logic is unchanged from the command line
 version. What changed is how it is driven and shown:
   * module-level constants  -> `Params` (editable in the UI)
@@ -13,7 +17,9 @@ version. What changed is how it is driven and shown:
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+import re
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 
@@ -28,7 +34,7 @@ import streamlit as st
 DB_SQL_PATH = "sqls/all.sql"
 OUTPUT_FILE = "outputs/fasta/fasta.txt"
 CACHE_DIR = Path("outputs/fasta")
-RESULT_KEY = "fasta_result"
+RESULT_KEY = "fasta_result_v2"  # v2: result layout changed with multi-strategy (ignores stale sessions)
 
 # `use_container_width` is being replaced by `width="stretch"` in newer Streamlit.
 try:
@@ -54,7 +60,11 @@ class Params:
     portfolio_halt_pct: float = -4.0
     min_history: int = 10
     decay_factor: float = 0.98
-    trend_shift: bool = False           # invert L/P labels in prediction training string
+
+    # Strategies & capital split (keys from the STRATEGIES registry)
+    strategies: tuple = ("trend_shift_off", "trend_shift_on")
+    allocation_decay: float = 0.97     # per-week decay applied to a strategy's past trades when scoring its win ratio
+    win_ratio_prior: float = 5.0       # pseudo-trades at a 50% win ratio; keeps a strategy's first trades from swinging the split
 
     # Transaction cost model (Indian cash equity delivery) - verify against your broker/exchange
     weekly_capital: float = 100_000.0  # total capital pool per trading week, split across selected stocks
@@ -81,15 +91,17 @@ def _fasta_sql():
 # TRANSACTION COSTS
 # ==========================================
 def apply_transaction_costs(trades_df, p: Params):
-    """Apply delivery transaction costs; each week's capital pool is split equally among that week's trades."""
+    """Apply delivery transaction costs. Uses each trade's `position_capital` (set by allocate_capital);
+    without it, each week's pool is split equally among that week's trades."""
     if trades_df.empty:
         return trades_df
 
     df = trades_df.copy()
     df['buy_date'] = pd.to_datetime(df['buy_date'])
     df['week_period'] = df['buy_date'].dt.to_period('W')
-    weekly_trade_count = df.groupby('week_period')['ticker'].transform('count')
-    df['position_capital'] = p.weekly_capital / weekly_trade_count
+    if 'position_capital' not in df.columns:
+        weekly_trade_count = df.groupby('week_period')['ticker'].transform('count')
+        df['position_capital'] = p.weekly_capital / weekly_trade_count
     buy_value = df['position_capital'].astype(float)
     sell_value = buy_value * (1.0 + df['pnl_pct'].astype(float) / 100.0)
     sell_value = sell_value.clip(lower=0.0)
@@ -369,11 +381,109 @@ def get_recency_ngram_prediction(train_str, n, decay_factor):
     return 'P', 0.0
 
 
-def run_simulation(df, daily_stops, p: Params, progress=None):
-    """Monday entry uses strictly historical completed-week patterns (no look-ahead)."""
-    trades = []
-    current_week_picks = []
+# ==========================================
+# STRATEGIES (pluggable "visitors")
+# ==========================================
+# The engine (`run_simulation`) walks the market data once. Each selected strategy is a visitor: for every
+# eligible ticker-week the engine hands it a `TickerWeek` and gets a `Signal` back. Exits, stop-losses and the
+# stock shadow-ban belong to the ticker-week itself, so they are computed once and shared by all strategies.
+#
+# To add a strategy: subclass `Strategy`, implement `visit()`, decorate the class with `@register`.
+# It then appears in the UI's strategy list and takes part in the capital split automatically.
+@dataclass(frozen=True)
+class TickerWeek:
+    """One ticker in one signal week, as a strategy sees it.
+    `history` holds only weeks completed before this week began, so a strategy cannot look ahead."""
+    ticker: str
+    week: pd.Timestamp
+    history: np.ndarray      # bucket chars ('L' / 'P' / ...) of past completed weeks, oldest first
+    volume: float            # this week's average volume (the engine applies the liquidity filter itself)
 
+
+@dataclass(frozen=True)
+class Signal:
+    buy: bool
+    confidence: float = 0.0  # in %, used to rank the picks
+
+
+class Strategy(ABC):
+    key: str = ""            # stable id: stored in every trade row and in Params.strategies
+    label: str = ""          # shown in the UI
+    description: str = ""
+
+    @abstractmethod
+    def visit(self, ctx: TickerWeek, p: Params) -> Signal:
+        """Decide whether to buy `ctx.ticker` this week."""
+
+
+STRATEGIES: dict = {}
+
+
+def register(cls):
+    """Class decorator: make a strategy selectable by its key."""
+    inst = cls()
+    if not inst.key:
+        raise ValueError(f"{cls.__name__} needs a non-empty `key`.")
+    STRATEGIES[inst.key] = inst
+    return cls
+
+
+def resolve_strategies(keys):
+    keys = list(dict.fromkeys(keys))  # de-duplicate, keep order
+    if not keys:
+        raise ValueError("Select at least one strategy.")
+    unknown = [k for k in keys if k not in STRATEGIES]
+    if unknown:
+        raise ValueError(f"Unknown strategy {unknown}. Registered: {list(STRATEGIES)}")
+    return [STRATEGIES[k] for k in keys]
+
+
+class _NGramStrategy(Strategy):
+    """Recency-weighted 4-gram predictor over the L/P history; buys when it predicts 'P' with enough confidence."""
+    invert = False
+
+    def visit(self, ctx, p):
+        train_str = "".join(ctx.history)
+        if self.invert:  # trend shift: swap the L/P labels before predicting
+            train_str = train_str.translate(str.maketrans("LP", "PL"))
+        pred_char, prob = get_recency_ngram_prediction(train_str, 4, p.decay_factor)
+        confidence = round(prob * 100, 2)
+        return Signal(pred_char == 'P' and confidence >= p.confidence_cutoff, confidence)
+
+
+@register
+class TrendShiftOff(_NGramStrategy):
+    key = "trend_shift_off"
+    label = "Trend shift OFF"
+    description = "N-gram on the L/P history as is: buys where the pattern predicts 'P'."
+
+
+@register
+class TrendShiftOn(_NGramStrategy):
+    key = "trend_shift_on"
+    label = "Trend shift ON"
+    description = "Same n-gram with L/P swapped first: buys where the plain pattern would predict 'L'."
+    invert = True
+
+
+# ==========================================
+# SIMULATION ENGINE
+# ==========================================
+@dataclass
+class _StrategyRun:
+    """Per-strategy state. Every strategy keeps its own portfolio halt and its own trade list
+    (its stand-alone track record, which is what the capital split is scored on)."""
+    halted: bool = False
+    week_pnls: list = field(default_factory=list)
+    shadow_pnls: list = field(default_factory=list)
+    trades: list = field(default_factory=list)
+
+
+def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
+    """Monday entry uses strictly historical completed-week patterns (no look-ahead).
+
+    Every strategy in `strategies` visits each eligible ticker-week. Returns raw (trades, picks) DataFrames
+    with a `strategy` column - before capital allocation and transaction costs."""
     median_volume = df['avg_volume'].median() if 'avg_volume' in df.columns else 0
 
     ticker_data = {}
@@ -392,15 +502,16 @@ def run_simulation(df, daily_stops, p: Params, progress=None):
             }
 
     all_weeks = sorted(df['w_date'].unique())
-    stock_in_shadow = set()
-    portfolio_halted = False
+    stock_in_shadow = set()  # depends only on price outcomes, so it is shared by all strategies
+    runs = {s.key: _StrategyRun() for s in strategies}
 
     for w_idx, w_date in enumerate(all_weeks):
         if progress and w_idx % 3 == 0:
             progress(w_idx / max(len(all_weeks), 1), f"Simulating week {w_idx + 1} of {len(all_weeks)}…")
         week_dt = pd.to_datetime(w_date)
-        week_pnl_accumulator = []
-        shadow_pnl_accumulator = []
+        for run in runs.values():
+            run.week_pnls.clear()
+            run.shadow_pnls.clear()
 
         for ticker, tdict in ticker_data.items():
             dates = tdict['dates']
@@ -419,14 +530,7 @@ def run_simulation(df, daily_stops, p: Params, progress=None):
             if i < p.min_history or len(chars[:i]) < 5:
                 continue
 
-            # TRAINING STRING STRICTLY ENDS AT WEEK i-1 (past completed weeks only)
-            train_str = "".join(chars[:i])
-            if p.trend_shift:
-                train_str = train_str.translate(str.maketrans("LP", "PL"))
-            pred_char, prob = get_recency_ngram_prediction(train_str, 4, p.decay_factor)
-            confidence_pct = round(prob * 100, 2)
             curr_volume = volumes[i]
-
             was_in_shadow = ticker in stock_in_shadow  # status BEFORE this week's stop-loss can change it
 
             # Monday open entry price
@@ -471,63 +575,147 @@ def run_simulation(df, daily_stops, p: Params, progress=None):
                 else:
                     continue
 
-            if portfolio_halted:
-                shadow_pnl_accumulator.append(pnl_pct)
-                continue
+            # Every selected strategy visits this ticker-week.
+            ctx = TickerWeek(ticker, week_dt, chars[:i], curr_volume)
+            for strat in strategies:
+                run = runs[strat.key]
+                if run.halted:
+                    run.shadow_pnls.append(pnl_pct)
+                    continue
+                sig = strat.visit(ctx, p)
+                if sig.buy and curr_volume >= median_volume:
+                    run.trades.append({
+                        'ticker': ticker,
+                        'strategy': strat.key,
+                        'buy_date': buy_date.strftime('%Y-%m-%d'),
+                        'sell_date': sell_date.strftime('%Y-%m-%d'),
+                        'buy_price': round(buy_price, 2),
+                        'sell_price': round(sell_price, 2),
+                        'confidence': sig.confidence,
+                        'exit_reason': exit_reason,
+                        'pnl_pct': pnl_pct
+                    })
+                    run.week_pnls.append(pnl_pct)
 
-            if pred_char == 'P' and confidence_pct >= p.confidence_cutoff and curr_volume >= median_volume:
-                trades.append({
-                    'ticker': ticker,
-                    'buy_date': buy_date.strftime('%Y-%m-%d'),
-                    'sell_date': sell_date.strftime('%Y-%m-%d'),
-                    'buy_price': round(buy_price, 2),
-                    'sell_price': round(sell_price, 2),
-                    'confidence': confidence_pct,
-                    'exit_reason': exit_reason,
-                    'pnl_pct': pnl_pct
-                })
-                week_pnl_accumulator.append(pnl_pct)
+        # Portfolio halt is judged per strategy, on that strategy's own trades.
+        for run in runs.values():
+            if run.halted:
+                if run.shadow_pnls and sum(run.shadow_pnls) / len(run.shadow_pnls) > 0.0:
+                    run.halted = False
+            elif run.week_pnls and sum(run.week_pnls) / len(run.week_pnls) <= p.portfolio_halt_pct:
+                run.halted = True
 
-        if portfolio_halted:
-            if shadow_pnl_accumulator:
-                avg_shadow_pnl = sum(shadow_pnl_accumulator) / len(shadow_pnl_accumulator)
-                if avg_shadow_pnl > 0.0:
-                    portfolio_halted = False
-        else:
-            if week_pnl_accumulator:
-                avg_week_portfolio_pnl = sum(week_pnl_accumulator) / len(week_pnl_accumulator)
-                if avg_week_portfolio_pnl <= p.portfolio_halt_pct:
-                    portfolio_halted = True
-
+    picks = []
     latest_week = all_weeks[-1] if len(all_weeks) > 0 else None
-    if latest_week is not None and not portfolio_halted:
+    if latest_week is not None:
         latest_dt = pd.to_datetime(latest_week)
-        for ticker, tdict in ticker_data.items():
-            if ticker in stock_in_shadow:
+        for strat in strategies:
+            if runs[strat.key].halted:
                 continue
-            dates = tdict['dates']
-            closes = tdict['closes']
-            chars = tdict['chars']
-            idx_match = np.where(dates == latest_dt.to_datetime64())[0]
-            if len(idx_match) == 0:
-                continue
-            i = idx_match[0]
-            if i < p.min_history:
-                continue
-            train_str = "".join(chars[:i])
-            if p.trend_shift:
-                train_str = train_str.translate(str.maketrans("LP", "PL"))
-            pred_char, prob = get_recency_ngram_prediction(train_str, 4, p.decay_factor)
-            confidence_pct = round(prob * 100, 2)
-            if pred_char == 'P' and confidence_pct >= p.confidence_cutoff:
-                current_week_picks.append({
-                    'ticker': ticker,
-                    'entry_date': latest_dt.strftime('%Y-%m-%d'),
-                    'price': closes[i],
-                    'confidence': confidence_pct
-                })
+            for ticker, tdict in ticker_data.items():
+                if ticker in stock_in_shadow:
+                    continue
+                idx_match = np.where(tdict['dates'] == latest_dt.to_datetime64())[0]
+                if len(idx_match) == 0:
+                    continue
+                i = idx_match[0]
+                if i < p.min_history:
+                    continue
+                sig = strat.visit(TickerWeek(ticker, latest_dt, tdict['chars'][:i], tdict['volumes'][i]), p)
+                if sig.buy:
+                    picks.append({
+                        'ticker': ticker,
+                        'strategy': strat.key,
+                        'entry_date': latest_dt.strftime('%Y-%m-%d'),
+                        'price': tdict['closes'][i],
+                        'confidence': sig.confidence
+                    })
 
-    return apply_transaction_costs(pd.DataFrame(trades), p), pd.DataFrame(current_week_picks)
+    trades = [t for run in runs.values() for t in run.trades]
+    return pd.DataFrame(trades), pd.DataFrame(picks)
+
+
+# ==========================================
+# CAPITAL ALLOCATION ACROSS STRATEGIES
+# ==========================================
+# Each week the capital pool is split between the strategies that have trades that week, in proportion to their
+# recency-weighted win ratio. The win ratio is scored on each strategy's stand-alone trades from EARLIER weeks
+# only (no look-ahead). A trade n weeks old counts `allocation_decay ** n`; a small 50% prior
+# (`win_ratio_prior` pseudo-trades) stops the first few trades from swinging the split.
+_WEEK0 = pd.Timestamp("1970-01-05")  # a Monday; week numbers count Monday-anchored weeks from here
+_NO_TRADES = (np.array([], dtype=np.int64), np.array([], dtype=float))
+
+
+def _week_no(ts):
+    return (pd.Timestamp(ts).normalize() - _WEEK0).days // 7
+
+
+def _week_nos(dates):
+    return ((pd.to_datetime(dates).dt.normalize() - _WEEK0).dt.days // 7).astype(np.int64)
+
+
+def _track_record(trades_df):
+    """{strategy: (week numbers, win flags)} from the raw trades. A win is a trade that closed above its entry."""
+    if trades_df.empty:
+        return {}
+    weeks = _week_nos(trades_df['buy_date']).to_numpy()
+    wins = (trades_df['pnl_pct'].to_numpy(dtype=float) > 0.0).astype(float)
+    record = {}
+    for key in trades_df['strategy'].unique():
+        mask = (trades_df['strategy'] == key).to_numpy()
+        record[key] = (weeks[mask], wins[mask])
+    return record
+
+
+def recency_win_ratio(weeks, wins, as_of, p: Params):
+    """Recency-weighted share of winning trades among those from weeks before `as_of` (0.5 with no history)."""
+    past = weeks < as_of
+    w = p.allocation_decay ** (as_of - weeks[past])
+    denom = float(w.sum()) + p.win_ratio_prior
+    if denom <= 0:
+        return 0.5
+    return (float((w * wins[past]).sum()) + 0.5 * p.win_ratio_prior) / denom
+
+
+def split_capital(win_ratios, active):
+    """Share of the pool per active strategy, proportional to its win ratio. Swap this to change the policy."""
+    total = sum(win_ratios[k] for k in active)
+    return {k: (win_ratios[k] / total if total > 0 else 1.0 / len(active)) for k in active}
+
+
+def allocate_capital(trades_df, p: Params):
+    """Give each trade its slice of the weekly pool: pool x strategy share / that strategy's trades that week.
+    Returns (trades with strategy_win_ratio / strategy_weight / position_capital, per-week allocation history)."""
+    if trades_df.empty:
+        return trades_df, pd.DataFrame()
+    df = trades_df.copy()
+    df['_wk'] = _week_nos(df['buy_date'])
+    record = _track_record(trades_df)
+    keys = sorted(record)
+
+    rows = []
+    for wk, g in df.groupby('_wk'):
+        ratios = {k: recency_win_ratio(*record[k], wk, p) for k in keys}
+        weights = split_capital(ratios, sorted(g['strategy'].unique()))
+        rows += [{'_wk': wk, 'strategy': k, 'win_ratio': ratios[k], 'weight': weights.get(k, 0.0)} for k in keys]
+    alloc = pd.DataFrame(rows)
+
+    df = df.merge(alloc.rename(columns={'win_ratio': 'strategy_win_ratio', 'weight': 'strategy_weight'}),
+                  on=['_wk', 'strategy'], how='left')
+    per_strategy_count = df.groupby(['_wk', 'strategy'])['ticker'].transform('count')
+    df['position_capital'] = p.weekly_capital * df['strategy_weight'] / per_strategy_count
+    alloc['week'] = _WEEK0 + pd.to_timedelta(alloc['_wk'] * 7, unit='D')
+    return df.drop(columns='_wk'), alloc.drop(columns='_wk')
+
+
+def allocate_picks(picks_df, win_ratios, p: Params):
+    """The same split for the live picks, using the win ratios as of the pick week."""
+    df = picks_df.copy()
+    weights = split_capital(win_ratios, sorted(df['strategy'].unique()))
+    df['strategy_win_ratio'] = df['strategy'].map(win_ratios)
+    df['strategy_weight'] = df['strategy'].map(weights)
+    df['allocation'] = p.weekly_capital * df['strategy_weight'] / df.groupby('strategy')['ticker'].transform('count')
+    return df
 
 
 def pick_window(df):
@@ -561,18 +749,28 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     daily_stops = load_daily_stop_data(con, p, log)
     nifty_weekly, nifty_q, nifty_y = load_nifty_benchmark(con, p, log)
 
-    trades_df, picks_df = run_simulation(df, daily_stops, p, progress)
+    strategies = resolve_strategies(p.strategies)
+    raw_trades, picks_df = run_simulation(df, daily_stops, strategies, p, progress)
     wk_start, wk_end, is_next = pick_window(df)
     picks_title = (f"{'NEXT-WEEK' if is_next else 'CURRENT-WEEK'} PICKS for week {wk_start:%a %Y-%m-%d} to "
                    f"{wk_end:%a %Y-%m-%d} (signals at Thursday close | CARRY = already held)")
+
+    # Capital: each strategy's share of the weekly pool follows its recency-weighted win ratio (past weeks only).
+    record = _track_record(raw_trades)
+    win_ratios_now = {s.key: recency_win_ratio(*record.get(s.key, _NO_TRADES), _week_no(wk_start), p)
+                      for s in strategies}
+    trades_df, alloc_df = allocate_capital(raw_trades, p)
+    trades_df = apply_transaction_costs(trades_df, p)
     if not picks_df.empty:
-        picks_df = picks_df.sort_values('confidence', ascending=False).reset_index(drop=True)
+        picks_df = (allocate_picks(picks_df, win_ratios_now, p)
+                    .sort_values('confidence', ascending=False).reset_index(drop=True))
 
     res = {
         "params": asdict(p), "picks": picks_df, "picks_title": picks_title,
         "data_through": pd.Timestamp(pd.to_datetime(df['last_date']).max()).normalize(),
         "trades": trades_df, "weekly": None, "quarterly": None, "yearly": None,
         "kpis": None, "exit_stats": None, "stop_stats": None, "chart": None,
+        "strategies": [s.key for s in strategies], "strategy_stats": None, "win_ratio_chart": None,
         "gap_check_on": daily_stops is not None, "log": [],
     }
 
@@ -590,7 +788,7 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         }
 
         trades_df['sort_date'] = pd.to_datetime(trades_df['sell_date'])
-        trades_df = trades_df.sort_values('sort_date').reset_index(drop=True)
+        trades_df = trades_df.sort_values('sort_date', kind='stable').reset_index(drop=True)
         trades_df['week_period'] = pd.to_datetime(trades_df['buy_date']).dt.to_period('W')
         trades_df['quarter_period'] = trades_df['sort_date'].dt.to_period('Q')
         trades_df['year_period'] = trades_df['sort_date'].dt.to_period('Y')
@@ -632,6 +830,22 @@ def analyze(p: Params, progress=None, log=lambda m: None):
                              .agg(trades=('ticker', 'count'), avg_pnl_pct=('pnl_pct', 'mean'),
                                   avg_net_pnl_pct=('net_pnl_pct', 'mean'), net_rupees=('net_profit_rupees', 'sum'))
                              .reset_index().sort_values('trades', ascending=False))
+
+        # ---- per-strategy breakdown ----
+        keys = [s.key for s in strategies]
+        by = trades_df.groupby('strategy')
+        stats = pd.DataFrame({
+            'trades': by.size(),
+            'win rate %': by['pnl_pct'].apply(lambda s: float((s > 0).mean() * 100)),
+            'avg net PnL %': by['net_pnl_pct'].mean(),
+            'net ₹': by['net_profit_rupees'].sum(),
+            'capital ₹': by['position_capital'].sum(),
+        }).reindex(keys)
+        stats['trades'] = stats['trades'].fillna(0).astype(int)
+        stats['avg capital share %'] = alloc_df[alloc_df['weight'] > 0].groupby('strategy')['weight'].mean() * 100
+        stats['win ratio now %'] = pd.Series(win_ratios_now) * 100
+        res["strategy_stats"] = stats.rename_axis('strategy').reset_index()
+        res["win_ratio_chart"] = alloc_df.pivot(index='week', columns='strategy', values='win_ratio') * 100
 
         # ---- headline numbers ----
         total_trades = len(trades_df)
@@ -706,6 +920,8 @@ def build_text_report(res, p: Params):
 
 =========================================================================
 """)
+        L += ["=" * 115, "  STRATEGY BREAKDOWN (capital split by recency-weighted win ratio)", "=" * 115,
+              res["strategy_stats"].round(2).to_string(index=False), ""]
     else:
         L.append("No completed transactions generated with current rules.")
 
@@ -715,7 +931,7 @@ def build_text_report(res, p: Params):
              else "No active buy picks for the current week matching criteria.")
     L.append("=" * 75)
     if not picks.empty:
-        L.extend(picks['ticker'].tolist())
+        L.extend(picks['ticker'].drop_duplicates().tolist())
     return "\n".join(L)
 
 
@@ -756,8 +972,17 @@ def _parameter_form():
                 decay = c2.number_input("Recency decay factor", 0.5, 1.0, D.decay_factor, 0.01)
                 gap = c3.checkbox("Gap-aware stop fills", D.gap_aware_stop,
                                   help="A stock that opens below the stop price exits at that open, not at the stop.")
-                trend_shift = st.checkbox("Trend Shift", D.trend_shift,
-                                          help="Invert L and P in the training string before prediction.")
+                strategies = st.multiselect(
+                    "Strategies", list(STRATEGIES), default=list(D.strategies),
+                    format_func=lambda k: STRATEGIES[k].label,
+                    help="\n".join(f"- **{s.label}**: {s.description}" for s in STRATEGIES.values()))
+                c1, c2 = st.columns(2)
+                alloc_decay = c1.number_input(
+                    "Win-ratio recency decay (per week)", 0.5, 1.0, D.allocation_decay, 0.01,
+                    help="A strategy's trade n weeks old counts decay^n when scoring its win ratio. Lower = reacts faster.")
+                win_prior = c2.number_input(
+                    "Win-ratio prior (pseudo-trades)", 0.0, 100.0, D.win_ratio_prior, 1.0,
+                    help="Pseudo-trades at a 50% win ratio. Keeps the split near even until a strategy has a record.")
             with t_data:
                 c1, c2 = st.columns(2)
                 start = c1.date_input("Start date", date(2017, 4, 1))
@@ -779,7 +1004,8 @@ def _parameter_form():
 
     p = Params(
         start_date=start.isoformat(), cutoff_date=cutoff.isoformat(),
-        confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap, trend_shift=trend_shift,
+        confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap, strategies=tuple(strategies),
+        allocation_decay=alloc_decay, win_ratio_prior=win_prior,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
         weekly_capital=cap, brokerage_rate=brk, brokerage_cap=brk_cap,
         stt_buy_rate=stt_b, stt_sell_rate=stt_s, exchange_txn_rate=exch,
@@ -804,20 +1030,65 @@ def _clear_caches():
 # ==========================================
 # REPORT SECTIONS
 # ==========================================
+def _bare(ticker):
+    """Copy-list ticker without the exchange suffix (RELIANCE.NS -> RELIANCE)."""
+    return re.sub(r"\.(NS|BO)$", "", ticker, flags=re.IGNORECASE)
+
+
+def _basket(picks, capital):
+    """Whole-share order basket for `capital`: strategies share it by their capital weights, and each strategy's
+    slice is split equally across its picks. One row per ticker, in the picks' order (price = latest close)."""
+    df = picks.copy()
+    df['allocation'] = capital * df['strategy_weight'] / df.groupby('strategy')['ticker'].transform('count')
+    ok = df['price'] > 0
+    df['qty'] = np.where(ok, np.floor(df['allocation'] / df['price'].where(ok, 1.0)), 0).astype(int)
+    out = df.groupby('ticker', sort=False).agg(
+        price=('price', 'first'), allocation=('allocation', 'sum'), qty=('qty', 'sum')).reset_index()
+    out['invested'] = out['qty'] * out['price']
+    return out
+
+
 def _show_picks(res):
     st.subheader(res["picks_title"])
     picks = res["picks"]
     if picks.empty:
         st.info("No active buy picks for the current week matching the criteria.")
         return
-    c1, c2 = st.columns([3, 1])
+    split = picks.groupby('strategy').agg(n=('ticker', 'count'), weight=('strategy_weight', 'first'))
+    st.caption("Weekly pool split: " + " · ".join(
+        f"{STRATEGIES[k].label if k in STRATEGIES else k} {r.weight:.0%} ({r.n} picks)" for k, r in split.iterrows()))
+    c1, c2 = st.columns([5, 2])
     with c1:
         _table(picks, column_config={
             "confidence": st.column_config.NumberColumn("confidence %", format="%.2f"),
-            "price": st.column_config.NumberColumn("price", format="%.2f")})
+            "price": st.column_config.NumberColumn("price", format="%.2f"),
+            "strategy_win_ratio": st.column_config.NumberColumn("win ratio", format="%.3f"),
+            "strategy_weight": st.column_config.NumberColumn("capital weight", format="%.3f"),
+            "allocation": st.column_config.NumberColumn("allocation ₹", format="%.0f")})
     with c2:
-        st.caption("Ticker list (copy)")
-        st.code("\n".join(picks['ticker'].tolist()), language=None)
+        capital = st.number_input("Capital (₹)", 0.0, 1e10, float(res["params"]["weekly_capital"]), 10_000.0,
+                                  key="fasta_pick_capital",
+                                  help="Split across the strategies by their capital weights, then equally across each "
+                                       "strategy's picks. Quantity = whole shares at the latest close.")
+        basket = _basket(picks, capital)
+        mode = st.radio("List as", ["Quantity", "Amount ₹"], horizontal=True, key="fasta_pick_mode",
+                        help="Quantity: whole shares at the last close. Amount: the rupee allocation per ticker.")
+        if mode == "Quantity":
+            buy = basket[basket['qty'] > 0]
+            st.caption("Ticker list (copy): TICKER⇥+qty")
+            st.code("\n".join(f"{_bare(t)}\t+{q}" for t, q in zip(buy['ticker'], buy['qty'])), language=None)
+            if len(buy) < len(basket):
+                st.caption(f"{len(basket) - len(buy)} pick(s) left out: their share buys less than one share.")
+        else:
+            st.caption("Ticker list (copy): TICKER⇥+amount")
+            st.code("\n".join(f"{_bare(t)}\t+{a:.0f}" for t, a in zip(basket['ticker'], basket['allocation'])), language=None)
+    with st.expander("Order basket detail"):
+        _table(basket, column_config={
+            "price": st.column_config.NumberColumn("last close", format="%.2f"),
+            "allocation": st.column_config.NumberColumn("allocation ₹", format="%.0f"),
+            "invested": st.column_config.NumberColumn("invested ₹", format="%.0f")})
+        st.caption(f"Invested ₹{basket['invested'].sum():,.0f} of ₹{capital:,.0f} "
+                   f"(the rest is whole-share rounding).")
 
 
 def _show_performance(res, p):
@@ -841,6 +1112,14 @@ def _show_performance(res, p):
     st.subheader("Portfolio vs Nifty 50")
     st.line_chart(res["chart"])
     st.caption("Cumulative sum of weekly returns; Nifty is shown over the weeks the strategy traded.")
+
+    st.subheader("Strategies")
+    _table(res["strategy_stats"], column_config={
+        c: st.column_config.NumberColumn(format="%+.2f" if c in ("avg net PnL %", "net ₹") else "%.2f")
+        for c in ("win rate %", "avg net PnL %", "net ₹", "capital ₹", "avg capital share %", "win ratio now %")})
+    st.line_chart(res["win_ratio_chart"])
+    st.caption("Recency-weighted win ratio per strategy, scored on earlier weeks only. Each week's capital is split "
+               "between the strategies that have trades that week in proportion to these ratios.")
 
     cq, cy = st.columns(2)
     fmt = {"Portfolio PnL %": st.column_config.NumberColumn(format="%+.2f"),
@@ -941,7 +1220,7 @@ def _show_stop_checker(default_stop):
 # ==========================================
 def render():
     st.header("⚙️ FASTA ALGO")
-    st.caption("Weekly-rotation n-gram strategy back-test with Nifty 50 benchmark. "
+    st.caption("Multi-strategy weekly-rotation back-test with Nifty 50 benchmark. "
                "Signals use strictly past, completed weeks (no look-ahead).")
 
     tab_report, tab_stop = st.tabs(["📊 Back-test report", "🛑 Stop-loss checker"])
@@ -949,6 +1228,9 @@ def render():
     with tab_report:
         p, submitted = _parameter_form()
 
+        if submitted and not p.strategies:
+            st.warning("Select at least one strategy.")
+            submitted = False
         if submitted:
             log_lines = []
             bar = st.progress(0.0, text="Loading data…")
@@ -976,6 +1258,7 @@ def render():
         else:
             rp = Params(**res["params"])
             st.caption(f"Window {rp.start_date} → {rp.cutoff_date} · data through {res['data_through']:%Y-%m-%d} "
+                       f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
                        f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
                        f"· ₹{rp.weekly_capital:,.0f}/week")
 

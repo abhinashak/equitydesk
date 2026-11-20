@@ -1,6 +1,10 @@
 from datetime import date
 
 
+NIFTY_TABLE = "benchmark_prices"
+NIFTY_TICKER = "NIFTYBEES.NS"
+
+
 def build_nifty_sql(cutoff_date: str | date) -> str:
     """Build the SQL query for weekly returns, prior-week momentum rank, and L/P buckets."""
     return f"""
@@ -8,8 +12,8 @@ def build_nifty_sql(cutoff_date: str | date) -> str:
             SELECT
                 date_trunc('week', date) AS w_date,
                 arg_max(close, date) AS close_price
-            FROM ticker_prices
-            WHERE (ticker LIKE '%NIFTY%' OR ticker LIKE '%NSEI%')
+            FROM {NIFTY_TABLE}
+            WHERE ticker = '{NIFTY_TICKER}'
               AND date < DATE '{cutoff_date}'
             GROUP BY date_trunc('week', date)
         ),

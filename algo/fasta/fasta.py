@@ -356,7 +356,9 @@ def run_simulation(df, daily_stops=None):
                 continue
 
             # TRAINING STRING STRICTLY ENDS AT WEEK i-1 (Past completed weeks only)
-            train_str = "".join(chars[:i])
+            #train_str = "".join(chars[:i])
+            train_str = "".join(chars[:i]).translate(str.maketrans("LP", "PL"))
+
             pred_char, prob = get_recency_ngram_prediction(train_str, n=4)
             confidence_pct = round(prob * 100, 2)
             curr_volume = volumes[i]

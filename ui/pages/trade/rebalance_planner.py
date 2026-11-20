@@ -84,8 +84,17 @@ def _fetch_price(symbol: str) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Parse manual orders  (TICKER<TAB>+amount = BUY,  TICKER<TAB>-amount = SELL)
+# Parse manual orders  (TICKER<TAB>+val = BUY,  TICKER<TAB>-val = SELL;  val = qty or ₹ amount)
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _parse_qty(raw: str) -> int | None:
+    """Parse a signed share quantity: '+10', '-25', '1,000'.  No sign = positive (BUY).
+    Must be a whole number; anything else returns None."""
+    t = raw.strip().replace(",", "").replace(" ", "")
+    if not re.fullmatch(r"[+-]?\d+", t):
+        return None
+    return int(t)
+
 
 def _parse_amount(raw: str) -> float | None:
     """Parse a signed INR amount: '+150000', '-1,50,000', '+₹1.5L', '-2cr', '75k'.
@@ -103,21 +112,24 @@ def _parse_amount(raw: str) -> float | None:
         return None
 
 
-def _parse_orders_text(text: str) -> dict[str, float]:
-    """Return {TICKER: signed ₹ amount}.  + = BUY, - = SELL (unsigned = BUY).
-    Accepts 'TICKER<TAB>amt', 'TICKER, amt', 'TICKER: amt' or 'TICKER amt'.
-    If a ticker appears twice, the amounts are netted."""
+def _parse_orders_text(text: str, unit: str = "qty") -> dict[str, float]:
+    """Return {TICKER: signed value}.  + = BUY, - = SELL (unsigned = BUY).
+    unit="qty"    → value is a whole number of shares
+    unit="amount" → value is an INR amount
+    Accepts 'TICKER<TAB>val', 'TICKER, val', 'TICKER: val' or 'TICKER val'.
+    If a ticker appears twice, the values are netted."""
+    parse = _parse_qty if unit == "qty" else _parse_amount
     out: dict[str, float] = {}
     for line in text.strip().splitlines():
         m = re.match(r"^\s*([A-Za-z0-9&_\-\.]+)\s*(?:[\t,:=]|\s)\s*(.+?)\s*$", line)
         if not m:
             continue
-        amt = _parse_amount(m.group(2))
-        if amt is None or amt == 0:
+        val = parse(m.group(2))
+        if val is None or val == 0:
             continue
         tk = m.group(1).upper()
-        out[tk] = out.get(tk, 0.0) + amt
-    return out
+        out[tk] = out.get(tk, 0) + val
+    return {k: v for k, v in out.items() if v != 0}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -158,7 +170,8 @@ def render() -> None:
 
     # ── session defaults ──────────────────────────────────────────────────────
     for k, v in [
-        ("rb_manual_orders",   {}),   # {TICKER: signed ₹}  + buy / - sell
+        ("rb_manual_vals",     {}),   # {TICKER: signed qty or ₹}  + buy / - sell
+        ("rb_manual_unit_applied", "qty"),   # unit the applied orders were entered in
         ("rb_ignored",         set()),
     ]:
         if k not in st.session_state:
@@ -199,47 +212,52 @@ def render() -> None:
         help=(
             "**Scale Capital**: add or remove a % of capital; every holding is bought "
             "or sold proportionally so current weights are preserved.\n\n"
-            "**Manual**: enter `TICKER +amount` to buy or `TICKER -amount` to sell."
+            "**Manual**: enter `TICKER +value` to buy or `TICKER -value` to sell, where value is either a share quantity or a ₹ amount (your choice)."
         ),
     )
     is_scale_mode = mode.startswith("💰")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # STEP 1 — CURRENT PORTFOLIO (from session)
+    # STEP 1 — CURRENT PORTFOLIO (Scale Capital mode only)
+    #   Manual mode never touches existing holdings.
     # ══════════════════════════════════════════════════════════════════════════
-    with st.expander("📋 Step 1 — Current Portfolio", expanded=True):
-        curr_df = _build_current(excl_set)
+    curr_df    = pd.DataFrame()
+    total_curr = 0.0
 
-        if curr_df.empty:
-            st.info("No holdings found in session. "
-                    "Go to the Portfolio page, connect your broker and Fetch Holdings.")
-            st.stop()
+    if is_scale_mode:
+        with st.expander("📋 Step 1 — Current Portfolio", expanded=True):
+            curr_df = _build_current(excl_set)
 
-        total_curr = curr_df["curr_value"].sum()
-        curr_df["curr_wt%"] = (curr_df["curr_value"] / total_curr * 100).round(2) \
-            if total_curr else 0.0
+            if curr_df.empty:
+                st.info("No holdings found in session. "
+                        "Go to the Portfolio page, connect your broker and Fetch Holdings.")
+                st.stop()
 
-        st.caption(f"**{len(curr_df)} holdings** · Total ₹{total_curr:,.0f}")
-        st.dataframe(
-            curr_df[["ticker", "curr_wt%", "qty", "last_price", "curr_value"]].rename(columns={
-                "ticker":     "Ticker",
-                "curr_wt%":   "Wt %",
-                "qty":        "Qty",
-                "last_price": "Last Price ₹",
-                "curr_value": "Value ₹",
-            }),
-            use_container_width=True, hide_index=True,
-            column_config={
-                "Last Price ₹": st.column_config.NumberColumn(format="₹%.2f"),
-                "Value ₹":      st.column_config.NumberColumn(format="₹%.0f"),
-                "Wt %":         st.column_config.NumberColumn(format="%.2f%%"),
-            },
-        )
+            total_curr = curr_df["curr_value"].sum()
+            curr_df["curr_wt%"] = (curr_df["curr_value"] / total_curr * 100).round(2) \
+                if total_curr else 0.0
+
+            st.caption(f"**{len(curr_df)} holdings** · Total ₹{total_curr:,.0f}")
+            st.dataframe(
+                curr_df[["ticker", "curr_wt%", "qty", "last_price", "curr_value"]].rename(columns={
+                    "ticker":     "Ticker",
+                    "curr_wt%":   "Wt %",
+                    "qty":        "Qty",
+                    "last_price": "Last Price ₹",
+                    "curr_value": "Value ₹",
+                }),
+                use_container_width=True, hide_index=True,
+                column_config={
+                    "Last Price ₹": st.column_config.NumberColumn(format="₹%.2f"),
+                    "Value ₹":      st.column_config.NumberColumn(format="₹%.0f"),
+                    "Wt %":         st.column_config.NumberColumn(format="%.2f%%"),
+                },
+            )
 
     # ══════════════════════════════════════════════════════════════════════════
     # STEP 2 — INPUT
     #   Scale Capital : +/- %  applied to every holding
-    #   Manual        : TICKER +amount (BUY) / -amount (SELL)
+    #   Manual        : TICKER +val (BUY) / -val (SELL);  val = Qty or ₹ Amount
     # ══════════════════════════════════════════════════════════════════════════
     REBAL_PCT = 100.0          # always execute 100% of the computed delta
     scale_pct = 0.0
@@ -267,53 +285,83 @@ def render() -> None:
             else:
                 st.caption("No change — enter a positive % to buy more or a negative % to sell.")
     else:
-        with st.expander("✏️ Step 2 — Manual Orders", expanded=True):
-            st.caption(
-                "One per line:  `TICKER<TAB>+amount` to **BUY**,  `TICKER<TAB>-amount` to **SELL** "
-                "(₹; accepts `50000`, `1,50,000`, `75k`, `1.5L`, `2cr`). No sign = BUY. "
-                "Tickers you don't list are left unchanged."
+        def _on_unit_change() -> None:
+            # Applied orders were entered in the other unit — drop them so
+            # numbers are never reinterpreted (e.g. 50000 shares vs ₹50,000).
+            st.session_state["rb_manual_vals"] = {}
+
+        with st.expander("✏️ Step 1 — Manual Orders", expanded=True):
+            unit_label = st.radio(
+                "Enter orders as",
+                ["Qty (shares)", "Amount (₹)"],
+                horizontal=True, key="rb_manual_unit", on_change=_on_unit_change,
             )
+            unit = "qty" if unit_label.startswith("Qty") else "amount"
+
+            if unit == "qty":
+                st.caption(
+                    "One per line:  `TICKER<TAB>+qty` to **BUY**,  `TICKER<TAB>-qty` to **SELL** "
+                    "(whole shares; e.g. `10`, `+25`, `-1,000`). No sign = BUY. "
+                    "Tickers you don't list are left unchanged."
+                )
+                _ph = "RELIANCE\t+10\nINFY\t-25\nHDFCBANK\t+100"
+            else:
+                st.caption(
+                    "One per line:  `TICKER<TAB>+amount` to **BUY**,  `TICKER<TAB>-amount` to **SELL** "
+                    "(₹; accepts `50000`, `1,50,000`, `75k`, `1.5L`, `2cr`). No sign = BUY. "
+                    "Tickers you don't list are left unchanged."
+                )
+                _ph = "RELIANCE\t+150000\nINFY\t-50000\nHDFCBANK\t+1,20,000"
+
             manual_txt = st.text_area(
                 "manual orders", height=160,
                 label_visibility="collapsed",
-                key="rb_manual_txt",
-                placeholder="RELIANCE\t+150000\nINFY\t-50000\nHDFCBANK\t+1,20,000",
+                key=f"rb_manual_txt_{unit}",      # separate box per unit
+                placeholder=_ph,
             )
             if st.button("✅ Apply Orders", key="rb_apply_manual"):
-                parsed_orders = _parse_orders_text(manual_txt)
+                parsed_orders = _parse_orders_text(manual_txt, unit)
                 if parsed_orders:
-                    st.session_state["rb_manual_orders"] = parsed_orders
+                    st.session_state["rb_manual_vals"] = parsed_orders
+                    st.session_state["rb_manual_unit_applied"] = unit
                     st.success(f"Applied {len(parsed_orders)} orders.")
                 else:
-                    st.error("Could not parse any orders. Use TICKER<TAB>+amount (buy) "
-                             "or TICKER<TAB>-amount (sell).")
+                    st.error("Could not parse any orders. Use TICKER<TAB>+"
+                             + ("qty (buy) or TICKER<TAB>-qty (sell), whole numbers only."
+                                if unit == "qty" else
+                                "amount (buy) or TICKER<TAB>-amount (sell)."))
 
-            _orders: dict[str, float] = st.session_state["rb_manual_orders"]
+            _orders: dict[str, float] = st.session_state["rb_manual_vals"]
             if _orders:
                 st.divider()
-                _buy_tot  = sum(v for v in _orders.values() if v > 0)
-                _sell_tot = -sum(v for v in _orders.values() if v < 0)
-                st.markdown(
-                    f"**Active orders:** {len(_orders)} tickers · "
-                    f"🟢 Buy **₹{_buy_tot:,.0f}** · 🔴 Sell **₹{_sell_tot:,.0f}** · "
-                    f"Net **₹{_buy_tot - _sell_tot:+,.0f}**"
-                )
+                if st.session_state["rb_manual_unit_applied"] == "qty":
+                    _n_buy  = sum(1 for v in _orders.values() if v > 0)
+                    _n_sell = sum(1 for v in _orders.values() if v < 0)
+                    st.markdown(
+                        f"**Active orders:** {len(_orders)} tickers · "
+                        f"🟢 Buy **{_n_buy}** · 🔴 Sell **{_n_sell}**"
+                    )
+                    _col, _cfg = "Qty", st.column_config.NumberColumn(format="%d")
+                else:
+                    _buy_tot  = sum(v for v in _orders.values() if v > 0)
+                    _sell_tot = -sum(v for v in _orders.values() if v < 0)
+                    st.markdown(
+                        f"**Active orders:** {len(_orders)} tickers · "
+                        f"🟢 Buy **₹{_buy_tot:,.0f}** · 🔴 Sell **₹{_sell_tot:,.0f}** · "
+                        f"Net **₹{_buy_tot - _sell_tot:+,.0f}**"
+                    )
+                    _col, _cfg = "Amount ₹", st.column_config.NumberColumn(format="₹%.0f")
                 st.dataframe(
                     pd.DataFrame({
-                        "Ticker":   list(_orders.keys()),
-                        "Side":     ["BUY" if v > 0 else "SELL" for v in _orders.values()],
-                        "Amount ₹": [abs(v) for v in _orders.values()],
+                        "Ticker": list(_orders.keys()),
+                        "Side":   ["BUY" if v > 0 else "SELL" for v in _orders.values()],
+                        _col:     [abs(v) for v in _orders.values()],
                     }),
                     use_container_width=True, hide_index=True,
-                    column_config={"Amount ₹": st.column_config.NumberColumn(format="₹%.0f")},
+                    column_config={_col: _cfg},
                 )
-                _held = set(curr_df["ticker"])
-                _not_held_sells = [t for t, v in _orders.items() if v < 0 and t not in _held]
-                if _not_held_sells:
-                    st.warning("SELL entered for tickers you don't hold (ignored): "
-                               + ", ".join(_not_held_sells))
 
-    if not is_scale_mode and not st.session_state["rb_manual_orders"]:
+    if not is_scale_mode and not st.session_state["rb_manual_vals"]:
         # Allow bypass if a saved plan was loaded from disk
         if not st.session_state.get("rebalance_plan"):
             st.stop()
@@ -321,7 +369,7 @@ def render() -> None:
     # ══════════════════════════════════════════════════════════════════════════
     # BUILD DIFF TABLE — skip if no manual orders (show saved plan only)
     # ══════════════════════════════════════════════════════════════════════════
-    if not is_scale_mode and not st.session_state["rb_manual_orders"]:
+    if not is_scale_mode and not st.session_state["rb_manual_vals"]:
         # No weights yet — just show the last approved plan and stop
         with st.expander("📌 Last Approved Plan", expanded=True):
             plan_df = pd.DataFrame(st.session_state["rebalance_plan"])
@@ -353,149 +401,181 @@ def render() -> None:
         st.info("Enter orders in Step 2 above to build a new rebalance plan.")
         return
 
-    curr_map = curr_df.set_index("ticker").to_dict("index")
-
-    # Signed ₹ order per ticker  (+ buy / - sell)
     if is_scale_mode:
-        order_amt = {tk: float(c["curr_value"]) * scale_pct / 100 for tk, c in curr_map.items()}
-    else:
-        order_amt = dict(st.session_state["rb_manual_orders"])
+        curr_map = curr_df.set_index("ticker").to_dict("index")
 
-    all_tickers = sorted(set(curr_map.keys()) | set(order_amt.keys()))
-
-    diff_rows: list[dict] = []
-    capped_sells: list[str] = []
-    no_price: list[str] = []
-    for tk in all_tickers:
-        c         = curr_map.get(tk, {})
-        curr_w    = float(curr_df.loc[curr_df["ticker"] == tk, "curr_wt%"].values[0]) \
-            if tk in curr_map else 0.0
-        price     = float(c.get("last_price", 0))
-        if price == 0:
-            price = _fetch_price(tk)
-        curr_qty  = int(c.get("qty", 0))
-        amt       = order_amt.get(tk, 0.0)
-
-        if price > 0:
-            delta_qty = int(amt / price)          # truncates toward zero
+        # Signed ₹ order per ticker  (+ buy / - sell)
+        if is_scale_mode:
+            order_amt = {tk: float(c["curr_value"]) * scale_pct / 100 for tk, c in curr_map.items()}
         else:
-            delta_qty = 0
-            if amt > 0 or (amt < 0 and tk in curr_map):
-                no_price.append(tk)
-        if delta_qty < -curr_qty:                 # can't sell more than held
-            if amt < 0:
-                capped_sells.append(tk)
-            delta_qty = -curr_qty
+            order_amt = dict(st.session_state["rb_manual_vals"])
 
-        tgt_qty   = curr_qty + delta_qty
-        today_qty = int(delta_qty * REBAL_PCT / 100)
-        today_val = round(today_qty * price, 2)
+        all_tickers = sorted(set(curr_map.keys()) | set(order_amt.keys()))
 
-        if delta_qty > 0:
-            action = "BUY"
-        elif delta_qty < 0:
-            action = "SELL"
-        else:
-            action = "HOLD"
+        diff_rows: list[dict] = []
+        capped_sells: list[str] = []
+        no_price: list[str] = []
+        for tk in all_tickers:
+            c         = curr_map.get(tk, {})
+            curr_w    = float(curr_df.loc[curr_df["ticker"] == tk, "curr_wt%"].values[0]) \
+                if tk in curr_map else 0.0
+            price     = float(c.get("last_price", 0))
+            if price == 0:
+                price = _fetch_price(tk)
+            curr_qty  = int(c.get("qty", 0))
+            amt       = order_amt.get(tk, 0.0)
 
-        diff_rows.append({
-            "Ticker":      tk,
-            "Curr Wt%":    round(curr_w, 2),
-            "_tgt_val":    tgt_qty * price,
-            "Curr Qty":    curr_qty,
-            "Target Qty":  tgt_qty,
-            "Δ Qty":       delta_qty,
-            "Today Qty":   today_qty,
-            "Price ₹":     round(price, 2),
-            "Today ₹":     today_val,
-            "Action":      action,
-            "_ignore":     tk in st.session_state["rb_ignored"],
-        })
+            if price > 0:
+                delta_qty = int(amt / price)          # truncates toward zero
+            else:
+                delta_qty = 0
+                if amt > 0 or (amt < 0 and tk in curr_map):
+                    no_price.append(tk)
+            if delta_qty < -curr_qty:                 # can't sell more than held
+                if amt < 0:
+                    capped_sells.append(tk)
+                delta_qty = -curr_qty
 
-    # Target weight = share of the post-trade portfolio
-    _tgt_total = sum(r["_tgt_val"] for r in diff_rows)
-    for r in diff_rows:
-        tgt_w = (r.pop("_tgt_val") / _tgt_total * 100) if _tgt_total else 0.0
-        r["Target Wt%"] = round(tgt_w, 2)
-        r["Δ Wt%"]      = round(tgt_w - r["Curr Wt%"], 2) + 0.0   # +0.0 avoids "-0.0"
+            tgt_qty   = curr_qty + delta_qty
+            today_qty = int(delta_qty * REBAL_PCT / 100)
+            today_val = round(today_qty * price, 2)
 
-    if capped_sells:
-        st.warning("Sell amount exceeds holding — capped at full position: "
-                   + ", ".join(capped_sells))
-    if no_price:
-        st.warning("No price available, order skipped: " + ", ".join(no_price))
+            if delta_qty > 0:
+                action = "BUY"
+            elif delta_qty < 0:
+                action = "SELL"
+            else:
+                action = "HOLD"
 
-    diff_df = pd.DataFrame(diff_rows)
+            diff_rows.append({
+                "Ticker":      tk,
+                "Curr Wt%":    round(curr_w, 2),
+                "_tgt_val":    tgt_qty * price,
+                "Curr Qty":    curr_qty,
+                "Target Qty":  tgt_qty,
+                "Δ Qty":       delta_qty,
+                "Today Qty":   today_qty,
+                "Price ₹":     round(price, 2),
+                "Today ₹":     today_val,
+                "Action":      action,
+                "_ignore":     tk in st.session_state["rb_ignored"],
+            })
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # STEP 3 — DIFF VIEW + IGNORE
-    # ══════════════════════════════════════════════════════════════════════════
-    with st.expander("📊 Step 3 — Portfolio Diff", expanded=True):
-        st.caption("Review the difference between your current and post-trade portfolio. "
-                   "Toggle **Ignore** to skip any ticker from this rebalance.")
+        # Target weight = share of the post-trade portfolio
+        _tgt_total = sum(r["_tgt_val"] for r in diff_rows)
+        for r in diff_rows:
+            tgt_w = (r.pop("_tgt_val") / _tgt_total * 100) if _tgt_total else 0.0
+            r["Target Wt%"] = round(tgt_w, 2)
+            r["Δ Wt%"]      = round(tgt_w - r["Curr Wt%"], 2) + 0.0   # +0.0 avoids "-0.0"
 
-        edit_diff = st.data_editor(
-            diff_df[["Ticker", "Curr Wt%", "Target Wt%", "Δ Wt%",
-                     "Curr Qty", "Target Qty", "Δ Qty",
-                     "Today Qty", "Price ₹", "Today ₹", "Action", "_ignore"]].rename(
-                columns={"_ignore": "Ignore"}
-            ),
-            use_container_width=True, hide_index=True,
-            column_config={
-                "Curr Wt%":   st.column_config.NumberColumn(format="%.2f%%"),
-                "Target Wt%": st.column_config.NumberColumn(format="%.2f%%"),
-                "Δ Wt%":      st.column_config.NumberColumn(format="%.2f%%"),
-                "Price ₹":    st.column_config.NumberColumn(format="₹%.2f"),
-                "Today ₹":    st.column_config.NumberColumn(format="₹%.0f"),
-                "Action":     st.column_config.SelectboxColumn(
-                    options=["BUY", "SELL", "HOLD"], width="small"
+        if capped_sells:
+            st.warning("Sell amount exceeds holding — capped at full position: "
+                       + ", ".join(capped_sells))
+        if no_price:
+            st.warning("No price available, order skipped: " + ", ".join(no_price))
+
+        diff_df = pd.DataFrame(diff_rows)
+
+        # ══════════════════════════════════════════════════════════════════════════
+        # STEP 3 — DIFF VIEW + IGNORE
+        # ══════════════════════════════════════════════════════════════════════════
+        with st.expander("📊 Step 3 — Portfolio Diff", expanded=True):
+            st.caption("Review the difference between your current and post-trade portfolio. "
+                       "Toggle **Ignore** to skip any ticker from this rebalance.")
+
+            edit_diff = st.data_editor(
+                diff_df[["Ticker", "Curr Wt%", "Target Wt%", "Δ Wt%",
+                         "Curr Qty", "Target Qty", "Δ Qty",
+                         "Today Qty", "Price ₹", "Today ₹", "Action", "_ignore"]].rename(
+                    columns={"_ignore": "Ignore"}
                 ),
-                "Ignore":     st.column_config.CheckboxColumn(
-                    "Ignore / Hold", width="small",
-                    help="Check to exclude this ticker from the rebalance plan."
-                ),
-            },
-            disabled=["Ticker", "Curr Wt%", "Target Wt%", "Δ Wt%",
-                      "Curr Qty", "Target Qty", "Δ Qty",
-                      "Today Qty", "Price ₹", "Today ₹"],
-            key="rb_diff_editor",
-        )
-
-        # Persist ignore state
-        st.session_state["rb_ignored"] = set(
-            edit_diff.loc[edit_diff["Ignore"] == True, "Ticker"].tolist()
-        )
-
-        # Summary chips — only count rows that pass the ₹5,000 threshold
-        MIN_TRADE = 1_000
-        _active_mask = (~edit_diff["Ignore"]) & (edit_diff["Today ₹"].abs() >= MIN_TRADE)
-        buys    = edit_diff[_active_mask & (edit_diff["Action"] == "BUY")]
-        sells   = edit_diff[_active_mask & (edit_diff["Action"] == "SELL")]
-        below   = edit_diff[(~edit_diff["Ignore"]) & (edit_diff["Action"].isin(["BUY","SELL"])) & (edit_diff["Today ₹"].abs() < MIN_TRADE)]
-        holds   = edit_diff[(edit_diff["Action"] == "HOLD") | edit_diff["Ignore"]]
-        ignored = edit_diff[edit_diff["Ignore"] == True]
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🟢 BUY",    len(buys),    f"₹{buys['Today ₹'].sum():,.0f}")
-        c2.metric("🔴 SELL",   len(sells),   f"₹{sells['Today ₹'].abs().sum():,.0f}")
-        c3.metric("⚪ HOLD / < ₹5K",  len(holds) + len(below))
-        c4.metric("🚫 Ignored", len(ignored))
-        if not below.empty:
-            skipped_list = ", ".join(
-                f"{r['Ticker']} (₹{abs(r['Today ₹']):,.0f})" for _, r in below.iterrows()
+                use_container_width=True, hide_index=True,
+                column_config={
+                    "Curr Wt%":   st.column_config.NumberColumn(format="%.2f%%"),
+                    "Target Wt%": st.column_config.NumberColumn(format="%.2f%%"),
+                    "Δ Wt%":      st.column_config.NumberColumn(format="%.2f%%"),
+                    "Price ₹":    st.column_config.NumberColumn(format="₹%.2f"),
+                    "Today ₹":    st.column_config.NumberColumn(format="₹%.0f"),
+                    "Action":     st.column_config.SelectboxColumn(
+                        options=["BUY", "SELL", "HOLD"], width="small"
+                    ),
+                    "Ignore":     st.column_config.CheckboxColumn(
+                        "Ignore / Hold", width="small",
+                        help="Check to exclude this ticker from the rebalance plan."
+                    ),
+                },
+                disabled=["Ticker", "Curr Wt%", "Target Wt%", "Δ Wt%",
+                          "Curr Qty", "Target Qty", "Δ Qty",
+                          "Today Qty", "Price ₹", "Today ₹"],
+                key="rb_diff_editor",
             )
-            st.caption(f"⏭ Below ₹5,000 threshold (skipped): {skipped_list}")
+
+            # Persist ignore state
+            st.session_state["rb_ignored"] = set(
+                edit_diff.loc[edit_diff["Ignore"] == True, "Ticker"].tolist()
+            )
+
+            # Summary chips — only count rows that pass the ₹5,000 threshold
+            MIN_TRADE = 1_000
+            _active_mask = (~edit_diff["Ignore"]) & (edit_diff["Today ₹"].abs() >= MIN_TRADE)
+            buys    = edit_diff[_active_mask & (edit_diff["Action"] == "BUY")]
+            sells   = edit_diff[_active_mask & (edit_diff["Action"] == "SELL")]
+            below   = edit_diff[(~edit_diff["Ignore"]) & (edit_diff["Action"].isin(["BUY","SELL"])) & (edit_diff["Today ₹"].abs() < MIN_TRADE)]
+            holds   = edit_diff[(edit_diff["Action"] == "HOLD") | edit_diff["Ignore"]]
+            ignored = edit_diff[edit_diff["Ignore"] == True]
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🟢 BUY",    len(buys),    f"₹{buys['Today ₹'].sum():,.0f}")
+            c2.metric("🔴 SELL",   len(sells),   f"₹{sells['Today ₹'].abs().sum():,.0f}")
+            c3.metric("⚪ HOLD / < ₹5K",  len(holds) + len(below))
+            c4.metric("🚫 Ignored", len(ignored))
+            if not below.empty:
+                skipped_list = ", ".join(
+                    f"{r['Ticker']} (₹{abs(r['Today ₹']):,.0f})" for _, r in below.iterrows()
+                )
+                st.caption(f"⏭ Below ₹5,000 threshold (skipped): {skipped_list}")
+
+    else:
+        # ── Manual mode: no holdings lookup, no weights, no diff view ─────────
+        _rows: list[dict] = []
+        no_price: list[str] = []
+        _unit = st.session_state["rb_manual_unit_applied"]
+        for tk, val in sorted(st.session_state["rb_manual_vals"].items()):
+            price = _fetch_price(tk)
+            if price <= 0:
+                no_price.append(tk)
+                continue
+            qty = int(val) if _unit == "qty" else int(val / price)   # amount → truncate toward 0
+            if qty == 0:
+                continue
+            _rows.append({
+                "Ticker":    tk,
+                "Action":    "BUY" if qty > 0 else "SELL",
+                "Today Qty": qty,
+                "Price ₹":   round(price, 2),
+                "Today ₹":   round(qty * price, 2),
+                "Ignore":    False,
+            })
+        if no_price:
+            st.warning("No price available, order skipped: " + ", ".join(no_price))
+        edit_diff = pd.DataFrame(
+            _rows, columns=["Ticker", "Action", "Today Qty", "Price ₹", "Today ₹", "Ignore"]
+        )
+        edit_diff["Ignore"] = edit_diff["Ignore"].astype(bool)
 
     # ══════════════════════════════════════════════════════════════════════════
     # STEP 4 — FINAL REBALANCE PLAN
     # ══════════════════════════════════════════════════════════════════════════
-    with st.expander("🚀 Step 4 — Rebalance Plan", expanded=True):
+    with st.expander("🚀 Step 4 — Rebalance Plan" if is_scale_mode
+                     else "🚀 Step 2 — Rebalance Plan", expanded=True):
 
         MIN_TRADE = 1_000
         active = edit_diff[
             (~edit_diff["Ignore"]) &
             (edit_diff["Action"].isin(["BUY", "SELL"])) &
-            (edit_diff["Today ₹"].abs() >= MIN_TRADE)
+            (edit_diff["Today ₹"].abs() >= (
+                0 if (not is_scale_mode and
+                      st.session_state["rb_manual_unit_applied"] == "qty") else MIN_TRADE))
             ].copy()
 
         if active.empty:
@@ -510,16 +590,13 @@ def render() -> None:
                     return ["background-color:#fff1f2; color:#b91c1c"] * len(row)
                 return [""] * len(row)
 
-            styled = active[["Ticker", "Action", "Today Qty", "Price ₹",
-                             "Today ₹", "Curr Wt%", "Target Wt%", "Δ Wt%"]].style \
-                .apply(_row_style, axis=1) \
-                .format({
-                "Price ₹":    "₹{:.2f}",
-                "Today ₹":    "₹{:,.0f}",
-                "Curr Wt%":   "{:.2f}%",
-                "Target Wt%": "{:.2f}%",
-                "Δ Wt%":      "{:+.2f}%",
-            })
+            _plan_cols = ["Ticker", "Action", "Today Qty", "Price ₹", "Today ₹"]
+            _fmt = {"Price ₹": "₹{:.2f}", "Today ₹": "₹{:,.0f}"}
+            if is_scale_mode:                      # weights only make sense vs. holdings
+                _plan_cols += ["Curr Wt%", "Target Wt%", "Δ Wt%"]
+                _fmt.update({"Curr Wt%": "{:.2f}%", "Target Wt%": "{:.2f}%",
+                             "Δ Wt%": "{:+.2f}%"})
+            styled = active[_plan_cols].style.apply(_row_style, axis=1).format(_fmt)
             st.dataframe(styled, use_container_width=True, hide_index=True)
 
             # Fee estimate
@@ -556,18 +633,22 @@ def render() -> None:
                                   type="primary", use_container_width=True):
                 plan = []
                 for _, row in active.iterrows():
-                    plan.append({
+                    order = {
                         "ticker":           row["Ticker"],
                         "action":           row["Action"],
                         "today_qty":        int(row["Today Qty"]),
                         "price":            float(row["Price ₹"]),
                         "today_value":      float(row["Today ₹"]),
-                        "curr_wt":          float(row["Curr Wt%"]),
-                        "target_wt":        float(row["Target Wt%"]),
-                        "delta_wt":         float(row["Δ Wt%"]),
                         "side":             row["Action"],   # alias for order engine
                         "rebalance_mode":   "scale_capital" if is_scale_mode else "manual_orders",
-                    })
+                    }
+                    if is_scale_mode:
+                        order.update({
+                            "curr_wt":   float(row["Curr Wt%"]),
+                            "target_wt": float(row["Target Wt%"]),
+                            "delta_wt":  float(row["Δ Wt%"]),
+                        })
+                    plan.append(order)
                 st.session_state["rebalance_plan"] = plan
                 _save_plan_to_disk(plan)
                 st.success(
