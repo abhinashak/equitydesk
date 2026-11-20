@@ -201,7 +201,7 @@ def _log_sql(label: str, sql: str, df: "pd.DataFrame | None" = None,
             entry["date_max"] = str(pd.to_datetime(df["date"]).max().date())
             if "ticker" in df.columns:
                 last = (df.assign(date=pd.to_datetime(df["date"]))
-                          .groupby("ticker")["date"].max().dt.date.astype(str))
+                        .groupby("ticker")["date"].max().dt.date.astype(str))
                 entry["per_ticker_last"] = last.reset_index().rename(
                     columns={"ticker": "ticker", "date": "last_date"})
     st.session_state.setdefault("_sql_log", []).append(entry)
@@ -645,6 +645,7 @@ def render():
         row["Close Price"]   = cp
         row["Curr Value"]    = round(total_qty * lp, 2)
         row["P&L%"]          = round((lp - avg_cost) / avg_cost * 100, 2) if avg_cost else 0.0
+        row["P&L ₹"]         = round(total_qty * (lp - avg_cost), 2) if avg_cost else 0.0
         row["Today's Gain"] = round(total_qty * (lp - cp), 2)
         row["Day Chg%"]      = data["day_change_pct"]
         row["Industry"]      = meta.get("industry", "Other")
@@ -1154,7 +1155,7 @@ def render():
             ["Inclusion", "Symbol", "Industry", "Market Cap", "Portfolio Wt%", "Total Qty"]
             + account_names
             #+ ["Last Price", "Curr Value", "Today's Gain", "Today Gain%", "Day Chg%"]
-            + ["Last Price", "Curr Value", "Today's Gain", "Day Chg%", "P&L%"]
+            + ["Last Price", "Curr Value", "Today's Gain", "Day Chg%", "P&L ₹", "P&L%"]
     )
 
     # Add the Send checkbox column — True if symbol is in abs_ret_selected
@@ -1176,6 +1177,7 @@ def render():
         "Today's Gain":  st.column_config.NumberColumn(format="₹%.0f"),
         "Today Gain%":   st.column_config.NumberColumn(format="%.2f%%"),
         "Day Chg%":      st.column_config.NumberColumn(format="%.2f%%"),
+        "P&L ₹":         st.column_config.NumberColumn(format="₹%.0f"),
         "P&L%":          st.column_config.NumberColumn(format="%.2f%%"),
         "Portfolio Wt%": st.column_config.NumberColumn(format="%.2f%%"),
     }
@@ -1240,6 +1242,7 @@ def render():
             "Value (₹)":      idf["Curr Value"].sum(),
             "Wt%":            round((idf["Curr Value"].sum() / total_value * 100),1),
             "Today's Gain ₹": round(idf["Today's Gain"].sum(),0),
+            "P&L ₹":          round(idf["P&L ₹"].sum(), 0),
             "Avg Day Chg%":   round(idf["Day Chg%"].mean(), 2),
         }
         for _lbl, _ in _ORIENT_PERIODS:
@@ -1263,6 +1266,7 @@ def render():
             "Value (₹)":       st.column_config.NumberColumn(format="₹%.0f"),
             "Wt%":             st.column_config.NumberColumn(format="%.1f%%"),
             "Today's Gain ₹": st.column_config.NumberColumn(format="₹%.0f"),
+            "P&L ₹":          st.column_config.NumberColumn(format="₹%.0f"),
             "Avg Day Chg%":    st.column_config.NumberColumn(format="%.2f%%"),
             **_period_col_cfg,
             "Avg P/E":         st.column_config.NumberColumn(format="%.1f"),

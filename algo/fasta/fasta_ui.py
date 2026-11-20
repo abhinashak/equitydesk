@@ -52,6 +52,7 @@ class Params:
     # Data window
     start_date: str = "2017-04-01"
     cutoff_date: str = ""
+    restrict_tickers: tuple = ()      # bare upper-case symbols; empty = analyse the whole market universe
 
     # Strategy rules & filters
     confidence_cutoff: float = 72.0
@@ -746,6 +747,18 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     df = load_market_data(con, p, log)
     if df.empty:
         raise ValueError("The market-data query returned no rows for this date window.")
+    if p.restrict_tickers:
+        # Filter AFTER the cached load, so the parquet cache always holds the full universe.
+        wanted = set(p.restrict_tickers)
+        bare = df['ticker'].map(lambda t: _bare(t).upper())
+        df = df[bare.isin(wanted)].copy()
+        found = set(bare[bare.isin(wanted)])
+        log(f"[Portfolio filter] {len(found)} of {len(wanted)} portfolio tickers found in market data.")
+        missing = sorted(wanted - found)
+        if missing:
+            log(f"[Portfolio filter] No market data for: {', '.join(missing)}")
+        if df.empty:
+            raise ValueError("None of the portfolio tickers were found in the market data.")
     daily_stops = load_daily_stop_data(con, p, log)
     nifty_weekly, nifty_q, nifty_y = load_nifty_benchmark(con, p, log)
 
@@ -956,6 +969,15 @@ def _signed(x, money=False, pct=False):
     return f"₹{s}" if money else (f"{s}%" if pct else s)
 
 
+def _portfolio_symbols():
+    """Bare, upper-case symbols held across all accounts (minus excluded ones) - same rules as the Holdings page."""
+    holdings = st.session_state.get("all_holdings") or {}
+    excl = {s.upper() for s in (st.session_state.get("excluded_symbols") or set())}
+    return sorted({h["tradingsymbol"].upper()
+                   for hs in holdings.values() for h in hs
+                   if h.get("tradingsymbol") and h["tradingsymbol"].upper() not in excl})
+
+
 def _parameter_form():
     """Returns (Params, submitted)."""
     D = Params(cutoff_date=date.today().isoformat())
@@ -987,6 +1009,15 @@ def _parameter_form():
                 c1, c2 = st.columns(2)
                 start = c1.date_input("Start date", date(2017, 4, 1))
                 cutoff = c2.date_input("Cutoff date", date.today())
+                held = _portfolio_symbols()
+                restrict = st.checkbox(
+                    "Restrict to portfolio tickers", value=False, disabled=not held,
+                    help="Run the back-test and picks only on stocks currently held (live holdings, excluding "
+                         "excluded symbols). Note: the weekly capital pool is then split across fewer stocks.")
+                if held:
+                    st.caption(f"{len(held)} tickers in your holdings.")
+                else:
+                    st.caption("Holdings not loaded - go to Setup and click 'Fetch Holdings' to enable this option.")
             with t_cost:
                 st.caption("Indian cash-equity delivery. Rates are assumptions - verify against your broker/exchange.")
                 c1, c2, c3 = st.columns(3)
@@ -1004,6 +1035,7 @@ def _parameter_form():
 
     p = Params(
         start_date=start.isoformat(), cutoff_date=cutoff.isoformat(),
+        restrict_tickers=tuple(held) if (restrict and held) else (),
         confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap, strategies=tuple(strategies),
         allocation_decay=alloc_decay, win_ratio_prior=win_prior,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
@@ -1036,14 +1068,16 @@ def _bare(ticker):
 
 
 def _basket(picks, capital):
-    """Whole-share order basket for `capital`: strategies share it by their capital weights, and each strategy's
-    slice is split equally across its picks. One row per ticker, in the picks' order (price = latest close)."""
-    df = picks.copy()
-    df['allocation'] = capital * df['strategy_weight'] / df.groupby('strategy')['ticker'].transform('count')
+    """Equal-weight whole-share basket across unique tickers.
+
+    A ticker selected by both strategies is counted only once, so overlapping picks
+    do not receive double allocation. Capital is split equally across unique tickers.
+    """
+    df = picks.drop_duplicates(subset=['ticker'], keep='first').copy()
+    df['allocation'] = capital / max(len(df), 1)
     ok = df['price'] > 0
     df['qty'] = np.where(ok, np.floor(df['allocation'] / df['price'].where(ok, 1.0)), 0).astype(int)
-    out = df.groupby('ticker', sort=False).agg(
-        price=('price', 'first'), allocation=('allocation', 'sum'), qty=('qty', 'sum')).reset_index()
+    out = df[['ticker', 'price', 'allocation', 'qty']].copy()
     out['invested'] = out['qty'] * out['price']
     return out
 
@@ -1074,11 +1108,13 @@ def _show_picks(res):
         mode = st.radio("List as", ["Quantity", "Amount ₹"], horizontal=True, key="fasta_pick_mode",
                         help="Quantity: whole shares at the last close. Amount: the rupee allocation per ticker.")
         if mode == "Quantity":
-            buy = basket[basket['qty'] > 0]
             st.caption("Ticker list (copy): TICKER⇥+qty")
-            st.code("\n".join(f"{_bare(t)}\t+{q}" for t, q in zip(buy['ticker'], buy['qty'])), language=None)
-            if len(buy) < len(basket):
-                st.caption(f"{len(basket) - len(buy)} pick(s) left out: their share buys less than one share.")
+            zero_mask = basket['qty'] == 0
+            ordered_basket = pd.concat([basket[~zero_mask], basket[zero_mask]], ignore_index=True)
+            st.code("\n".join(f"{_bare(t)}\t+{q}" for t, q in zip(ordered_basket['ticker'], ordered_basket['qty'])), language=None)
+            zero_qty = int(zero_mask.sum())
+            if zero_qty:
+                st.caption(f"Included all {len(basket)} picks; {zero_qty} pick(s) have quantity 0 because the allocation buys less than one share (listed at the end).")
         else:
             st.caption("Ticker list (copy): TICKER⇥+amount")
             st.code("\n".join(f"{_bare(t)}\t+{a:.0f}" for t, a in zip(basket['ticker'], basket['allocation'])), language=None)
@@ -1260,7 +1296,8 @@ def render():
             st.caption(f"Window {rp.start_date} → {rp.cutoff_date} · data through {res['data_through']:%Y-%m-%d} "
                        f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
                        f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
-                       f"· ₹{rp.weekly_capital:,.0f}/week")
+                       f"· ₹{rp.weekly_capital:,.0f}/week"
+                       + (f" · portfolio only ({len(rp.restrict_tickers)} tickers)" if rp.restrict_tickers else ""))
 
             if res["kpis"] is None:
                 st.warning("No completed transactions generated with current rules.")
