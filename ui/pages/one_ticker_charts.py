@@ -254,7 +254,8 @@ def render():
     # ==============================================================================
     # CHART BUILDER — returns a Plotly figure for any (tickers, metrics, days) combo
     # ==============================================================================
-    def build_chart(all_tickers: tuple, primary: str, metrics: list, days: int) -> go.Figure | None:
+    def build_chart(all_tickers: tuple, primary: str, metrics: list, days: int | None = None,
+                    start_date=None, end_date=None) -> go.Figure | None:
         """
         Build and return a Plotly figure.
         all_tickers : (selected, *compare_tickers)
@@ -278,8 +279,16 @@ def render():
             if price_df.empty:
                 return None
             price_df['Date'] = pd.to_datetime(price_df['Date'])
-            cutoff = price_df['Date'].max() - pd.Timedelta(days=days)
-            sliced = price_df[price_df['Date'] >= cutoff].copy()
+            if start_date is not None and end_date is not None:
+                start_dt = pd.to_datetime(start_date)
+                end_dt = pd.to_datetime(end_date)
+                sliced = price_df[(price_df['Date'] >= start_dt) & (price_df['Date'] <= end_dt)].copy()
+                cutoff = start_dt
+                end_bound = end_dt
+            else:
+                cutoff = price_df['Date'].max() - pd.Timedelta(days=days or 3650)
+                end_bound = None
+                sliced = price_df[price_df['Date'] >= cutoff].copy()
             if sliced.empty:
                 return None
             pivot = sliced.pivot_table(index='Date', columns='Ticker', values='Close').ffill()
@@ -317,9 +326,11 @@ def render():
                     mom_df  = get_momentum_snapshot(all_tickers, col_raw)
                     if mom_df.empty: return col_raw, ""
                     mom_df['date'] = pd.to_datetime(mom_df['date'])
+                    mom_window = mom_df[mom_df['date'] >= cutoff]
+                    if end_bound is not None:
+                        mom_window = mom_window[mom_window['date'] <= end_bound]
                     mom_pivot = (
-                        mom_df[mom_df['date'] >= cutoff]
-                        .pivot_table(index='date', columns='ticker', values=col_raw).ffill()
+                        mom_window.pivot_table(index='date', columns='ticker', values=col_raw).ffill()
                     )
                     sfx = "%" if _looks_pct(col_raw) else ""
                     for i, tk in enumerate(ticker_order):
@@ -344,6 +355,8 @@ def render():
                     fund_df = get_fundamental_ts(all_tickers, view_label, fund_metric)
                     if fund_df.empty: return fund_metric, ""
                     fund_df  = fund_df[fund_df['dt'] >= cutoff]
+                    if end_bound is not None:
+                        fund_df = fund_df[fund_df['dt'] <= end_bound]
                     sfx = "%" if _looks_pct(fund_metric) else ""
                     bw  = 45 * 24 * 3600 * 1000
                     for i, tk in enumerate(list(all_tickers)):
@@ -673,20 +686,40 @@ def render():
     # PERIOD TABS + MAIN CHART
     # ==============================================================================
     with st.expander("➕ Playground"):
-        PERIOD_TABS  = ["📅 10Y", "📅 5Y", "📅 3Y", "📅 2Y", "📅 1Y", "📅 6M", "📅 3M", "📅 1M", "📅 7D"]
+        PERIOD_TABS  = ["📅 10Y", "📅 5Y", "📅 3Y", "📅 2Y", "📅 1Y", "📅 6M", "📅 3M", "📅 1M", "📅 7D", "🗓️ Custom"]
         PERIOD_DAYS  = [3650,     1825,    1095,    730,    365,    182,    91,     30,     7]
         PERIOD_LABEL = ["10Y",    "5Y",    "3Y",    "2Y",   "1Y",   "6M",   "3M",   "1M",   "7D"]
 
         period_tabs = st.tabs(PERIOD_TABS)
         for tab_idx, tab in enumerate(period_tabs):
             with tab:
-                fig = build_chart(all_tickers_to_plot, selected, compare_metrics,
-                                  PERIOD_DAYS[tab_idx])
+                if tab_idx < len(PERIOD_DAYS):
+                    fig = build_chart(all_tickers_to_plot, selected, compare_metrics,
+                                      PERIOD_DAYS[tab_idx])
+                    period_label = PERIOD_LABEL[tab_idx]
+                else:
+                    custom_col1, custom_col2 = st.columns(2)
+                    with custom_col1:
+                        custom_start = st.date_input(
+                            "Start date",
+                            value=(pd.Timestamp.today() - pd.DateOffset(years=10)).date(),
+                            key="playground_custom_start")
+                    with custom_col2:
+                        custom_end = st.date_input(
+                            "End date", value=pd.Timestamp.today().date(),
+                            key="playground_custom_end")
+                    if custom_start > custom_end:
+                        st.warning("Start date must be on or before End date.")
+                        fig = None
+                    else:
+                        fig = build_chart(all_tickers_to_plot, selected, compare_metrics,
+                                          start_date=custom_start, end_date=custom_end)
+                    period_label = f"Custom_{custom_start}_{custom_end}"
                 if fig:
                     st.plotly_chart(fig, use_container_width=True,
-                                    key=f"main_{PERIOD_LABEL[tab_idx]}_{selected}_{'_'.join(compare_metrics)}")
+                                    key=f"main_{period_label}_{selected}_{'_'.join(compare_metrics)}")
                 else:
-                    st.info(f"No data for {PERIOD_LABEL[tab_idx]}.")
+                    st.info(f"No data for {period_label}.")
 
     # ==============================================================================
     # PIN MANAGER — below the chart
