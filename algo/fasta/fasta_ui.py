@@ -54,6 +54,7 @@ class Params:
     portfolio_halt_pct: float = -4.0
     min_history: int = 10
     decay_factor: float = 0.98
+    trend_shift: bool = False           # invert L/P labels in prediction training string
 
     # Transaction cost model (Indian cash equity delivery) - verify against your broker/exchange
     weekly_capital: float = 100_000.0  # total capital pool per trading week, split across selected stocks
@@ -70,7 +71,7 @@ class Params:
 
 def _fasta_sql():
     try:
-        from utils import fasta_sql as mod
+        from algo.fasta import fasta_sql as mod
     except ImportError:
         import fasta_sql as mod
     return mod
@@ -420,6 +421,8 @@ def run_simulation(df, daily_stops, p: Params, progress=None):
 
             # TRAINING STRING STRICTLY ENDS AT WEEK i-1 (past completed weeks only)
             train_str = "".join(chars[:i])
+            if p.trend_shift:
+                train_str = train_str.translate(str.maketrans("LP", "PL"))
             pred_char, prob = get_recency_ngram_prediction(train_str, 4, p.decay_factor)
             confidence_pct = round(prob * 100, 2)
             curr_volume = volumes[i]
@@ -512,6 +515,8 @@ def run_simulation(df, daily_stops, p: Params, progress=None):
             if i < p.min_history:
                 continue
             train_str = "".join(chars[:i])
+            if p.trend_shift:
+                train_str = train_str.translate(str.maketrans("LP", "PL"))
             pred_char, prob = get_recency_ngram_prediction(train_str, 4, p.decay_factor)
             confidence_pct = round(prob * 100, 2)
             if pred_char == 'P' and confidence_pct >= p.confidence_cutoff:
@@ -751,6 +756,8 @@ def _parameter_form():
                 decay = c2.number_input("Recency decay factor", 0.5, 1.0, D.decay_factor, 0.01)
                 gap = c3.checkbox("Gap-aware stop fills", D.gap_aware_stop,
                                   help="A stock that opens below the stop price exits at that open, not at the stop.")
+                trend_shift = st.checkbox("Trend Shift", D.trend_shift,
+                                          help="Invert L and P in the training string before prediction.")
             with t_data:
                 c1, c2 = st.columns(2)
                 start = c1.date_input("Start date", date(2017, 4, 1))
@@ -772,7 +779,7 @@ def _parameter_form():
 
     p = Params(
         start_date=start.isoformat(), cutoff_date=cutoff.isoformat(),
-        confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap,
+        confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap, trend_shift=trend_shift,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
         weekly_capital=cap, brokerage_rate=brk, brokerage_cap=brk_cap,
         stt_buy_rate=stt_b, stt_sell_rate=stt_s, exchange_txn_rate=exch,
