@@ -17,6 +17,7 @@ version. What changed is how it is driven and shown:
 """
 from __future__ import annotations
 
+import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
@@ -28,12 +29,15 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from utils.yahoo_rss_news import show_news
+
 # ==========================================
 # STATIC CONFIGURATION (paths)
 # ==========================================
 DB_SQL_PATH = "sqls/all.sql"
 OUTPUT_FILE = "outputs/fasta/fasta.txt"
 CACHE_DIR = Path("outputs/fasta")
+SETTINGS_FILE = CACHE_DIR / "fasta_settings.json"  # remembered UI settings (not touched by "Clear cached data")
 RESULT_KEY = "fasta_result_v2"  # v2: result layout changed with multi-strategy (ignores stale sessions)
 
 # `use_container_width` is being replaced by `width="stretch"` in newer Streamlit.
@@ -53,6 +57,7 @@ class Params:
     start_date: str = "2017-04-01"
     cutoff_date: str = ""
     restrict_tickers: tuple = ()      # bare upper-case symbols; empty = analyse the whole market universe
+    exclude_tickers: tuple = ()       # bare upper-case symbols never traded or picked (applied after restrict_tickers)
 
     # Strategy rules & filters
     confidence_cutoff: float = 72.0
@@ -68,7 +73,7 @@ class Params:
     win_ratio_prior: float = 5.0       # pseudo-trades at a 50% win ratio; keeps a strategy's first trades from swinging the split
 
     # Transaction cost model (Indian cash equity delivery) - verify against your broker/exchange
-    weekly_capital: float = 100_000.0  # total capital pool per trading week, split across selected stocks
+    weekly_capital: float = 1000000.0  # total capital pool per trading week, split across selected stocks
     brokerage_rate: float = 0.0
     brokerage_cap: float = 0.0         # per order; 0 = no cap
     stt_buy_rate: float = 0.001        # 0.10%
@@ -742,6 +747,36 @@ def pick_window(df):
 _DROP_FOR_DISPLAY = ['sort_date', 'week_period', 'quarter_period', 'year_period']
 
 
+def _parse_symbols(text):
+    """'welcorp.ns, TCS\nM&M' -> ('WELCORP', 'TCS', 'M&M'): split on commas / whitespace, drop .NS/.BO, upper-case, de-dupe."""
+    seen = {}
+    for tok in re.split(r"[\s,;]+", text or ""):
+        sym = _bare(tok.strip()).upper()
+        if sym:
+            seen[sym] = None
+    return tuple(seen)
+
+
+def _load_settings():
+    try:
+        data = json.loads(SETTINGS_FILE.read_text())
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_settings(**updates):
+    """Merge `updates` into the settings file (atomic write). Returns False if it could not be saved."""
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = SETTINGS_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps({**_load_settings(), **updates}, indent=2))
+        tmp.replace(SETTINGS_FILE)
+        return True
+    except OSError:
+        return False
+
+
 def analyze(p: Params, progress=None, log=lambda m: None):
     con = get_connection().cursor()  # per-run cursor: the cached connection is shared across sessions
     df = load_market_data(con, p, log)
@@ -759,6 +794,18 @@ def analyze(p: Params, progress=None, log=lambda m: None):
             log(f"[Portfolio filter] No market data for: {', '.join(missing)}")
         if df.empty:
             raise ValueError("None of the portfolio tickers were found in the market data.")
+    if p.exclude_tickers:
+        # Also applied after the cached load. Excluded stocks are left out of the back-test AND the picks.
+        unwanted = set(p.exclude_tickers)
+        bare = df['ticker'].map(lambda t: _bare(t).upper())
+        removed = sorted(set(bare[bare.isin(unwanted)]))
+        df = df[~bare.isin(unwanted)].copy()
+        log(f"[Exclude list] Removed {len(removed)} of {len(unwanted)} listed tickers from the universe.")
+        unknown = sorted(unwanted - set(removed))
+        if unknown:
+            log(f"[Exclude list] Not found in market data: {', '.join(unknown)}")
+        if df.empty:
+            raise ValueError("Every ticker in the universe is on the exclude list.")
     daily_stops = load_daily_stop_data(con, p, log)
     nifty_weekly, nifty_q, nifty_y = load_nifty_benchmark(con, p, log)
 
@@ -1005,6 +1052,11 @@ def _parameter_form():
                 win_prior = c2.number_input(
                     "Win-ratio prior (pseudo-trades)", 0.0, 100.0, D.win_ratio_prior, 1.0,
                     help="Pseudo-trades at a 50% win ratio. Keeps the split near even until a strategy has a record.")
+                exclude_text = st.text_area(
+                    "Exclude stocks", value="\n".join(_load_settings().get("exclude_tickers", [])), height=110,
+                    key="fasta_exclude_text", placeholder="One symbol per line or comma-separated, e.g. WELCORP",
+                    help="Never traded or picked, in the back-test and in the picks. .NS / .BO is ignored. "
+                         "Saved when you press Run analysis and remembered across sessions.")
             with t_data:
                 c1, c2 = st.columns(2)
                 start = c1.date_input("Start date", date(2017, 4, 1))
@@ -1039,9 +1091,12 @@ def _parameter_form():
         confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap, strategies=tuple(strategies),
         allocation_decay=alloc_decay, win_ratio_prior=win_prior,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
+        exclude_tickers=_parse_symbols(exclude_text),
         weekly_capital=cap, brokerage_rate=brk, brokerage_cap=brk_cap,
         stt_buy_rate=stt_b, stt_sell_rate=stt_s, exchange_txn_rate=exch,
         sebi_turnover_rate=sebi, stamp_duty_buy_rate=stamp, gst_rate=gst, dp_charge_per_sell=dp)
+    if submitted and not _save_settings(exclude_tickers=list(p.exclude_tickers)):
+        st.warning(f"Could not save the exclude list to {SETTINGS_FILE}; it will not be remembered next session.")
     return p, submitted
 
 
@@ -1125,6 +1180,8 @@ def _show_picks(res):
             "invested": st.column_config.NumberColumn("invested ₹", format="%.0f")})
         st.caption(f"Invested ₹{basket['invested'].sum():,.0f} of ₹{capital:,.0f} "
                    f"(the rest is whole-share rounding).")
+
+    show_news(picks)
 
 
 def _show_performance(res, p):
@@ -1297,7 +1354,8 @@ def render():
                        f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
                        f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
                        f"· ₹{rp.weekly_capital:,.0f}/week"
-                       + (f" · portfolio only ({len(rp.restrict_tickers)} tickers)" if rp.restrict_tickers else ""))
+                       + (f" · portfolio only ({len(rp.restrict_tickers)} tickers)" if rp.restrict_tickers else "")
+                       + (f" · {len(rp.exclude_tickers)} excluded" if rp.exclude_tickers else ""))
 
             if res["kpis"] is None:
                 st.warning("No completed transactions generated with current rules.")

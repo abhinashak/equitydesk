@@ -1,10 +1,11 @@
 """
 live_execution.py — Live Order Execution
 ─────────────────────────────────────────
-3 sections:
+4 sections:
   1. Exchange Orders  — open/executed from Kite today, with refresh + cancel
   2. Order Builder    — MARKET or LIMIT, price tiers per ticker, fee summary
   3. Order Staging    — editable list, send 1-by-1 or send all to exchange
+  +  Positions        — live Kite positions (net/day) with P&L
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 # ── import trade_utils — all Kite API calls go through here ──────────────────
 from ui.pages.trade.trade_utils import (
-    fetch_trades, fetch_orders, place_order, cancel_order, fetch_gtts, place_gtt_market_sell,
+    fetch_trades, fetch_orders, fetch_positions, place_order, cancel_order, fetch_gtts, place_gtt_market_sell,
     get_fluctuation_pct, fetch_price_yf, calc_fees,
     save_live_orders, load_live_orders, kite_headers,
     geo_buy_orders, geo_sell_orders,
@@ -95,11 +96,25 @@ def _build_orders(sym: str, exch: str, side: str, ltp: float,
         })
     return out
 
+def _round_to_tick(price: float, tick: float = 0.10, mode: str = "nearest") -> float:
+    """Round price to a valid exchange tick (Decimal-safe, no float drift).
+    Default tick is 0.10: a multiple of 0.10 is also valid for 0.05-tick
+    instruments, so it is safe for any stock Kite lists on NSE/BSE."""
+    from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, ROUND_UP
+    rounding = {"nearest": ROUND_HALF_UP, "down": ROUND_DOWN, "up": ROUND_UP}[mode]
+    t = Decimal(str(tick))
+    steps = (Decimal(str(price)) / t).to_integral_value(rounding=rounding)
+    return float(steps * t)
+
+def _tick_for_price(price: float) -> float:
+    """Tick size by price band: > 10000 -> 1.00, otherwise 0.10 (valid for 0.05-tick stocks too)."""
+    return 1.00 if float(price) > 10000 else 0.10
+
 def _do_place(token: str, o: dict) -> dict:
     """Route all order placement through trade_utils → proxy."""
     price = float(o["price"])
     if o.get("order_type", "LIMIT") == "LIMIT":
-        price = round(round(price / 0.10) * 0.10, 2)
+        price = _round_to_tick(price, _tick_for_price(price))
     print(f"place_order {o} (rounded price={price})")
     return place_order(
         token, o["ticker"], o["exchange"], o["side"],
@@ -130,6 +145,106 @@ def _normalise_kite_order(o: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # RENDER
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# Positions (Kite Connect: GET /portfolio/positions → {"net": [...], "day": [...]})
+# ─────────────────────────────────────────────────────────────────────────────
+def _get_positions(token: str) -> dict:
+    """Return {"net": [...], "day": [...]} via trade_utils.fetch_positions → proxy."""
+    return fetch_positions(token)
+
+
+CLOSED_ASSUMED_CHG_PCT = -2.0   # closed positions are assumed stopped out at −2%
+
+def _positions_df(rows: list) -> pd.DataFrame:
+    out = []
+    for p in rows:
+        qty = int(p.get("quantity", 0) or 0)
+        avg = float(p.get("average_price", 0) or 0)
+        ltp = float(p.get("last_price", 0) or 0)
+        pnl = float(p.get("pnl", 0) or 0)
+        basis = abs(qty) * avg
+        out.append({
+            "Product":    p.get("product", ""),
+            "Instrument": p.get("tradingsymbol", ""),
+            "Exchange":   p.get("exchange", ""),
+            "Side":       "LONG" if qty > 0 else "SHORT" if qty < 0 else "CLOSED",
+            "Qty":        qty,
+            "Avg ₹":      avg,
+            "LTP ₹":      ltp,
+            "P&L ₹":      pnl,
+            "Chg %":      (pnl / basis * 100) if qty and basis else CLOSED_ASSUMED_CHG_PCT,
+            "Day Buy":    int(p.get("day_buy_quantity", 0) or 0),
+            "Day Sell":   int(p.get("day_sell_quantity", 0) or 0),
+        })
+    return pd.DataFrame(out)
+
+
+def _render_positions(token_map: dict) -> None:
+    st.markdown("### 📊 Positions")
+    if not token_map:
+        st.warning("Connect a Kite account to view positions.")
+        return
+
+    h1, h2, h3 = st.columns([2, 2, 1])
+    acct = (h1.selectbox("Account", list(token_map.keys()), key="le_pos_acct")
+            if len(token_map) > 1 else next(iter(token_map)))
+    view = h2.radio("View", ["Net", "Day"], horizontal=True, key="le_pos_view")
+    refresh = h3.button("🔄 Refresh", key="le_pos_refresh", use_container_width=True)
+
+    t1, t2, t3 = st.columns(3)
+    show_long   = t1.toggle("🟢 LONG",   value=True,  key="le_pos_long")
+    show_short  = t2.toggle("🔴 SHORT",  value=True,  key="le_pos_short")
+    show_closed = t3.toggle("⚪ CLOSED", value=False, key="le_pos_closed")
+
+    cache_key = f"le_positions_{acct}"
+    if refresh or cache_key not in st.session_state:
+        try:
+            st.session_state[cache_key] = _get_positions(token_map[acct])
+        except Exception as e:
+            st.error(f"Unable to fetch positions: {e}")
+            return
+
+    df = _positions_df(st.session_state[cache_key].get(view.lower(), []))
+    if df.empty:
+        st.caption(f"No {view.lower()} positions.")
+        return
+
+    # Everything below (metrics + table) follows the LONG / SHORT / CLOSED toggles
+    side_ok = ((df["Side"] == "LONG") & show_long) | \
+              ((df["Side"] == "SHORT") & show_short) | \
+              ((df["Side"] == "CLOSED") & show_closed)
+    shown = df[side_ok]
+    if shown.empty:
+        st.caption("No positions match the selected LONG / SHORT / CLOSED toggles.")
+        return
+
+    open_df = shown[shown["Qty"] != 0]
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Total P&L", f"₹{shown['P&L ₹'].sum():,.2f}")
+    m2.metric("Avg Chg %", f"{shown['Chg %'].mean():+.2f}%")
+    m3.metric("Open positions", len(open_df))
+    m4.metric("Long / Short", f"{(shown['Side'] == 'LONG').sum()} / {(shown['Side'] == 'SHORT').sum()}")
+    m5.metric("Open exposure", f"₹{(open_df['Qty'].abs() * open_df['LTP ₹']).sum():,.0f}")
+
+    def _avg(side):
+        sub = shown[shown["Side"] == side]["Chg %"]
+        return f"{sub.mean():+.2f}% ({len(sub)})" if len(sub) else "–"
+    st.caption(f"Metrics cover the selected rows only · LONG {_avg('LONG')} · "
+               f"SHORT {_avg('SHORT')} · CLOSED {_avg('CLOSED')} "
+               f"(closed taken as {CLOSED_ASSUMED_CHG_PCT:+.0f}%)")
+
+    def _pnl_clr(col):
+        return ["color:#15803d" if v > 0 else "color:#b91c1c" if v < 0 else "" for v in col]
+
+    st.dataframe(
+        shown.style.apply(_pnl_clr, subset=["P&L ₹", "Chg %"])
+        .format({"Avg ₹": "{:,.2f}", "LTP ₹": "{:,.2f}",
+                 "P&L ₹": "{:+,.2f}", "Chg %": "{:+.2f}%"}),
+        use_container_width=True, hide_index=True)
+    st.caption("Source: Kite positions API (same data as kite.zerodha.com/positions). "
+               "Chg % = P&L ÷ (|qty| × avg price); closed positions are set to −2%. Click 🔄 to re-fetch.")
+
+
 def render() -> None:
 
     # One-time cleanup of stale Order Builder cache/state from older app runs.
@@ -244,11 +359,28 @@ def render() -> None:
             gtt_fetch_ok = False
             st.error(f"Unable to fetch existing GTTs; placement disabled to prevent duplicates: {gtt_err}")
 
-        def _gtt_match(buy_order, trigger):
+        GTT_TICK_OPTIONS = [0.05, 0.10, 0.50, 1.00]   # default = 0.05
+
+        def _ts(v):
+            t = pd.to_datetime(v, errors="coerce")
+            if pd.isna(t):
+                return None
+            return t.tz_localize(None) if getattr(t, "tzinfo", None) else t
+
+        def _gtt_matches(buy_order, exact_trigger, status="active"):
+            """Find ALL SELL GTTs with the given status (active / triggered) for the same
+            symbol/qty near the -2% level. Compared against the unrounded level (±0.51)
+            so it is independent of the tick size picked when that GTT was placed.
+            A GTT created before this BUY order cannot be protecting it, so it is skipped."""
             sym = str(buy_order.get("tradingsymbol", "")).upper()
             qty = int(buy_order.get("filled_quantity", 0) or 0)
+            buy_ts = _ts(buy_order.get("order_timestamp") or buy_order.get("exchange_timestamp"))
+            found = []
             for g in gtt_existing:
-                if str(g.get("status", "")).lower() != "active":
+                if str(g.get("status", "")).lower() != status:
+                    continue
+                g_ts = _ts(g.get("created_at"))
+                if buy_ts is not None and g_ts is not None and g_ts < buy_ts:
                     continue
                 cond = g.get("condition", {}) or {}
                 legs = g.get("orders", []) or []
@@ -257,32 +389,113 @@ def render() -> None:
                 if str(cond.get("exchange", "")).upper() != str(buy_order.get("exchange", "NSE")).upper():
                     continue
                 vals = cond.get("trigger_values", []) or []
-                if not vals or abs(float(vals[0]) - trigger) > 0.051:
+                if not vals or abs(float(vals[0]) - exact_trigger) > 0.51:
                     continue
                 if any(str(leg.get("transaction_type", "")).upper() == "SELL"
                        and int(leg.get("quantity", 0) or 0) == qty for leg in legs):
-                    return g.get("id")
-            return None
+                    found.append(g.get("id"))
+            return found
 
+        def _gtt_match(buy_order, exact_trigger, status="active"):
+            ids = _gtt_matches(buy_order, exact_trigger, status)
+            return ids[0] if ids else None
+
+        # Active SELL GTTs configured more than once (same symbol, qty and trigger)
+        _grp = {}
+        for g in (gtt_existing if gtt_fetch_ok else []):
+            if str(g.get("status", "")).lower() != "active":
+                continue
+            cond = g.get("condition", {}) or {}
+            vals = cond.get("trigger_values", []) or []
+            for leg in (g.get("orders", []) or []):
+                if str(leg.get("transaction_type", "")).upper() == "SELL" and vals:
+                    key = (str(cond.get("exchange", "")).upper(),
+                           str(cond.get("tradingsymbol", "")).upper(),
+                           int(leg.get("quantity", 0) or 0), round(float(vals[0]), 2))
+                    _grp.setdefault(key, []).append(g.get("id"))
+        dup_groups = {k: v for k, v in _grp.items() if len(v) > 1}
+
+        # Pre-compute rows so we can summarise and filter before rendering
+        gtt_rows = []
         for buy in complete_buys:
+            order_id = str(buy.get("order_id", ""))
+            avg = float(buy.get("average_price", 0) or 0)
+            tick = float(st.session_state.get(f"gtt_tick_{order_id}", 0.05))
+            gtt_rows.append({
+                "buy": buy, "order_id": order_id, "avg": avg, "tick": tick,
+                "trigger": _round_to_tick(avg * 0.98, tick),
+                "existing_ids": _gtt_matches(buy, avg * 0.98) if gtt_fetch_ok else [],
+                "existing_id": _gtt_match(buy, avg * 0.98) if gtt_fetch_ok else None,
+                "triggered_id": _gtt_match(buy, avg * 0.98, "triggered") if gtt_fetch_ok else None,
+            })
+
+        # A triggered GTT has already fired (position exited): hidden unless ticked below.
+        triggered_rows = [r for r in gtt_rows if r["triggered_id"]]
+        n_triggered = len(triggered_rows)
+        pending_rows = [r for r in gtt_rows if not r["triggered_id"]]
+
+        n_with = sum(1 for r in pending_rows if r["existing_id"])
+        n_without = len(pending_rows) - n_with
+        tcol1, tcol2, tcol3 = st.columns([2, 2, 2])
+        show_existing = tcol1.toggle("Show orders that already have a GTT",
+                                     value=False, key="gtt_show_existing")
+        show_triggered = tcol2.checkbox(f"Show triggered GTTs ({n_triggered})",
+                                        value=False, key="gtt_show_triggered",
+                                        disabled=not n_triggered)
+        if gtt_fetch_ok:
+            tcol3.caption(f"🔴 {n_without} without GTT · 🟢 {n_with} with GTT")
+        if n_triggered and not show_triggered:
+            st.caption(f"{n_triggered} order(s) hidden — their protective GTT has already triggered.")
+        if not show_existing and n_with:
+            st.caption(f"{n_with} order(s) with an existing GTT are hidden.")
+        if not show_existing and n_without == 0 and gtt_fetch_ok:
+            st.success("All completed BUY orders already have a protective GTT.")
+
+        if dup_groups:
+            st.warning(f"⚠️ {len(dup_groups)} protective GTT(s) are configured more than once "
+                       "(same symbol, quantity and trigger). Delete the extras in Kite to avoid "
+                       "selling the same shares twice.")
+            st.dataframe(pd.DataFrame([
+                {"Symbol": k[1], "Exchange": k[0], "Qty": k[2], "Trigger ₹": k[3],
+                 "Times configured": len(v), "GTT IDs": ", ".join(str(i) for i in v)}
+                for k, v in dup_groups.items()]),
+                use_container_width=True, hide_index=True)
+
+        gtt_rows = [r for r in gtt_rows if show_triggered or not r["triggered_id"]]
+
+        for r in gtt_rows:
+            buy, order_id, avg, tick = r["buy"], r["order_id"], r["avg"], r["tick"]
+            trigger, existing_id = r["trigger"], r["existing_id"]
+            triggered_id = r["triggered_id"]
+            if existing_id and not show_existing and not triggered_id:
+                continue
             symbol = str(buy.get("tradingsymbol", "")).upper()
             exch = str(buy.get("exchange", "NSE")).upper()
             qty = int(buy.get("filled_quantity", 0) or 0)
-            avg = float(buy.get("average_price", 0) or 0)
-            trigger = round(round((avg * 0.98) / 0.05) * 0.05, 2)
-            existing_id = _gtt_match(buy, trigger) if gtt_fetch_ok else None
-            order_id = str(buy.get("order_id", ""))
             with st.container(border=True):
-                c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+                c1, c2, c3, c4, c5, c6 = st.columns([2, 1, 1, 1, 1, 1])
                 c1.markdown(f"**{symbol}** · BUY order `{order_id}`")
                 c2.metric("Filled Qty", qty)
                 c3.metric("Avg Buy", f"₹{avg:,.2f}")
                 c4.metric("Stop Trigger", f"₹{trigger:,.2f}")
-                if existing_id:
+                stop_pct = (trigger - avg) / avg * 100 if avg else 0.0
+                stop_amt = (trigger - avg) * qty
+                c5.metric("Stop P/L %", f"{stop_pct:+.2f}%", f"₹{stop_amt:+,.2f}")
+                if triggered_id:
+                    st.info(f"🔔 Protective GTT already triggered (ID: {triggered_id}) — nothing to place.")
+                elif existing_id:
                     st.success(f"Protective GTT already exists (ID: {existing_id}) — no duplicate placement.")
+                    if len(r["existing_ids"]) > 1:
+                        st.warning(f"⚠️ Configured {len(r['existing_ids'])} times "
+                                   f"(IDs: {', '.join(str(i) for i in r['existing_ids'])}) — "
+                                   "remove the extra GTT(s).")
                 elif not gtt_fetch_ok:
                     st.button("Place MARKET SELL GTT", disabled=True, key=f"gtt_disabled_{order_id}")
                 else:
+                    c6.selectbox("Tick size", GTT_TICK_OPTIONS, index=0,
+                                 format_func=lambda v: f"{v:.2f}",
+                                 key=f"gtt_tick_{order_id}",
+                                 help="Smallest price step for this stock. Trigger is rounded to a multiple of it.")
                     confirm = st.checkbox(
                         f"Confirm protective GTT: {symbol} SELL {qty} at ₹{trigger:.2f} (−2%)",
                         key=f"gtt_confirm_{order_id}")
@@ -296,6 +509,9 @@ def render() -> None:
                         except Exception as gtt_place_err:
                             st.error(f"GTT placement failed for {symbol}: {gtt_place_err}")
         st.caption("Stop trigger is calculated from the completed BUY average price (−2%); no Kite Quote API call is needed. Active GTTs are checked before placement. API rejection is shown and does not mark the order protected.")
+
+    st.divider()
+    _render_positions(token_map)
 
     st.divider()
 

@@ -137,7 +137,6 @@ Castrol India Ltd,CASTROLIND.NS,NIFTY_Energy,Mid-cap,100.0,3.0,3.0
 Coal India Ltd,COALINDIA.NS,NIFTY_Energy,Large-cap,100.0,3.0,3.0
 GAIL (India) Ltd,GAIL.NS,NIFTY_Energy,Large-cap,100.0,3.0,3.0
 Grid Corp of India Ltd,POWERGRID.NS,NIFTY_Energy,Mid-cap,100.0,1.0,1.0
-Gujarat State Petronet Ltd,GSPL.BO,NIFTY_Energy,Mid-cap,100.0,2.0,2.0
 Gulf Lubricants India Ltd,GULFOILLUB.NS,NIFTY_Energy,Mid-cap,100.0,3.0,3.0
 Hindustan Petroleum Corp Ltd,HINDPETRO.NS,NIFTY_Energy,Mid-cap,100.0,3.0,3.0
 Indian Corporation Ltd (IOC),IOC.NS,NIFTY_Energy,Large-cap,100.0,3.0,3.0
@@ -290,7 +289,6 @@ GLENMARK,GLENMARK.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4.0,3.0
 Gland Pharma Ltd,GLAND.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4.0,3.0
 GlaxoSmithKline Pharmaceuticals,GLAXO.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3.0,3.0
 IPCA Laboratories Ltd,IPCALAB.NS,NIFTY_Pharma_Index,Mid-cap,40.0,4.0,3.0
-J.B. Chemicals & Pharmaceuticals,JBCHEPHARM.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3.0,3.0
 Lupin Ltd,LUPIN.NS,NIFTY_Pharma_Index,Large-cap,40.0,5.0,4.0
 Max Healthcare Institute Ltd,MAXHEALTH.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3.0,3.0
 Metropolis Healthcare Ltd,METROPOLIS.NS,NIFTY_Pharma_Index,Mid-cap,40.0,3.0,3.0
@@ -327,7 +325,6 @@ JSW Energy,JSWENERGY.NS,NIFTY_Energy,Large-cap,80.0,1.0,10.0
 Meesho,MEESHO.NS,NIFTY_Consumption,Mid-cap,100.0,7.0,1.0
 Titagarh,TITAGARH.NS,NIFTY_Realty,Large-cap,80.0,3.0,3.0
 Tinna Rubber,TINNARUBR.NS,NIFTY_Auto_Index,Small-cap,100.0,5.0,5.0
-KRBL,KRBL.NS,NIFTY_FMCG,Mid-cap,100.0,1.0,1.0
 GOLDBEES,GOLDBEES.NS,GOLD,Large-cap,100.0,10.0,10.0
 SILVERBEES,SILVERBEES.NS,SILVER,Large-cap,100.0,10.0,10.0
 NSEI,^NSEI,NIFTY_500,Large-cap,100.0,10.0,10.0
@@ -353,3 +350,62 @@ REDTAPE Limited,REDTAPE.NS,Index,Small-cap,100.0,1.0,1.0
 Neuland Laboratories Limited,NEULANDLAB.NS,Index,Small-cap,100.0,1.0,1.0
 Netweb Technologies India Limited,NETWEB.NS,Index,Small-cap,100.0,1.0,1.0
 Sterlite Technologies Limited,STLTECH.NS,Index,Small-cap,100.0,1.0,1.0
+Shaily Engineering Plastics,SHAILY.NS,Index,Small-cap,100.0,1.0,1.0
+Garware Hi-Tech Films,GRWRHITECH.NS,Index,Small-cap,100.0,1.0,1.0
+SJS Enterprises,SJS.NS,Index,Small-cap,100.0,1.0,1.0
+Transformers & Rectifiers India,TARIL.NS,Index,Small-cap,100.0,1.0,1.0
+Blue Jet Healthcare,BLUEJET.NS,Index,Small-cap,100.0,1.0,1.0
+Patanjali Foods,PATANJALI.NS,Index,Small-cap,100.0,1.0,1.0
+Praveg,PRAVEG.NS,Index,Small-cap,100.0,1.0,1.0
+Sagility India,SAGILITY.NS,Index,Small-cap,100.0,1.0,1.0
+Aavas Financiers,AAVAS.NS,Index,Small-cap,100.0,1.0,1.0
+Awfis,AWFIS.NS,Index,Small-cap,100.0,1.0,1.0
+Deepak Nitrite,DEEPAKNTR.NS,Index,Small-cap,100.0,1.0,1.0
+Emerald Finance,EMERALD.BO,Index,Small-cap,100.0,1.0,1.0
+IDFC First Bank,IDFCFIRSTB.NS,Index,Small-cap,100.0,1.0,1.0
+Jyoti CNC Automation,JYOTICNC.NS,Index,Small-cap,100.0,1.0,1.0
+Macpower CNC,MACPOWER.NS,Index,Small-cap,100.0,1.0,1.0
+Eco Recycling (Ecoreco),ECORECO.NS,Index,Small-cap,100.0,1.0,1.0
+Zaggle,ZAGGLE.NS,Index,Small-cap,100.0,1.0,1.0
+RateGain Travel Technologies,RATEGAIN.NS,Index,Small-cap,100.0,1.0,1.0
+Affle India,AFFLE.NS,Index,Small-cap,100.0,1.0,1.0
+Sula Vineyards,SULA.NS,Index,Small-cap,100.0,1.0,1.0
+Stovekraft (Pigeon),STOVEKRAFT.NS,Index,Small-cap,100.0,1.0,1.0
+Butterfly Gandhimathi Appliances,BUTTERFLY.NS,Index,Small-cap,100.0,1.0,1.0
+INOX India,INOXINDIA.NS,Index,Small-cap,100.0,1.0,1.0
+Confidence Petroleum,CONFIPET.NS,Index,Small-cap,100.0,1.0,1.0
+Gujarat Gas,GUJGASLTD.NS,Index,Small-cap,100.0,1.0,1.0
+Equitas Small Finance Bank,EQUITASBNK.NS,Index,Small-cap,100.0,1.0,1.0
+Action Construction Equipment,ACE.NS,Index,Small-cap,100.0,1.0,1.0
+Ajax Engineering,AJAXENGG.NS,Index,Small-cap,100.0,1.0,1.0
+Afcom Holdings,AFCOM.BO,Index,Small-cap,100.0,1.0,1.0
+Goodluck India,GOODLUCK.NS,Index,Small-cap,100.0,1.0,1.0
+Manorama Industries,MANORAMA.NS,Index,Small-cap,100.0,1.0,1.0
+Shilchar Technologies,SHILCTECH.NS,Index,Small-cap,100.0,1.0,1.0
+Vimta Labs,VIMTALABS.NS,Index,Small-cap,100.0,1.0,1.0
+Sky Gold,SKYGOLD.NS,Index,Small-cap,100.0,1.0,1.0
+Interarch Building Products,INTERARCH.NS,Index,Small-cap,100.0,1.0,1.0
+Timex Group India,TIMEX.NS,Index,Small-cap,100.0,1.0,1.0
+Arman Financial Services,ARMANFIN.NS,Index,Small-cap,100.0,1.0,1.0
+Coffee Day Enterprises,COFFEEDAY.NS,Index,Small-cap,100.0,1.0,1.0
+DAM Capital Advisors,DAMCAPITAL.NS,Index,Small-cap,100.0,1.0,1.0
+Zelio E-Mobility,ZELIO.BO,Index,Small-cap,100.0,1.0,1.0
+Wockhardt,WOCKPHARMA.NS,Index,Small-cap,100.0,1.0,1.0
+Aegis Logistics,AEGISLOG.NS,Index,Small-cap,100.0,1.0,1.0
+Cupid,CUPID.NS,Index,Small-cap,100.0,1.0,1.0
+Senco Gold,SENCO.NS,Index,Small-cap,100.0,1.0,1.0
+GNG Electronics,EBGNG.NS,Index,Small-cap,100.0,1.0,1.0
+Ganesh Benzoplast,GANESHBE.NS,Index,Small-cap,100.0,1.0,1.0
+Updater Services,UDS.NS,Index,Small-cap,100.0,1.0,1.0
+Venus Remedies,VENUSREM.NS,Index,Small-cap,100.0,1.0,1.0
+KRN Heat Exchanger,KRN.NS,Index,Small-cap,100.0,1.0,1.0
+Himadri Speciality Chemical,HSCL.NS,Index,Small-cap,100.0,1.0,1.0
+Laurus Labs,LAURUSLABS.NS,Index,Small-cap,100.0,1.0,1.0
+PB Fintech,PBFINTECH.NS,Index,Small-cap,100.0,1.0,1.0
+PVR INOX,PVRINOX.NS,Index,Small-cap,100.0,1.0,1.0
+Aditya Vision,AVL.NS,Index,Small-cap,100.0,1.0,1.0
+Jash Engineering,JASH.NS,Index,Small-cap,100.0,1.0,1.0
+Pricol,PRICOLLTD.NS,Index,Small-cap,100.0,1.0,1.0
+SG Mart,SGMART.NS,Index,Small-cap,100.0,1.0,1.0
+Sammaan Capital,SAMMAANCAP.NS,Index,Small-cap,100.0,1.0,1.0
+Biocon,BIOCON.NS,NIFTY_Pharma_Index,Mid-cap,100.0,1.0,1.0

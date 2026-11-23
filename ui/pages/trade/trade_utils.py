@@ -245,6 +245,27 @@ def fetch_orders(token: str, mock: bool = False, live_orders: list = None) -> li
         raise ValueError(resp.get("message", "API error"))
     return resp.get("data", [])
 
+def fetch_positions(token: str, mock: bool = False) -> dict:
+    """Fetch current positions via the proxy.
+    Returns {"net": [...], "day": [...]} (Kite GET /portfolio/positions)."""
+    if mock:
+        return {"net": [], "day": []}
+    logger.info("REQUEST GET %s/portfolio/positions", KITE_PROXY_URL)
+    r = requests.get(f"{KITE_PROXY_URL}/portfolio/positions",
+                     headers=kite_headers(token), timeout=10)
+    if not r.ok:
+        try:
+            msg = r.json().get("message", r.text)
+        except Exception:
+            msg = r.text
+        raise requests.HTTPError(f"Kite positions API error: {msg}", response=r)
+    resp = r.json()
+    if resp.get("status") != "success":
+        raise ValueError(resp.get("message", "Positions API error"))
+    data = resp.get("data") or {}
+    return {"net": data.get("net", []) or [], "day": data.get("day", []) or []}
+
+
 def calc_fees(buy_val: float, sell_val: float, sell_scrips: int) -> dict:
     turnover = buy_val + sell_val
     stt = turnover * 0.001
