@@ -19,3 +19,6 @@ gemini-ui.py
 equitydesk.iml
 data/benchmark/
 outputs/**
+outputs/excluded_symbols.json
+ui/outputs/live_orders.json
+cache_*

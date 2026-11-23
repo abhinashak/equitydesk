@@ -31,6 +31,7 @@ for directory in [OUTPUTS_DIR, CONFIG_DIR, SQLS_DIR, SECRET_DIR]:
 
 EXCLUSIONS_FILE  = os.path.join(OUTPUTS_DIR, "excluded_symbols.json")
 LIVE_ORDERS_FILE = os.path.join(OUTPUTS_DIR, "live_orders.json")
+GTT_EXCLUSIONS_FILE = os.path.join(OUTPUTS_DIR, "gtt_excluded_symbols.json")   # persists across sessions
 DB_PATH          = os.path.join(OUTPUTS_DIR, "market_data.db")
 WEIGHTS_FILE     = os.path.join(CONFIG_DIR, "target_weights.txt")
 TICKER_CONFIG    = os.path.join(CONFIG_DIR, "ticker.csv")
@@ -69,6 +70,22 @@ def load_exclusions() -> set:
 
 def save_exclusions(excl: set):
     with open(EXCLUSIONS_FILE, "w") as f: json.dump(sorted(excl), f, indent=2)
+
+def load_gtt_exclusions() -> set:
+    """Symbols that must NOT get a protective GTT (kept on disk, so it survives sessions)."""
+    if os.path.exists(GTT_EXCLUSIONS_FILE):
+        try:
+            with open(GTT_EXCLUSIONS_FILE) as f:
+                return {str(s).strip().upper() for s in json.load(f) if str(s).strip()}
+        except Exception:
+            pass
+    return set()
+
+def save_gtt_exclusions(excl) -> None:
+    tmp = GTT_EXCLUSIONS_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(sorted({str(s).strip().upper() for s in excl if str(s).strip()}), f, indent=2)
+    os.replace(tmp, GTT_EXCLUSIONS_FILE)
 
 def load_weights() -> str:
     if os.path.exists(WEIGHTS_FILE):
@@ -143,6 +160,8 @@ def place_order(token: str, symbol: str, exchange: str, side: str, qty: int,
     }
     if order_type == "LIMIT":
         data["price"] = price
+    elif order_type == "MARKET":
+        data["market_protection"] = -1   # Kite requires market protection on API market orders (-1 = automatic)
 
     logger.info("REQUEST POST %s/orders/regular | symbol=%s exchange=%s side=%s qty=%s price=%s order_type=%s",
                 KITE_PROXY_URL, symbol, exchange, side, qty, price, order_type)
@@ -369,11 +388,28 @@ def init_trade_session():
         if k not in st.session_state: st.session_state[k] = v
 
 # ── Order Builders ──
+def stagger_qtys(total: int) -> list[int]:
+    """Split `total` shares into 4 stagger slots (1x, 2x, 4x, 8x, x = total // 15).
+    The slots always add up to exactly `total`: earlier slots are capped by what is
+    left, and the LAST slot absorbs the difference (remainder, or reduction when
+    1x+2x+4x+8x would exceed the total). Slots that end up 0 can be skipped."""
+    total = int(abs(total))
+    x = max(1, total // 15)
+    weights = [x, 2 * x, 4 * x, 8 * x]
+    qtys, remaining = [], total
+    for i, w in enumerate(weights):
+        q = remaining if i == len(weights) - 1 else min(w, remaining)
+        qtys.append(q)
+        remaining -= q
+    return qtys
+
 def geo_buy_orders(symbol: str, exchange: str, ltp: float, delta_qty: int, fluc_pct: float) -> list[dict]:
-    x = max(1, delta_qty // 15)
-    tiers = [(x, 0), (2*x, fluc_pct/4), (4*x, fluc_pct/2), (8*x, fluc_pct*3/4)]
+    qtys = stagger_qtys(delta_qty)
+    tiers = list(zip(qtys, [0, fluc_pct/4, fluc_pct/2, fluc_pct*3/4]))
     orders = []
     for tier_idx, (qty, extra_pct) in enumerate(tiers):
+        if qty <= 0:
+            continue
         price = round(ltp * (1 - 0.0025 - extra_pct / 100), 2)
         orders.append({
             "Symbol": symbol, "Exchange": exchange, "Side": "BUY",
@@ -384,10 +420,12 @@ def geo_buy_orders(symbol: str, exchange: str, ltp: float, delta_qty: int, fluc_
     return orders
 
 def geo_sell_orders(symbol: str, exchange: str, ltp: float, delta_qty: int, fluc_pct: float) -> list[dict]:
-    x = max(1, abs(delta_qty) // 15)
-    tiers = [(x, 0), (2*x, fluc_pct/4), (4*x, fluc_pct/2), (8*x, fluc_pct*3/4)]
+    qtys = stagger_qtys(delta_qty)
+    tiers = list(zip(qtys, [0, fluc_pct/4, fluc_pct/2, fluc_pct*3/4]))
     orders = []
     for tier_idx, (qty, extra_pct) in enumerate(tiers):
+        if qty <= 0:
+            continue
         price = round(ltp * (1 + 0.0025 + extra_pct / 100), 2)
         orders.append({
             "Symbol": symbol, "Exchange": exchange, "Side": "SELL",

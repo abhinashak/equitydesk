@@ -26,10 +26,11 @@ socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 # ── import trade_utils — all Kite API calls go through here ──────────────────
 from ui.pages.trade.trade_utils import (
-    fetch_trades, fetch_orders, fetch_positions, place_order, cancel_order, fetch_gtts, place_gtt_market_sell,
+    fetch_trades, fetch_orders, fetch_positions, stagger_qtys, place_order, cancel_order, fetch_gtts, place_gtt_market_sell,
     get_fluctuation_pct, fetch_price_yf, calc_fees,
     save_live_orders, load_live_orders, kite_headers,
     geo_buy_orders, geo_sell_orders,
+    load_gtt_exclusions, save_gtt_exclusions,
 )
 
 
@@ -110,6 +111,116 @@ def _tick_for_price(price: float) -> float:
     """Tick size by price band: > 10000 -> 1.00, otherwise 0.10 (valid for 0.05-tick stocks too)."""
     return 1.00 if float(price) > 10000 else 0.10
 
+_TIER_EXTRA_FRAC = {1: 0.0, 2: 0.25, 3: 0.50, 4: 0.75}   # × Day Fluc%, same as geo_* tiers
+
+def _stagger_price(side: str, ltp: float, fluc: float, tier: int) -> float:
+    """Tier price from a given LTP (same formula as trade_utils.geo_buy/sell_orders)."""
+    extra = fluc * _TIER_EXTRA_FRAC.get(int(tier), 0.0)
+    if str(side).upper() == "BUY":
+        return round(ltp * (1 - 0.0025 - extra / 100), 2)
+    return round(ltp * (1 + 0.0025 + extra / 100), 2)
+
+def _build_probe_and_brackets(sym: str, exch: str, side: str, ltp: float,
+                              qty: int, fluc: float, with_probe: bool) -> list[dict]:
+    """STAGGER staging: a 1-qty PROBE order (tier 0) first, then 4 brackets (tiers 1-4)
+    sized by stagger_qtys() on the quantity that is left. Bracket prices staged here are
+    placeholders — they are re-priced from the Positions LTP when sent."""
+    base = {"ticker": sym, "exchange": exch, "side": side, "order_type": "LIMIT",
+            "fluc_pct": round(fluc, 3), "account": "", "state": "PENDING",
+            "order_id": "", "placed_at": "", "filled_at": "", "skip_reason": "",
+            "error": "", "stagger_id": f"{sym}|{exch}|{side}"}
+    out, rest = [], int(qty)
+    if with_probe and rest >= 1:
+        p = _stagger_price(side, ltp, fluc, 1)
+        out.append({**base, "qty": 1, "price": p, "value": round(p, 2), "tier": 0, "probe": True})
+        rest -= 1
+    if rest > 0:
+        for t, q in enumerate(stagger_qtys(rest), start=1):
+            if q <= 0:
+                continue
+            p = _stagger_price(side, ltp, fluc, t)
+            out.append({**base, "qty": q, "price": p, "value": round(q * p, 2),
+                        "tier": t, "bracket": True})
+    return out
+
+def _probe_sent(orders: list, o: dict) -> bool:
+    """A bracket may go out only after its 1-qty probe has been sent (if it has one)."""
+    gid = o.get("stagger_id")
+    probes = [x for x in orders if x.get("probe") and x.get("stagger_id") == gid]
+    return (not probes) or any(x.get("state") in ("PLACED", "FILLED") for x in probes)
+
+def _positions_ltp_map(token: str) -> dict:
+    """{SYMBOL: last_price} from Kite Positions (net overrides day)."""
+    pos = _get_positions(token)
+    out = {}
+    for row in (pos.get("day") or []) + (pos.get("net") or []):
+        sym = str(row.get("tradingsymbol", "")).upper()
+        lp = float(row.get("last_price") or 0)
+        if sym and lp > 0:
+            out[sym] = lp
+    return out
+
+def _reprice_staged(orders: list, idxs: list, get_tok, persist: bool = True):
+    """Re-price STAGGER tiers 2-4 (PENDING, LIMIT) from the live LTP in Positions.
+    Tier 1 is never touched. Mutates orders[i]; returns (changes, missing)."""
+    changes, missing, cache = [], [], {}
+    for i in idxs:
+        o = orders[i]
+        tier = int(o.get("tier", 1))
+        is_bracket = bool(o.get("bracket"))
+        if o.get("probe") or (not is_bracket and tier < 2) \
+                or o.get("state") != "PENDING" or o.get("order_type", "LIMIT") != "LIMIT":
+            continue
+        tk = get_tok(o)
+        if tk not in cache:
+            try:
+                cache[tk] = _positions_ltp_map(tk)
+            except Exception as e:
+                cache[tk] = e
+        m = cache[tk]
+        sym = str(o.get("ticker", "")).upper()
+        if isinstance(m, Exception):
+            missing.append((sym, tier, f"Positions fetch failed: {m}"))
+            o["_unpriced"] = True
+            continue
+        ltp = m.get(sym)
+        if not ltp:
+            missing.append((sym, tier, "not in Positions yet"))
+            o["_unpriced"] = True
+            continue
+        o.pop("_unpriced", None)
+        fluc = float(o.get("fluc_pct") or 1.0)
+        new_p = _stagger_price(o.get("side", ""), ltp, fluc, tier)
+        old_p = float(o.get("price", 0))
+        if abs(new_p - old_p) >= 0.005:
+            changes.append({"ticker": sym, "tier": tier, "old": old_p, "new": new_p, "ltp": ltp})
+            o["price"] = new_p
+            o["value"] = round(int(o.get("qty", 0)) * new_p, 2)
+            if persist:
+                st.session_state.pop(f"le_price_{i}", None)   # let the editor pick up the new price
+    return changes, missing
+
+def _reprice_summary(changes: list, missing: list) -> str:
+    parts = []
+    if changes:
+        parts.append("Repriced from Positions LTP: " + "; ".join(
+            f"{c['ticker']} T{c['tier']} ₹{c['old']:.2f}→₹{c['new']:.2f} (LTP ₹{c['ltp']:.2f})" for c in changes))
+    if missing:
+        parts.append("Price left as staged: " + "; ".join(f"{t} T{n} ({why})" for t, n, why in missing))
+    return "  ·  ".join(parts)
+
+def _dry_run_record(o: dict, note: str = "") -> None:
+    """Dry run: log exactly what would be sent, without calling the exchange."""
+    price = float(o["price"])
+    if o.get("order_type", "LIMIT") == "LIMIT":
+        price = _round_to_tick(price, _tick_for_price(price))
+    st.session_state.setdefault("le_dry_log", []).append({
+        "Time": _now(), "Account": o.get("account", ""), "Ticker": o.get("ticker", ""),
+        "Exchange": o.get("exchange", ""), "Side": o.get("side", ""),
+        "Type": o.get("order_type", "LIMIT"), "Tier": o.get("tier", 1),
+        "Qty": int(o.get("qty", 0)), "Price ₹": price,
+        "Value ₹": round(int(o.get("qty", 0)) * price, 2), "Note": note})
+
 def _do_place(token: str, o: dict) -> dict:
     """Route all order placement through trade_utils → proxy."""
     price = float(o["price"])
@@ -122,6 +233,12 @@ def _do_place(token: str, o: dict) -> dict:
         order_type=o.get("order_type", "LIMIT"),
         mock=False,
     )
+
+def _is_insufficient_funds(err) -> bool:
+    """True for Kite's 'Insufficient funds. Margin required: … Margin available: …' rejections."""
+    m = str(err).lower()
+    return "insufficient funds" in m or ("margin required" in m and "margin available" in m)
+
 
 def _do_cancel(token: str, order_id: str) -> dict:
     """Route all cancellations through trade_utils → proxy."""
@@ -269,6 +386,30 @@ def render() -> None:
 
     st.markdown("## ⚡ Live Execution")
 
+    # ── Top-level safety controls ───────────────────────────────────────────
+    # The Dry-run toggle and Max order amount are rendered next to "Send to Exchange" (Part 3);
+    # their values are read here from session state so every section above sees the current setting.
+    dry_run = bool(st.session_state.get("le_dry_run", False))
+    max_order_amt = int(st.session_state.get("le_max_order_amt", 0) or 0)
+
+    _halt = st.session_state.get("le_funds_halt")
+    if _halt:
+        st.error(f"🛑 **Order sending halted — insufficient funds.** "
+                 f"{_halt.get('side','')} {_halt.get('ticker','')} at {_halt.get('at','')}: "
+                 f"{_halt.get('msg','')}")
+        if st.button("▶️ Resume sending (after adding funds / reviewing orders)",
+                     key="le_resume_sending"):
+            st.session_state.pop("le_funds_halt", None)
+            st.rerun()
+
+    def _exceeds_limit(o: dict) -> bool:
+        return bool(max_order_amt) and int(o.get("qty", 0)) * float(o.get("price", 0)) > max_order_amt
+
+    def _halt_on_funds(o: dict, err) -> None:
+        st.session_state["le_funds_halt"] = {
+            "ticker": o.get("ticker", ""), "side": o.get("side", ""),
+            "msg": str(err), "at": _now()}
+
     # ═══════════════════════════════════════════════════════════════════════
     # PART 1 — EXCHANGE ORDERS  (open + executed today from Kite)
     # ═══════════════════════════════════════════════════════════════════════
@@ -341,15 +482,52 @@ def render() -> None:
 
     # ── Protective GTTs for COMPLETE BUY orders ──────────────────────────
     st.markdown("### 🛡 Protective GTT — −2% MARKET SELL")
-    complete_buys = [o for o in ex_orders
-                     if str(o.get("status", "")).upper() == "COMPLETE"
-                     and str(o.get("transaction_type", "")).upper() == "BUY"
-                     and int(o.get("filled_quantity", 0) or 0) > 0
-                     and float(o.get("average_price", 0) or 0) > 0]
+    all_complete_buys = [o for o in ex_orders
+                         if str(o.get("status", "")).upper() == "COMPLETE"
+                         and str(o.get("transaction_type", "")).upper() == "BUY"
+                         and int(o.get("filled_quantity", 0) or 0) > 0
+                         and float(o.get("average_price", 0) or 0) > 0]
+
+    # ── Excluded stocks (saved to disk → survives sessions) ──────────────
+    if "gtt_excl_ms" not in st.session_state:
+        st.session_state["gtt_excl_ms"] = sorted(load_gtt_exclusions())
+
+    def _gtt_excl_save():
+        save_gtt_exclusions(set(st.session_state.get("gtt_excl_ms", [])))
+
+    def _gtt_excl_add():
+        new = {s.strip().upper() for s in str(st.session_state.get("gtt_excl_new", "")).replace("\n", ",").split(",")
+               if s.strip()}
+        if new:
+            st.session_state["gtt_excl_ms"] = sorted(set(st.session_state.get("gtt_excl_ms", [])) | new)
+            _gtt_excl_save()
+        st.session_state["gtt_excl_new"] = ""
+
+    _excl_now = set(st.session_state["gtt_excl_ms"])
+    _excl_opts = sorted(_excl_now
+                        | {str(o.get("tradingsymbol", "")).upper() for o in all_complete_buys}
+                        | {str(h.get("tradingsymbol", "")).upper()
+                           for hlds in (st.session_state.get("all_holdings") or {}).values() for h in hlds})
+    _excl_opts = [x for x in _excl_opts if x]
+    with st.expander(f"🚫 Exclude stocks from protective GTT ({len(_excl_now)})", expanded=False):
+        st.multiselect("Excluded symbols", _excl_opts, key="gtt_excl_ms", on_change=_gtt_excl_save,
+                       help="No protective GTT is suggested or placed for these stocks. "
+                            "Saved to disk, so the list is kept across sessions.")
+        ea, eb = st.columns([4, 1])
+        ea.text_input("Add symbol(s) not in the list (comma-separated)", key="gtt_excl_new",
+                      placeholder="e.g. LIQUIDBEES, GOLDBEES")
+        eb.button("➕ Add", key="gtt_excl_add", on_click=_gtt_excl_add, use_container_width=True)
+        st.caption("Saved in outputs/gtt_excluded_symbols.json. Existing GTTs in Kite are not touched.")
+
+    _excl = set(st.session_state["gtt_excl_ms"])
+    complete_buys = [o for o in all_complete_buys
+                     if str(o.get("tradingsymbol", "")).upper() not in _excl]
+    _n_excl_hidden = len(all_complete_buys) - len(complete_buys)
     if not first_tok:
         st.warning("Connect a Kite account to view/place protective GTTs.")
     elif not complete_buys:
-        st.caption("No COMPLETE BUY orders to protect.")
+        st.caption("No COMPLETE BUY orders to protect."
+                   + (f" ({_n_excl_hidden} excluded by your GTT exclusion list.)" if _n_excl_hidden else ""))
     else:
         try:
             gtt_existing = fetch_gtts(first_tok)
@@ -508,6 +686,8 @@ def render() -> None:
                             st.rerun()
                         except Exception as gtt_place_err:
                             st.error(f"GTT placement failed for {symbol}: {gtt_place_err}")
+        if _n_excl_hidden:
+            st.caption(f"🚫 {_n_excl_hidden} COMPLETE BUY order(s) hidden — symbol is in the GTT exclusion list.")
         st.caption("Stop trigger is calculated from the completed BUY average price (−2%); no Kite Quote API call is needed. Active GTTs are checked before placement. API rejection is shown and does not mark the order protected.")
 
     st.divider()
@@ -600,7 +780,7 @@ def render() -> None:
                            horizontal=True, key="le_order_mode",
                            help=(
                                "**LIMIT** — single limit order at a % offset from LTP.\n\n"
-                               "**STAGGER** — geo-progression tiers (uses trade_utils).\n\n"
+                               "**STAGGER** — 1-qty probe order first, then 4 brackets priced from the Positions LTP.\n\n"
                                "**MARKET** — market order at LTP."
                            ))
     bulk_acct   = g2.selectbox(
@@ -621,7 +801,7 @@ def render() -> None:
             help="BUY: LTP − offset  |  SELL: LTP + offset. Negative = aggressive.",
         )
     elif order_mode == "STAGGER":
-        g3.caption("Tiers built from **Day Fluc%** via trade_utils.")
+        g3.caption("1-qty probe first, then 4 brackets (qty split + **Day Fluc%** tiers) priced from Positions LTP.")
 
     # ── Ticker-level reconciliation: actual FILLED + remaining OPEN qty ────
     # Key by ticker + exchange + side so one symbol/order side never offsets another.
@@ -668,6 +848,27 @@ def render() -> None:
                   for k in set(exch_filled_map) | set(local_filled_map)}
     open_map = {k: exch_open_map.get(k, 0) + local_open_map.get(k, 0)
                 for k in set(exch_open_map) | set(local_open_map)}
+
+    # ── Whitelist: ignore FILLED qty for chosen ticker/side (overrides the "all filled" check) ──
+    _fill_opts = {}
+    for _r in plan:
+        _tk = str(_r.get("ticker", "")).upper()
+        _sd = str((_r.get("action") or _r.get("side", ""))).upper()
+        _ex = str(_r.get("exchange", "NSE")).upper()
+        _k = _order_key(_tk, _ex, _sd)
+        if filled_map.get(_k, 0) > 0:
+            _fill_opts[f"{_tk} · {_sd} · filled {filled_map[_k]}"] = _k
+    _fill_saved = st.session_state.get("le_fill_override_labels", [])
+    _fill_saved = [l for l in _fill_saved if l in _fill_opts]
+    if _fill_opts:
+        with st.expander(f"♻️ Whitelist FILLED orders to re-send ({len(_fill_saved)})", expanded=bool(_fill_saved)):
+            st.multiselect("Ignore FILLED qty for", list(_fill_opts.keys()), default=_fill_saved,
+                           key="le_fill_override_labels",
+                           help="Selected ticker/side rows are rebuilt as if nothing was filled: "
+                                "Remaining = Ask Qty − Open (filled qty is ignored). "
+                                "Open orders are still counted to avoid duplicates.")
+            st.caption("⚠️ This can send the full planned qty again. Session only — resets on a new session.")
+    fill_override = {_fill_opts[l] for l in st.session_state.get("le_fill_override_labels", []) if l in _fill_opts}
 
     # ── Fetch / cache LTP + day-fluc ──────────────────────────────────────
     if "le_prices" not in st.session_state:
@@ -730,7 +931,8 @@ def render() -> None:
         tally_key = _order_key(tk, exch, side)
         filled = filled_map.get(tally_key, 0)
         open_qty = open_map.get(tally_key, 0)
-        remaining = max(0, ask_qty - filled - open_qty)
+        eff_filled = 0 if tally_key in fill_override else filled     # whitelist ignores FILLED qty
+        remaining = max(0, ask_qty - eff_filled - open_qty)
 
         if side == "SELL":
             # Sellable holdings are an execution constraint, not order completion.
@@ -759,8 +961,9 @@ def render() -> None:
             exec_price = round(ltp * (1 + sign * limit_offset_pct / 100), 2)
             tier_str   = f"LIMIT 1 order @ ₹{exec_price:.2f}  ({'+' if sign>0 else ''}{sign*limit_offset_pct:.2f}%)"
         else:  # STAGGER
-            x    = max(1, residual // 15)
-            qtys = [x, 2 * x, 4 * x, 8 * x]
+            probe_needed = (filled + open_qty) == 0     # no order today for this ticker/side yet
+            rest_qty = residual - 1 if probe_needed else residual
+            qtys = stagger_qtys(rest_qty) if rest_qty > 0 else [0, 0, 0, 0]
             if side == "BUY":
                 tiers = [round(ltp * (1 - 0.0025 - f / 100), 2)
                          for f in [0, fluc / 4, fluc / 2, fluc * 3 / 4]]
@@ -769,8 +972,10 @@ def render() -> None:
                          for f in [0, fluc / 4, fluc / 2, fluc * 3 / 4]]
             exec_price = tiers[0]
             tier_str   = "  |  ".join(
-                f"T{i+1}: {q}@₹{p}" for i, (q, p) in enumerate(zip(qtys, tiers))
+                f"B{i+1}: {q}@₹{p}" for i, (q, p) in enumerate(zip(qtys, tiers)) if q > 0
             )
+            if probe_needed:
+                tier_str = f"PROBE: 1@₹{tiers[0]}  |  " + tier_str + "  (brackets re-priced from Positions LTP)"
 
         exec_val = round(residual * exec_price, 0)
 
@@ -810,7 +1015,8 @@ def render() -> None:
             key = _order_key(tk, exch, side)
             filled = filled_map.get(key, 0)
             open_qty = open_map.get(key, 0)
-            remaining = max(0, plan_qty - filled - open_qty)
+            eff_filled = 0 if key in fill_override else filled
+            remaining = max(0, plan_qty - eff_filled - open_qty)
             sellable = portfolio_qty_map.get(tk, 0) if side == "SELL" else "—"
             executable = min(remaining, sellable) if side == "SELL" else remaining
             if remaining > 0:
@@ -971,7 +1177,8 @@ def render() -> None:
             otype = r["Order Type"]
 
             if order_mode == "STAGGER" and otype != "MARKET":
-                batch = _build_orders(sym, exch, side, ltp, qty, fluc, "LIMIT")
+                probe_needed = (int(r.get("Filled", 0) or 0) + int(r.get("Open", 0) or 0)) == 0
+                batch = _build_probe_and_brackets(sym, exch, side, ltp, qty, fluc, probe_needed)
             else:
                 # Single order — use edited exec price
                 exec_p = float(r["Exec Price ₹"])
@@ -998,6 +1205,7 @@ def render() -> None:
                 o["account"] = o.get("account") or row_account
             staged.extend(batch)
 
+        staged.sort(key=lambda o: 0 if str(o.get("side", "")).upper() == "SELL" else 1)  # SELLs first
         st.session_state["staged_orders"]   = staged
         st.session_state["le_staged_built"] = True
         st.success(f"Built **{len(staged)}** staged orders from **{len(selected)}** rows. Scroll to Part 3 ↓")
@@ -1009,6 +1217,10 @@ def render() -> None:
     # PART 3 — ORDER STAGING  (send 1-by-1 or all)
     # ═══════════════════════════════════════════════════════════════════════
     st.markdown("### 3️⃣ Staged Orders")
+
+    _flash = st.session_state.pop("le_send_flash", None)
+    if _flash:
+        {"error": st.error, "warning": st.warning}.get(_flash[0], st.success)(_flash[1])
 
     staged: list = st.session_state.get("staged_orders", [])
     if not staged:
@@ -1107,7 +1319,7 @@ def render() -> None:
         c1.markdown(f'<div style="{_CELL}"><b>{o.get("ticker","")}</b></div>', unsafe_allow_html=True)
         c2.markdown(f'<div style="{_CELL}">{side}</div>', unsafe_allow_html=True)
         c3.markdown(f'<div style="{_CELL}">{o.get("order_type","LIMIT")}</div>', unsafe_allow_html=True)
-        c4.markdown(f'<div style="{_CELL}">{o.get("tier","")}</div>', unsafe_allow_html=True)
+        c4.markdown(f'<div style="{_CELL}">{"Probe" if o.get("probe") else o.get("tier","")}</div>', unsafe_allow_html=True)
 
         # Editable qty & price only for PENDING rows
         if is_pending:
@@ -1125,7 +1337,10 @@ def render() -> None:
                 updated_staged[i]["price"] = new_price
                 updated_staged[i]["value"] = round(new_qty * new_price, 2)
                 st.session_state["staged_orders"] = updated_staged
-            c7.markdown(f'<div style="{_CELL}">₹{round(new_qty*new_price):,}</div>', unsafe_allow_html=True)
+            _over = _exceeds_limit({"qty": new_qty, "price": new_price})
+            c7.markdown(f'<div style="{_CELL}{";color:#b91c1c;font-weight:700" if _over else ""}" '
+                        f'title="{"Exceeds max order amount" if _over else ""}">'
+                        f'{"⚠️ " if _over else ""}₹{round(new_qty*new_price):,}</div>', unsafe_allow_html=True)
         else:
             c5.markdown(f'<div style="{_CELL}">{o.get("qty","")}</div>', unsafe_allow_html=True)
             c6.markdown(f'<div style="{_CELL}">₹{float(o.get("price",0)):.2f}</div>', unsafe_allow_html=True)
@@ -1139,29 +1354,61 @@ def render() -> None:
             btn_a, btn_b = c9.columns(2)
             if btn_a.button("📤", key=f"le_send_{i}", use_container_width=True,
                             help="Send To Exchange"):
+                # Apply latest qty/price edits before placing
+                o2 = dict(updated_staged[i])
+                o2["qty"]   = int(st.session_state.get(f"le_qty_{i}",   o2["qty"]))
+                o2["price"] = float(st.session_state.get(f"le_price_{i}", o2["price"]))
+                o2["value"] = round(o2["qty"] * o2["price"], 2)
                 if not bulk_acct:
                     st.error("Select an account before sending live orders.")
+                elif st.session_state.get("le_funds_halt") and not dry_run:
+                    st.error("🛑 Sending is halted after an insufficient-funds rejection. "
+                             "Use “Resume sending” at the top.")
                 else:
-                    # Apply latest qty/price edits before placing
-                    o2 = dict(updated_staged[i])
-                    o2["qty"]   = int(st.session_state.get(f"le_qty_{i}",   o2["qty"]))
-                    o2["price"] = float(st.session_state.get(f"le_price_{i}", o2["price"]))
-                    o2["value"] = round(o2["qty"] * o2["price"], 2)
                     tk = token_map.get(o2.get("account","") or bulk_acct, first_tok)
-                    try:
-                        resp = _do_place(tk, o2)
-                        oid  = resp.get("data",{}).get("order_id","?")
-                        o2.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
-                        st.success(f"✅ {o2['ticker']} sent — order_id {oid}")
-                    except Exception as e:
-                        o2.update({"state":"ERROR","error":str(e)})
-                        st.error(f"❌ {o2['ticker']} failed: {e}")
-                    updated_staged[i] = o2
-                    st.session_state["staged_orders"] = updated_staged
-                    st.session_state["live_orders"]   = updated_staged
-                    _save_orders(updated_staged)
-                    st.session_state.pop("le_exchange_orders", None)
-                    st.rerun()
+                    note = ""
+                    blocked_msg = ""
+                    is_br = bool(o2.get("bracket"))
+                    if is_br and not dry_run and not _probe_sent(updated_staged, o2):
+                        blocked_msg = "Send the 1-qty probe order first — brackets are priced from its Positions LTP."
+                    elif is_br or (st.session_state.get("le_reprice_on", True) and int(o2.get("tier", 1)) >= 2):
+                        updated_staged[i] = o2
+                        work = [dict(x) for x in updated_staged] if dry_run else updated_staged
+                        ch, miss = _reprice_staged(work, [i], lambda _o: tk, persist=not dry_run)
+                        o2 = dict(work[i])
+                        note = _reprice_summary(ch, miss)
+                        if is_br and o2.get("_unpriced"):
+                            blocked_msg = f"{note} — bracket NOT sent (no Positions LTP)."
+                    o2.pop("_unpriced", None)
+                    if blocked_msg:
+                        st.error(blocked_msg)
+                    elif _exceeds_limit(o2):
+                        st.error(f"🔒 {o2['ticker']}: ₹{o2['value']:,.0f} exceeds the max order "
+                                 f"amount ₹{max_order_amt:,} — reduce the qty or raise the limit.")
+                    elif dry_run:
+                        _dry_run_record(o2, note)
+                        st.session_state["le_send_flash"] = ("success",
+                                                             f"🧪 Dry run: would send {o2['side']} {o2['qty']} {o2['ticker']} "
+                                                             f"@ ₹{o2['price']:.2f}. {note}")
+                        st.rerun()
+                    else:
+                        try:
+                            resp = _do_place(tk, o2)
+                            oid  = resp.get("data",{}).get("order_id","?")
+                            o2.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
+                            st.session_state["le_send_flash"] = ("success",
+                                                                 f"✅ {o2['ticker']} sent — order_id {oid}. {note}")
+                        except Exception as e:
+                            o2.update({"state":"ERROR","error":str(e)})
+                            if _is_insufficient_funds(e):
+                                _halt_on_funds(o2, e)
+                            st.session_state["le_send_flash"] = ("error", f"❌ {o2['ticker']} failed: {e}")
+                        updated_staged[i] = o2
+                        st.session_state["staged_orders"] = updated_staged
+                        st.session_state["live_orders"]   = updated_staged
+                        _save_orders(updated_staged)
+                        st.session_state.pop("le_exchange_orders", None)
+                        st.rerun()
             if btn_b.button("🗑", key=f"le_remove_{i}", use_container_width=True,
                             help="Remove Trade"):
                 updated_staged.pop(i)
@@ -1174,38 +1421,148 @@ def render() -> None:
     st.divider()
 
     # ── Bulk send / clear controls ─────────────────────────────────────────
-    st.markdown("##### Send to Exchange")
-    s1, s2 = st.columns([1, 1])
+    _sh, _sm, _sd = st.columns([2, 2, 1])
+    _sh.markdown("##### Send to Exchange")
+    _sm.number_input("Max order amount (₹)", min_value=0, value=0, step=10_000, key="le_max_order_amt",
+                     help="Safety limit per order (qty × price). Orders above it are NOT sent to the "
+                          "exchange — edit the qty or raise the limit. 0 = no limit.")
+    _sd.toggle("🧪 Dry run", value=False, key="le_dry_run",
+               help="Log what WOULD be sent. Nothing is sent to the exchange.")
+    if max_order_amt:
+        st.caption(f"🔒 Orders above ₹{max_order_amt:,} will be blocked.")
+    if dry_run:
+        st.warning("🧪 **DRY RUN is ON** — orders are only logged (see the Dry-run log in Part 3). "
+                   "Nothing is sent to the exchange and order states do not change.")
+    # STAGGER-only controls: shown only when the staged list actually contains STAGGER orders
+    has_stagger = any(o.get("probe") or o.get("bracket") or int(o.get("tier", 1)) >= 2
+                      for o in updated_staged)
+    if has_stagger:
+        st.toggle("Reprice STAGGER batches 2–4 from Positions LTP when sending",
+                  value=True, key="le_reprice_on",
+                  help="Applies to legacy tiers 2-4. STAGGER brackets (1-4) are ALWAYS priced from the "
+                       "live Positions LTP and are held back until the 1-qty probe is sent and visible there.")
+    sb, s1, s3, s2 = st.columns([1, 1, 1, 1])
+    if has_stagger:
+        batch_sel = sb.selectbox("Batch", ["All pending", "Probe", "Batch 1", "Batch 2", "Batch 3", "Batch 4"],
+                                 key="le_batch_sel", label_visibility="collapsed",
+                                 help="STAGGER: send the 1-qty Probe first, then Batch 1-4 (priced from Positions LTP).")
+    else:
+        batch_sel = "All pending"
+    reprice_on = has_stagger and st.session_state.get("le_reprice_on", True)
 
-    # Send ALL pending
-    if s1.button("⚡ Send All Pending", type="primary",
-                 use_container_width=True, disabled=not pending_indices,
+    def _in_batch(i):
+        t = int(updated_staged[i].get("tier", 1))
+        return batch_sel == "All pending" or (t == 0 if batch_sel == "Probe" else t == int(batch_sel[-1]))
+    batch_indices = [i for i in pending_indices if _in_batch(i)]
+
+    # Preview/refresh tier 2-4 prices from Positions without sending
+    if has_stagger and s3.button("🔄 Reprice brackets", use_container_width=True, key="le_reprice_now",
+                                 disabled=not pending_indices,
+                                 help="Update PENDING bracket prices from the live Positions LTP (nothing is sent)."):
+        _tok = lambda _o: token_map.get(_o.get("account", "") or bulk_acct, first_tok)
+        ch, miss = _reprice_staged(updated_staged, pending_indices, _tok)
+        st.session_state["staged_orders"] = updated_staged
+        st.session_state["live_orders"]   = updated_staged
+        _save_orders(updated_staged)
+        st.session_state["le_send_flash"] = ("success" if ch else "warning",
+                                             _reprice_summary(ch, miss) or "Nothing to reprice.")
+        st.rerun()
+
+    # Send pending (selected batch)
+    if s1.button("⚡ Send Pending", type="primary",
+                 use_container_width=True, disabled=not batch_indices,
                  key="le_send_all"):
         if not bulk_acct:
             st.error("Select an account before sending live orders.")
+        elif st.session_state.get("le_funds_halt") and not dry_run:
+            st.error("🛑 Sending is halted after an insufficient-funds rejection. "
+                     "Use “Resume sending” at the top.")
         else:
-            for idx, i in enumerate(pending_indices):
-                o  = dict(updated_staged[i])
+            # SELL first, then BUY, then by tier (stable)
+            send_order = sorted(batch_indices, key=lambda i: (
+                0 if str(updated_staged[i].get("side", "")).upper() == "SELL" else 1,
+                int(updated_staged[i].get("tier", 1))))
+            work = [dict(o) for o in updated_staged] if dry_run else updated_staged
+            notes = ""
+            _tok = lambda _o: token_map.get(_o.get("account", "") or bulk_acct, first_tok)
+            rp_idx = send_order if reprice_on else [i for i in send_order if work[i].get("bracket")]
+            if rp_idx:
+                ch, miss = _reprice_staged(work, rp_idx, _tok, persist=not dry_run)
+                notes = _reprice_summary(ch, miss)
+            sent = blocked = held = 0
+            halted_on = None
+            for n, i in enumerate(send_order):
+                o = dict(work[i])
+                if o.get("bracket") and ((not dry_run and not _probe_sent(updated_staged, o))
+                                         or o.get("_unpriced")):
+                    held += 1                               # probe not sent / not in Positions yet → stays PENDING
+                    continue
+                o.pop("_unpriced", None)
+                if _exceeds_limit(o):                       # over the max order amount → skip, stays PENDING
+                    o["skip_reason"] = f"Exceeds max order amount ₹{max_order_amt:,}"
+                    if not dry_run:
+                        updated_staged[i] = o
+                    blocked += 1
+                    continue
+                if dry_run:
+                    _dry_run_record(o, "")
+                    sent += 1
+                    continue
                 tk = token_map.get(o.get("account","") or bulk_acct, first_tok)
                 try:
                     resp = _do_place(tk, o)
                     oid  = resp.get("data",{}).get("order_id","?")
                     o.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
+                    sent += 1
                 except Exception as e:
                     o.update({"state":"ERROR","error":str(e)})
+                    if _is_insufficient_funds(e):
+                        _halt_on_funds(o, e)
+                        halted_on = o
                 updated_staged[i] = o
-                # Rate limit: 2 orders/sec → 0.5s gap between each
-                if idx < len(pending_indices) - 1:
-                    time.sleep(0.5)
+                if halted_on:                               # stop ALL remaining BUY/SELL requests
+                    break
+                if n < len(send_order) - 1:
+                    time.sleep(0.5)                         # rate limit: 2 orders/sec
+            remaining = sum(1 for o in updated_staged if o.get("state") == "PENDING")
+            if held:
+                notes += (f"  ·  ⏸ {held} bracket(s) held back — send the 1-qty probe first and wait "
+                          f"until the ticker shows in Positions, then send the brackets.")
             st.session_state["staged_orders"] = updated_staged
             st.session_state["live_orders"]   = updated_staged
             _save_orders(updated_staged)
             st.session_state.pop("le_exchange_orders", None)
-            placed = sum(1 for o in updated_staged if o.get("state") == "PLACED")
-            st.success(f"✅ Sent {placed} orders to exchange.")
+            if dry_run:
+                st.session_state["le_send_flash"] = ("success",
+                                                     f"🧪 Dry run ({batch_sel}): logged {sent} order(s), {blocked} blocked by the limit — "
+                                                     f"nothing was sent. {notes}")
+            elif halted_on:
+                st.session_state["le_send_flash"] = ("error",
+                                                     f"🛑 Stopped after {sent} order(s): {halted_on.get('side')} {halted_on.get('ticker')} "
+                                                     f"rejected — {halted_on.get('error')}. {remaining} order(s) left unsent. {notes}")
+            elif blocked:
+                st.session_state["le_send_flash"] = ("warning",
+                                                     f"Sent {sent} order(s); {blocked} blocked by the ₹{max_order_amt:,} max order amount "
+                                                     f"(still pending — edit qty or raise the limit). {notes}")
+            else:
+                st.session_state["le_send_flash"] = ("success",
+                                                     f"✅ Sent {sent} order(s) ({batch_sel}, SELLs first). {notes}")
             st.rerun()
 
     if s2.button("🗑 Clear Staged", use_container_width=True, key="le_clear_staged"):
         st.session_state["staged_orders"]   = []
         st.session_state["le_staged_built"] = False
         st.rerun()
+
+    # ── Dry-run log ────────────────────────────────────────────────────────
+    _dlog = st.session_state.get("le_dry_log", [])
+    if _dlog:
+        with st.expander(f"🧪 Dry-run log ({len(_dlog)})", expanded=dry_run):
+            _ddf = pd.DataFrame(_dlog)
+            st.dataframe(_ddf, use_container_width=True, hide_index=True)
+            d1, d2 = st.columns(2)
+            d1.download_button("⬇️ Download CSV", _ddf.to_csv(index=False).encode(),
+                               file_name="dry_run_log.csv", mime="text/csv", key="le_dry_dl")
+            if d2.button("🧹 Clear log", key="le_dry_clear"):
+                st.session_state["le_dry_log"] = []
+                st.rerun()
