@@ -59,6 +59,12 @@ class Params:
     restrict_tickers: tuple = ()      # bare upper-case symbols; empty = analyse the whole market universe
     exclude_tickers: tuple = ()       # bare upper-case symbols never traded or picked (applied after restrict_tickers)
 
+    # Universe inclusion filters (AND-ed; read from the `tickers` table). Unset = no filtering on that field.
+    market_caps: tuple = ()           # selected `market_cap` buckets; empty = ALL (no filter, NULL rows included)
+    min_market_cap_amt: float | None = None   # keep only market_cap_amt > this
+    min_fii_hold_pct: float | None = None     # keep only fii_hold_pct > this
+    min_public_hold_pct: float | None = None  # keep only public_hold_pct > this
+
     # Strategy rules & filters
     confidence_cutoff: float = 72.0
     stop_loss_pct: float = -2.00      # stock stop-loss threshold
@@ -209,7 +215,7 @@ def get_connection():
 
 def _cache_paths(p: Params):
     tag = f"{p.start_date}_{p.cutoff_date}"
-    return (CACHE_DIR / f"cache_market_df_{tag}.parquet",
+    return (CACHE_DIR / f"cache_market_df_pit_v3_{tag}.parquet",
             CACHE_DIR / f"cache_nifty_df_{p.cutoff_date}.parquet",
             CACHE_DIR / "cache_daily_stop_df.parquet")
 
@@ -231,6 +237,12 @@ def load_market_data(con, p: Params, log):
     sql = _fasta_sql().build_weekly_momentum_sql(start_date=p.start_date, cutoff_date=p.cutoff_date)
     df = con.execute(sql).fetchdf()
     df.columns = [c.lower() for c in df.columns]
+
+    # `open_price` is supplied by build_weekly_momentum_sql(). The SQL aggregation must
+    # use arg_min(open, date), so this Python layer does not issue a second daily-price query.
+    if 'open_price' not in df.columns:
+        raise KeyError("Weekly SQL must return open_price (first trading day's actual open).")
+
     market_cache.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(market_cache, index=False)
     return df
@@ -305,8 +317,8 @@ def load_daily_stop_data(con, p: Params, log):
 # ==========================================
 # STOP-LOSS LOGIC
 # ==========================================
-def stop_fill_price(daily_stops, ticker, week_start, buy_price, stop_loss_pct):
-    """Where a stop order really fills in the week starting `week_start`.
+def stop_fill_price(daily_stops, ticker, week_start, buy_price, stop_loss_pct, holding_days=7):
+    """Where a stop order really fills during the holding window starting `week_start`.
 
     Finds the first trading day whose low reaches the stop price. If that day OPENED at or below the stop
     (a gap-down) the order fills at that open - a worse price than the stop; otherwise it fills at the stop.
@@ -317,7 +329,7 @@ def stop_fill_price(daily_stops, ticker, week_start, buy_price, stop_loss_pct):
         return None
     dates, opens, lows = rec
     lo = np.searchsorted(dates, week_start.to_datetime64(), side='left')
-    hi = np.searchsorted(dates, (week_start + pd.Timedelta(days=7)).to_datetime64(), side='left')
+    hi = np.searchsorted(dates, (week_start + pd.Timedelta(days=holding_days)).to_datetime64(), side='left')
     if hi <= lo:
         return None
     stop_px = buy_price * (1.0 + (stop_loss_pct / 100.0))
@@ -399,11 +411,11 @@ def get_recency_ngram_prediction(train_str, n, decay_factor):
 @dataclass(frozen=True)
 class TickerWeek:
     """One ticker in one signal week, as a strategy sees it.
-    `history` holds only weeks completed before this week began, so a strategy cannot look ahead."""
+    `history` contains only completed prior weeks. `volume` is the prior week's average volume."""
     ticker: str
     week: pd.Timestamp
     history: np.ndarray      # bucket chars ('L' / 'P' / ...) of past completed weeks, oldest first
-    volume: float            # this week's average volume (the engine applies the liquidity filter itself)
+    volume: float            # previous completed week's average volume
 
 
 @dataclass(frozen=True)
@@ -486,89 +498,173 @@ class _StrategyRun:
 
 
 def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
-    """Monday entry uses strictly historical completed-week patterns (no look-ahead).
+    """Back-test with point-in-time inputs and completed-week outcomes only.
 
-    Every strategy in `strategies` visits each eligible ticker-week. Returns raw (trades, picks) DataFrames
-    with a `strategy` column - before capital allocation and transaction costs."""
-    median_volume = df['avg_volume'].median() if 'avg_volume' in df.columns else 0
+    At a week's entry, the model sees only L/P history through the prior week and the prior
+    week's volume. A trade is recorded only when both its entry week and its following-week
+    exit data are complete. The latest partial week can still update the current shadow state
+    and generate PEEKs, but it is never counted as a historical trade.
+    """
+    if df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    work = df.copy()
+    work['w_date'] = pd.to_datetime(work['w_date']).dt.normalize()
+    if 'last_date' in work.columns:
+        work['last_date'] = pd.to_datetime(work['last_date']).dt.normalize()
+    else:
+        work['last_date'] = work['w_date'] + pd.Timedelta(days=4)
+    if 'first_date' in work.columns:
+        work['first_date'] = pd.to_datetime(work['first_date']).dt.normalize()
+    else:
+        work['first_date'] = work['w_date']
+
+    all_weeks = sorted(work['w_date'].dropna().unique())
+    if not all_weeks:
+        return pd.DataFrame(), pd.DataFrame()
+
+    # Determine whether the latest data week is complete. Earlier weeks are complete because
+    # a later weekly row exists. A Friday-morning run (data through Thursday) remains partial;
+    # a weekend cutoff after Friday, or an actual Friday data row, marks the week complete.
+    latest_week = pd.Timestamp(all_weeks[-1]).normalize()
+    latest_rows = work.loc[work['w_date'] == latest_week]
+    latest_data_date = latest_rows['last_date'].max()
+    try:
+        cutoff_day = pd.Timestamp(p.cutoff_date).normalize()
+    except Exception:
+        cutoff_day = latest_data_date + pd.Timedelta(days=1)
+    cutoff_week_start = cutoff_day.to_period('W-SUN').start_time.normalize()
+    latest_friday = latest_week + pd.Timedelta(days=4)
+    if latest_week < cutoff_week_start:
+        latest_week_complete = True
+    else:
+        latest_week_complete = bool(
+            (pd.notna(latest_data_date) and latest_data_date >= latest_friday)
+            or cutoff_day > latest_friday
+        )
+
+    completed_weeks = set(pd.Timestamp(w).normalize() for w in all_weeks[:-1])
+    if latest_week_complete:
+        completed_weeks.add(latest_week)
+
+    # The liquidity gate for week W is based on each ticker's volume in W-1,
+    # compared with the market-wide median volume in that same completed week.
+    has_volume = 'avg_volume' in work.columns
+    median_volume_by_week = (
+        work.groupby('w_date')['avg_volume'].median().to_dict() if has_volume else {}
+    )
 
     ticker_data = {}
-    for ticker, grp in df.groupby('ticker'):
+    for ticker, grp in work.groupby('ticker'):
         grp = grp.sort_values('w_date').reset_index(drop=True)
-        if len(grp) >= p.min_history:
-            opens_arr = grp['open_price'].values if 'open_price' in grp.columns else grp['close_price'].values
-            lows_arr = grp['low_price'].values if 'low_price' in grp.columns else grp['close_price'].values
-            ticker_data[ticker] = {
-                'dates': pd.to_datetime(grp['w_date']).values,
-                'opens': opens_arr,
-                'closes': grp['close_price'].values,
-                'lows': lows_arr,
-                'volumes': grp['avg_volume'].values if 'avg_volume' in grp.columns else np.full(len(grp), median_volume),
-                'chars': grp['bucket_char'].values
-            }
+        if len(grp) < p.min_history:
+            continue
+        dates = pd.to_datetime(grp['w_date']).values.astype('datetime64[ns]')
+        opens_arr = grp['open_price'].to_numpy(dtype=float) if 'open_price' in grp.columns else grp['close_price'].to_numpy(dtype=float)
+        lows_arr = grp['low_price'].to_numpy(dtype=float) if 'low_price' in grp.columns else grp['close_price'].to_numpy(dtype=float)
+        closes_arr = grp['close_price'].to_numpy(dtype=float)
+        raw_volumes = grp['avg_volume'].to_numpy(dtype=float) if has_volume else np.full(len(grp), np.nan)
+        volume_by_week = {
+            pd.Timestamp(d).normalize(): float(v)
+            for d, v in zip(dates, raw_volumes)
+            if np.isfinite(v)
+        }
+        prior_volumes = []
+        prior_volume_medians = []
+        for d in dates:
+            prior_week = pd.Timestamp(d).normalize() - pd.Timedelta(days=7)
+            prior_volumes.append(volume_by_week.get(prior_week, np.nan))
+            prior_volume_medians.append(median_volume_by_week.get(prior_week, np.nan))
 
-    all_weeks = sorted(df['w_date'].unique())
-    stock_in_shadow = set()  # depends only on price outcomes, so it is shared by all strategies
+        ticker_data[ticker] = {
+            'dates': dates,
+            'first_dates': pd.to_datetime(grp['first_date']).values.astype('datetime64[ns]'),
+            'last_dates': pd.to_datetime(grp['last_date']).values.astype('datetime64[ns]'),
+            'opens': opens_arr,
+            'closes': closes_arr,
+            'lows': lows_arr,
+            'volumes': raw_volumes,
+            'prior_volumes': np.asarray(prior_volumes, dtype=float),
+            'prior_volume_medians': np.asarray(prior_volume_medians, dtype=float),
+            'chars': grp['bucket_char'].to_numpy(),
+        }
+
+    def passes_liquidity(tdict, idx):
+        if not has_volume:
+            return True
+        volume = tdict['prior_volumes'][idx]
+        threshold = tdict['prior_volume_medians'][idx]
+        return bool(np.isfinite(volume) and np.isfinite(threshold) and volume >= threshold)
+
+    stock_in_shadow = set()
     runs = {s.key: _StrategyRun() for s in strategies}
 
     for w_idx, w_date in enumerate(all_weeks):
         if progress and w_idx % 3 == 0:
             progress(w_idx / max(len(all_weeks), 1), f"Simulating week {w_idx + 1} of {len(all_weeks)}…")
-        week_dt = pd.to_datetime(w_date)
+        week_dt = pd.Timestamp(w_date).normalize()
         for run in runs.values():
             run.week_pnls.clear()
             run.shadow_pnls.clear()
 
         for ticker, tdict in ticker_data.items():
             dates = tdict['dates']
-            opens = tdict['opens']
-            closes = tdict['closes']
-            lows = tdict['lows']
-            volumes = tdict['volumes']
-            chars = tdict['chars']
-
             idx_match = np.where(dates == week_dt.to_datetime64())[0]
             if len(idx_match) == 0:
                 continue
-            i = idx_match[0]
-
-            # Require enough history and strictly use past completed weeks up to i-1
-            if i < p.min_history or len(chars[:i]) < 5:
+            i = int(idx_match[0])
+            if i < p.min_history or len(tdict['chars'][:i]) < 5:
                 continue
 
-            curr_volume = volumes[i]
-            was_in_shadow = ticker in stock_in_shadow  # status BEFORE this week's stop-loss can change it
+            prior_volume = tdict['prior_volumes'][i]
+            was_in_shadow = ticker in stock_in_shadow
 
-            # Monday open entry price
-            buy_price = opens[i] if not np.isnan(opens[i]) else closes[i]
-            buy_date = pd.to_datetime(dates[i])
-
-            week_low = lows[i]
-            potential_sl_pnl = ((week_low - buy_price) / buy_price) * 100
+            # First actual trading day's OPEN, not the first daily close.
+            buy_price = tdict['opens'][i]
+            if not np.isfinite(buy_price) or buy_price <= 0:
+                continue
+            buy_date = pd.Timestamp(tdict['first_dates'][i])
+            has_next_week_row = (
+                    i + 1 < len(tdict['dates'])
+                    and pd.Timestamp(tdict['dates'][i + 1]).normalize() == week_dt + pd.Timedelta(days=7)
+            )
+            # The existing strategy exits at the following week's close, so monitor the stop
+            # throughout both weeks rather than only the entry week.
+            holding_lows = tdict['lows'][i:i + (2 if has_next_week_row else 1)]
+            week_low = float(np.nanmin(holding_lows)) if np.isfinite(holding_lows).any() else np.nan
+            potential_sl_pnl = ((week_low - buy_price) / buy_price) * 100.0
 
             if potential_sl_pnl <= p.stop_loss_pct:
                 sell_price = buy_price * (1.0 + (p.stop_loss_pct / 100.0))
-                sell_date = buy_date + pd.Timedelta(days=2)
+                hit_in_second_week = bool(
+                    has_next_week_row and tdict['lows'][i] > buy_price * (1.0 + p.stop_loss_pct / 100.0)
+                )
+                sell_date = (
+                    pd.Timestamp(tdict['first_dates'][i + 1]) + pd.Timedelta(days=2)
+                    if hit_in_second_week else buy_date + pd.Timedelta(days=2)
+                )
                 exit_reason = "STOCK_STOP_LOSS"
                 pnl_pct = p.stop_loss_pct
                 stock_in_shadow.add(ticker)
-                fill = stop_fill_price(daily_stops, ticker, week_dt, buy_price, p.stop_loss_pct)
+                fill = stop_fill_price(
+                    daily_stops, ticker, week_dt, buy_price, p.stop_loss_pct,
+                    holding_days=14 if has_next_week_row else 7
+                )
                 if fill is not None:
-                    sell_date = fill[2]                                # the day the stop was actually hit
-                    if fill[1]:                                        # opened below the stop: exit at that open
+                    sell_date = fill[2]
+                    if fill[1]:
                         sell_price = fill[0]
                         pnl_pct = round(((sell_price - buy_price) / buy_price) * 100, 2)
                         exit_reason = "STOCK_STOP_LOSS_GAP"
-                elif daily_stops is not None:                          # gap check wanted but no daily rows
+                elif daily_stops is not None:
                     exit_reason = "STOCK_STOP_LOSS_NODATA"
             else:
-                if i + 1 < len(closes):
-                    sell_price = closes[i + 1]
-                    sell_date = pd.to_datetime(dates[i + 1])
+                if i + 1 < len(tdict['closes']):
+                    sell_price = tdict['closes'][i + 1]
+                    sell_date = pd.Timestamp(tdict['last_dates'][i + 1])
                 else:
-                    sell_price = closes[i]
-                    sell_date = buy_date + pd.Timedelta(days=4)
-
+                    sell_price = tdict['closes'][i]
+                    sell_date = pd.Timestamp(tdict['last_dates'][i])
                 pnl_pct = round(((sell_price - buy_price) / buy_price) * 100, 2)
                 exit_reason = "WEEKEND_EXIT"
                 if pnl_pct <= p.stop_loss_pct:
@@ -581,15 +677,24 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
                 else:
                     continue
 
-            # Every selected strategy visits this ticker-week.
-            ctx = TickerWeek(ticker, week_dt, chars[:i], curr_volume)
+            ctx = TickerWeek(ticker, week_dt, tdict['chars'][:i], prior_volume)
+            liquidity_ok = passes_liquidity(tdict, i)
+            next_week = week_dt + pd.Timedelta(days=7)
+            has_complete_exit = (
+                    next_week in completed_weeks
+                    and week_dt in completed_weeks
+                    and i + 1 < len(tdict['dates'])
+                    and pd.Timestamp(tdict['dates'][i + 1]).normalize() == next_week
+            )
             for strat in strategies:
                 run = runs[strat.key]
                 if run.halted:
-                    run.shadow_pnls.append(pnl_pct)
+                    if has_complete_exit:
+                        run.shadow_pnls.append(pnl_pct)
                     continue
                 sig = strat.visit(ctx, p)
-                if sig.buy and curr_volume >= median_volume:
+                if sig.buy and liquidity_ok and has_complete_exit:
+                    # Only completed entry + exit windows contribute to historical strategy state.
                     run.trades.append({
                         'ticker': ticker,
                         'strategy': strat.key,
@@ -603,7 +708,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
                     })
                     run.week_pnls.append(pnl_pct)
 
-        # Portfolio halt is judged per strategy, on that strategy's own trades.
         for run in runs.values():
             if run.halted:
                 if run.shadow_pnls and sum(run.shadow_pnls) / len(run.shadow_pnls) > 0.0:
@@ -611,31 +715,30 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
             elif run.week_pnls and sum(run.week_pnls) / len(run.week_pnls) <= p.portfolio_halt_pct:
                 run.halted = True
 
+    # Current/latest PEEK: past-only L/P history plus the prior completed week's volume gate.
     picks = []
-    latest_week = all_weeks[-1] if len(all_weeks) > 0 else None
-    if latest_week is not None:
-        latest_dt = pd.to_datetime(latest_week)
-        for strat in strategies:
-            if runs[strat.key].halted:
+    latest_dt = pd.Timestamp(all_weeks[-1]).normalize()
+    for strat in strategies:
+        if runs[strat.key].halted:
+            continue
+        for ticker, tdict in ticker_data.items():
+            if ticker in stock_in_shadow:
                 continue
-            for ticker, tdict in ticker_data.items():
-                if ticker in stock_in_shadow:
-                    continue
-                idx_match = np.where(tdict['dates'] == latest_dt.to_datetime64())[0]
-                if len(idx_match) == 0:
-                    continue
-                i = idx_match[0]
-                if i < p.min_history:
-                    continue
-                sig = strat.visit(TickerWeek(ticker, latest_dt, tdict['chars'][:i], tdict['volumes'][i]), p)
-                if sig.buy:
-                    picks.append({
-                        'ticker': ticker,
-                        'strategy': strat.key,
-                        'entry_date': latest_dt.strftime('%Y-%m-%d'),
-                        'price': tdict['closes'][i],
-                        'confidence': sig.confidence
-                    })
+            idx_match = np.where(tdict['dates'] == latest_dt.to_datetime64())[0]
+            if len(idx_match) == 0:
+                continue
+            i = int(idx_match[0])
+            if i < p.min_history or not passes_liquidity(tdict, i):
+                continue
+            sig = strat.visit(TickerWeek(ticker, latest_dt, tdict['chars'][:i], tdict['prior_volumes'][i]), p)
+            if sig.buy:
+                picks.append({
+                    'ticker': ticker,
+                    'strategy': strat.key,
+                    'entry_date': latest_dt.strftime('%Y-%m-%d'),
+                    'price': tdict['closes'][i],
+                    'confidence': sig.confidence
+                })
 
     trades = [t for run in runs.values() for t in run.trades]
     return pd.DataFrame(trades), pd.DataFrame(picks)
@@ -777,11 +880,69 @@ def _save_settings(**updates):
         return False
 
 
+def has_universe_filter(p: Params) -> bool:
+    return bool(p.market_caps) or any(
+        v is not None for v in (p.min_market_cap_amt, p.min_fii_hold_pct, p.min_public_hold_pct))
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def load_market_cap_options():
+    """Distinct `market_cap` buckets from the tickers table (empty list if the table/column is unavailable)."""
+    try:
+        rows = get_connection().cursor().execute(
+            "SELECT DISTINCT market_cap FROM tickers WHERE market_cap IS NOT NULL ORDER BY market_cap").fetchall()
+        return [r[0] for r in rows]
+    except Exception:
+        return []
+
+
+def universe_symbols(con, p: Params):
+    """Bare upper-case nse_symbols in `tickers` that satisfy every inclusion filter (AND).
+    A stock with NULL in a filtered column fails that filter, since NULL > n is never true."""
+    where, args = [], []
+    if p.market_caps:
+        where.append(f"market_cap IN ({', '.join('?' * len(p.market_caps))})")
+        args += list(p.market_caps)
+    for col, val in (("market_cap_amt", p.min_market_cap_amt),
+                     ("fii_hold_pct", p.min_fii_hold_pct),
+                     ("public_hold_pct", p.min_public_hold_pct)):
+        if val is not None:
+            where.append(f"{col} > ?")
+            args.append(float(val))
+    sql = "SELECT DISTINCT upper(nse_symbol) FROM tickers WHERE nse_symbol IS NOT NULL"
+    if where:
+        sql += " AND " + " AND ".join(where)
+    return {r[0] for r in con.execute(sql, args).fetchall()}
+
+
+def universe_counts(p: Params):
+    """(stocks passing the filters, all stocks) in the tickers table; index rows like ^NSEI are ignored.
+    Returns (0, None) if the table cannot be read."""
+    try:
+        con = get_connection().cursor()
+        everyone = {x for x in universe_symbols(con, Params()) if not x.startswith("^")}
+        passing = {x for x in universe_symbols(con, p) if not x.startswith("^")}
+        return len(passing), len(everyone)
+    except Exception:
+        return 0, None
+
+
 def analyze(p: Params, progress=None, log=lambda m: None):
     con = get_connection().cursor()  # per-run cursor: the cached connection is shared across sessions
     df = load_market_data(con, p, log)
     if df.empty:
         raise ValueError("The market-data query returned no rows for this date window.")
+    if has_universe_filter(p):
+        # Also applied after the cached load, so the parquet cache keeps the full universe.
+        allowed = universe_symbols(con, p)
+        bare = df['ticker'].map(lambda t: _bare(t).upper())
+        before = bare.nunique()
+        df = df[bare.isin(allowed)].copy()
+        log(f"[Universe filter] {df['ticker'].nunique()} of {before} tickers pass "
+            f"(market_cap in {list(p.market_caps) or 'ALL'}, market_cap_amt > {p.min_market_cap_amt}, "
+            f"fii_hold_pct > {p.min_fii_hold_pct}, public_hold_pct > {p.min_public_hold_pct}).")
+        if df.empty:
+            raise ValueError("No tickers pass the universe filters. Relax market cap / holding thresholds.")
     if p.restrict_tickers:
         # Filter AFTER the cached load, so the parquet cache always holds the full universe.
         wanted = set(p.restrict_tickers)
@@ -812,8 +973,24 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     strategies = resolve_strategies(p.strategies)
     raw_trades, picks_df = run_simulation(df, daily_stops, strategies, p, progress)
     wk_start, wk_end, is_next = pick_window(df)
-    picks_title = (f"{'NEXT-WEEK' if is_next else 'CURRENT-WEEK'} PICKS for week {wk_start:%a %Y-%m-%d} to "
-                   f"{wk_end:%a %Y-%m-%d} (signals at Thursday close | CARRY = already held)")
+    # State the actual point-in-time training boundary separately from the pick window.
+    # The signal week is Mon-Thu; model features are formed only from data dated before
+    # that Monday (the last completed prior-week data date may be earlier if a week is absent).
+    prior_data = df[pd.to_datetime(df['w_date']).dt.normalize() < wk_start]
+    training_through = (
+        pd.to_datetime(prior_data['last_date']).max().normalize()
+        if not prior_data.empty else pd.NaT
+    )
+    training_label = (
+        f"training data available through {training_through:%a %Y-%m-%d}"
+        if pd.notna(training_through) else "no prior-week training data available"
+    )
+    picks_title = (
+        f"{'NEXT-WEEK' if is_next else 'CURRENT-WEEK'} PICKS — "
+        f"entry/signal window Mon {wk_start:%Y-%m-%d} to Thu {wk_end:%Y-%m-%d} · "
+        f"{training_label} (data strictly before entry week; signals at Thursday close | "
+        f"CARRY = already held)"
+    )
 
     # Capital: each strategy's share of the weekly pool follows its recency-weighted win ratio (past weeks only).
     record = _track_record(raw_trades)
@@ -858,8 +1035,24 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         weekly_net = trades_df.groupby('week_period')['net_profit_rupees'].sum()
         weekly_pct = (weekly_net / p.weekly_capital) * 100.0
         weekly_cnt = trades_df.groupby('week_period').size()
+        # Build the weekly log from the market-data calendar, not from the first week
+        # that happened to produce a trade. Otherwise a week with zero completed trades
+        # can disappear (for example, 16-22 Nov between traded weeks 9-15 and the
+        # current pick week starting 23 Nov).
+        market_week_starts = pd.to_datetime(df['w_date']).dt.normalize()
+        first_market_week = market_week_starts.min().to_period('W')
+        last_closed_entry_week = (pd.Timestamp(wk_start).normalize() - pd.Timedelta(days=1)).to_period('W')
+        if first_market_week <= last_closed_entry_week:
+            calendar_weeks = pd.period_range(
+                start=first_market_week, end=last_closed_entry_week, freq='W'
+            )
+        else:
+            calendar_weeks = pd.PeriodIndex([], freq='W')
+        weekly_net = weekly_net.reindex(calendar_weeks, fill_value=0.0)
+        weekly_pct = (weekly_net / p.weekly_capital) * 100.0
+        weekly_cnt = weekly_cnt.reindex(calendar_weeks, fill_value=0).astype(int)
         weekly_df = pd.DataFrame({
-            'week_period': weekly_pct.index, 'trades': weekly_cnt.reindex(weekly_pct.index).values,
+            'week_period': calendar_weeks, 'trades': weekly_cnt.values,
             'portfolio_ret': weekly_pct.values, 'net_rupees': weekly_net.values})
         weekly_df['nifty_ret'] = weekly_df['week_period'].map(lambda w: nifty_weekly.get(w, 0.0))
         weekly_df['quarter_period'] = weekly_df['week_period'].dt.asfreq('Q')
@@ -942,7 +1135,7 @@ def analyze(p: Params, progress=None, log=lambda m: None):
 def build_text_report(res, p: Params):
     """Plain-text report, same layout the command line tool wrote to fasta.txt."""
     L = ["=" * 115,
-         f"  WEEKLY ROTATION TRADING LOG (Weekly ₹{p.weekly_capital:,.0f} Capital Pool, Strict Past-Only N-Gram Features)",
+         f"  WEEKLY ROTATION TRADING LOG (Weekly ₹{p.weekly_capital:,.0f} Capital Pool, Point-in-Time N-Gram + Prior-Week Liquidity Features)",
          "=" * 115]
     trades, weekly, k = res["trades"], res["weekly"], res["kpis"]
     if k:
@@ -1030,6 +1223,38 @@ def _parameter_form():
     D = Params(cutoff_date=date.today().isoformat())
     open_it = RESULT_KEY not in st.session_state
     with st.expander("⚙️ Parameters", expanded=open_it):
+        st.markdown("**Universe filters** (all conditions are AND-ed)")
+        cap_opts = load_market_cap_options()
+        caps_sel = st.multiselect(
+            "Market cap", cap_opts, default=[], disabled=not cap_opts, key="fasta_market_caps",
+            placeholder="ALL (no filter)",
+            help="Distinct market_cap values from the tickers table. Leave empty for ALL "
+                 "(includes stocks with no market cap data). Selecting any excludes unclassified stocks.")
+        f1, f2, f3 = st.columns(3)
+        amt_on = f1.checkbox("Market cap amount >", False, key="fasta_amt_on")
+        amt_val = f1.number_input("market_cap_amt", 0.0, 1e9, 10000.0, 500.0, disabled=not amt_on,
+                                  label_visibility="collapsed", key="fasta_amt_val")
+        fii_on = f2.checkbox("FII holding % >", False, key="fasta_fii_on")
+        fii_val = f2.number_input("fii_hold_pct", 0.0, 100.0, 5.0, 0.5, disabled=not fii_on,
+                                  label_visibility="collapsed", key="fasta_fii_val")
+        pub_on = f3.checkbox("Public holding % >", False, key="fasta_pub_on")
+        pub_val = f3.number_input("public_hold_pct", 0.0, 100.0, 10.0, 0.5, disabled=not pub_on,
+                                  label_visibility="collapsed", key="fasta_pub_val")
+        uf = Params(market_caps=tuple(caps_sel),
+                    min_market_cap_amt=float(amt_val) if amt_on else None,
+                    min_fii_hold_pct=float(fii_val) if fii_on else None,
+                    min_public_hold_pct=float(pub_val) if pub_on else None)
+        n_in, n_all = universe_counts(uf)
+        if n_all is None:
+            st.caption("Could not read the tickers table, so the stock count is unavailable.")
+        elif n_in == 0:
+            st.warning(f"0 of {n_all:,} stocks match these filters. Relax them before running.")
+        elif n_in == n_all:
+            st.success(f"All {n_all:,} stocks are included (no filter narrows the universe).")
+        else:
+            st.success(f"{n_in:,} of {n_all:,} stocks are included.")
+        st.caption("Tick a box to apply that filter. A stock with no data in a ticked field is excluded. "
+                   "Counts come from the tickers table; stocks without enough price history are dropped at run time.")
         with st.form("fasta_params"):
             t_strat, t_data, t_cost = st.tabs(["Strategy", "Data window", "Transaction costs"])
             with t_strat:
@@ -1092,6 +1317,10 @@ def _parameter_form():
         allocation_decay=alloc_decay, win_ratio_prior=win_prior,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
         exclude_tickers=_parse_symbols(exclude_text),
+        market_caps=tuple(caps_sel),
+        min_market_cap_amt=float(amt_val) if amt_on else None,
+        min_fii_hold_pct=float(fii_val) if fii_on else None,
+        min_public_hold_pct=float(pub_val) if pub_on else None,
         weekly_capital=cap, brokerage_rate=brk, brokerage_cap=brk_cap,
         stt_buy_rate=stt_b, stt_sell_rate=stt_s, exchange_txn_rate=exch,
         sebi_turnover_rate=sebi, stamp_duty_buy_rate=stamp, gst_rate=gst, dp_charge_per_sell=dp)
@@ -1248,6 +1477,9 @@ def _show_weekly(res):
     c[1].metric("Nifty 50", _signed(row.nifty_ret, pct=True))
     c[2].metric("Net PnL (₹)", _signed(row.net_rupees, money=True))
     c[3].metric("Trades", int(row.trades))
+    if int(row.trades) == 0:
+        st.info("No completed entry trades were recorded for this week. Trades whose exit window "
+                "extends into the current/incomplete week are excluded from historical performance.")
     g = trades[trades['week_period'].astype(str) == chosen].drop(columns=_DROP_FOR_DISPLAY)
     _table(g)
     with st.expander("All weeks - summary"):
@@ -1355,7 +1587,11 @@ def render():
                        f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
                        f"· ₹{rp.weekly_capital:,.0f}/week"
                        + (f" · portfolio only ({len(rp.restrict_tickers)} tickers)" if rp.restrict_tickers else "")
-                       + (f" · {len(rp.exclude_tickers)} excluded" if rp.exclude_tickers else ""))
+                       + (f" · {len(rp.exclude_tickers)} excluded" if rp.exclude_tickers else "")
+                       + (f" · cap {'/'.join(rp.market_caps)}" if rp.market_caps else "")
+                       + (f" · mcap amt > {rp.min_market_cap_amt:g}" if rp.min_market_cap_amt is not None else "")
+                       + (f" · FII > {rp.min_fii_hold_pct:g}%" if rp.min_fii_hold_pct is not None else "")
+                       + (f" · public > {rp.min_public_hold_pct:g}%" if rp.min_public_hold_pct is not None else ""))
 
             if res["kpis"] is None:
                 st.warning("No completed transactions generated with current rules.")

@@ -411,6 +411,206 @@ def _render_trend_banner(ticker: str, last: float, sma50: float,
 # MAIN RENDER
 # ==============================================================================
 
+def _num(series, default=0.0):
+    return pd.to_numeric(series, errors="coerce").fillna(default)
+
+
+def _live_price_map(force: bool = False, ttl: int = 60) -> tuple:
+    """Live prices for tracking → ({SYMBOL: {last_price, close_price, day_change_pct, src}}, errors).
+
+    1. Kite POSITIONS LTP (net overrides day) for every connected account   → src "Kite positions"
+    2. Zerodha holdings last_price for symbols that are not in positions    → src "Holdings"
+    Cached in session state for `ttl` seconds; `force=True` re-fetches.
+    """
+    cache = st.session_state.get("pf_live_cache")
+    if cache and not force and (time.time() - cache["ts"]) < ttl:
+        return cache["map"], cache["errors"]
+
+    out, errors = {}, []
+    try:
+        from ui.pages.trade.trade_utils import fetch_positions
+    except Exception as e:                                   # pragma: no cover
+        fetch_positions = None
+        errors.append(f"fetch_positions unavailable: {e}")
+
+    if fetch_positions is not None:
+        for acc in (st.session_state.get("accounts") or []):
+            tok = acc.get("token")
+            if not tok:
+                continue
+            try:
+                pos = fetch_positions(tok) or {}
+            except Exception as e:
+                errors.append(f"{acc.get('name', '?')}: {e}")
+                continue
+            for row in (pos.get("day") or []) + (pos.get("net") or []):      # net overrides day
+                sym = str(row.get("tradingsymbol", "")).strip().upper()
+                lp = float(row.get("last_price") or 0)
+                if sym and lp > 0:
+                    cp = float(row.get("close_price") or 0)
+                    out[sym] = {"last_price": lp, "close_price": cp,
+                                "day_change_pct": ((lp - cp) / cp * 100) if cp > 0 else 0.0,
+                                "src": "Kite positions"}
+    for hlds in (st.session_state.get("all_holdings") or {}).values():
+        for h in hlds:
+            sym = str(h.get("tradingsymbol", "")).strip().upper()
+            lp = float(h.get("last_price") or 0)
+            if sym and lp > 0 and sym not in out:
+                out[sym] = {"last_price": lp,
+                            "close_price": float(h.get("close_price") or 0),
+                            "day_change_pct": float(h.get("day_change_percentage") or 0),
+                            "src": "Holdings"}
+    st.session_state["pf_live_cache"] = {"ts": time.time(), "map": out, "errors": errors}
+    return out, errors
+
+
+def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=None):
+    """Positions export → (ticker_data, tracking).
+
+    Non-exit rows (Side != CLOSED and Qty > 0) are the portfolio holdings.
+    CLOSED / Qty == 0 rows are exits (the export already assumes them stopped out at -2%).
+    Qty and Avg ₹ come from the file; the current price comes from Kite positions LTP
+    (fallback: Zerodha holdings, then the file's LTP, flagged "File (stale)").
+    Exits (CLOSED) are taken exactly as reported in the file (P&L ₹, Chg %, Day Buy/Sell).
+    """
+    live = live or {}
+    d = pd.DataFrame({
+        "Symbol":   udf["instrument"].astype(str).str.strip().str.upper(),
+        "Product":  udf["product"] if "product" in udf.columns else "",
+        "Side":     udf["side"].astype(str).str.strip().str.upper(),
+        "Qty":      _num(udf["qty"]) if "qty" in udf.columns else 0.0,
+        "Avg ₹":    _num(udf["avg ₹"]) if "avg ₹" in udf.columns else 0.0,
+        "LTP ₹":    _num(udf["ltp ₹"]) if "ltp ₹" in udf.columns else 0.0,
+        "P&L ₹":    _num(udf["p&l ₹"]) if "p&l ₹" in udf.columns else 0.0,
+        "Chg %":    _num(udf["chg %"]) if "chg %" in udf.columns else 0.0,
+        "Day Buy":  _num(udf["day buy"]).astype(int) if "day buy" in udf.columns else 0,
+        "Day Sell": _num(udf["day sell"]).astype(int) if "day sell" in udf.columns else 0,
+    })
+    d = d[d["Symbol"] != ""]
+    is_exit = (d["Side"] == "CLOSED") | (d["Qty"] == 0)
+    open_df, exit_df = d[~is_exit].copy(), d[is_exit].copy()
+
+    # one row per symbol (weighted average cost if a symbol repeats across products)
+    if not open_df.empty:
+        open_df["_cost"] = open_df["Qty"] * open_df["Avg ₹"]
+        g = open_df.groupby("Symbol", as_index=False).agg(
+            Qty=("Qty", "sum"), _cost=("_cost", "sum"), LTP=("LTP ₹", "last"),
+            PnL=("P&L ₹", "sum"), DayBuy=("Day Buy", "sum"), DaySell=("Day Sell", "sum"),
+            Side=("Side", "first"), Product=("Product", "first"))
+        g["Avg ₹"] = (g["_cost"] / g["Qty"]).where(g["Qty"] > 0, 0.0)
+        open_df = pd.DataFrame({
+            "Symbol": g["Symbol"], "Product": g["Product"], "Side": g["Side"], "Qty": g["Qty"],
+            "Avg ₹": g["Avg ₹"], "LTP ₹": g["LTP"], "P&L ₹": g["PnL"],
+            "Chg %": (g["PnL"] / g["_cost"] * 100).where(g["_cost"] > 0, 0.0),
+            "Day Buy": g["DayBuy"], "Day Sell": g["DaySell"]})
+    open_df["Status"] = ["Partly sold" if r["Day Sell"] > 0 else "Open" for _, r in open_df.iterrows()]
+    # live price from Zerodha holdings, else the file's LTP
+    has_live = open_df["Symbol"].isin(live.keys())
+    open_df["Source"] = [live[k]["src"] if k in live else "File (stale)" for k in open_df["Symbol"]]
+    if has_live.any():
+        open_df.loc[has_live, "LTP ₹"] = [live[k]["last_price"] for k in open_df.loc[has_live, "Symbol"]]
+        _pnl = (open_df["LTP ₹"] - open_df["Avg ₹"]) * open_df["Qty"]
+        _chg = ((open_df["LTP ₹"] - open_df["Avg ₹"]) / open_df["Avg ₹"] * 100).where(open_df["Avg ₹"] > 0, 0.0)
+        open_df["P&L ₹"] = _pnl.where(has_live, open_df["P&L ₹"])
+        open_df["Chg %"] = _chg.where(has_live, open_df["Chg %"])
+    exit_df["Status"] = "Exited"          # exits are taken exactly as reported in the file
+    exit_df = exit_df[~exit_df["Symbol"].isin(open_df["Symbol"])]   # re-bought names stay open
+
+    ticker_data = {}
+    for _, r in open_df.iterrows():
+        L = live.get(r["Symbol"])
+        if L and L["close_price"] > 0:           # real previous close → true "today" move
+            close_p, day_pct = L["close_price"], L["day_change_pct"]
+        else:                                     # no live data: treat as entered today
+            close_p = float(r["Avg ₹"])
+            day_pct = float((r["LTP ₹"] - r["Avg ₹"]) / r["Avg ₹"] * 100) if r["Avg ₹"] else 0.0
+        ticker_data[r["Symbol"]] = {
+            "last_price": float(r["LTP ₹"]),
+            "close_price": float(close_p),
+            "day_change_pct": float(day_pct),
+            "avg_cost": float(r["Avg ₹"]),
+            "Uploaded": float(r["Qty"]),
+        }
+    stale = open_df.loc[~has_live, "Symbol"].tolist()
+    meta = {"live_n": int(has_live.sum()), "total_n": len(open_df), "stale": stale,
+            "connected": bool(live), "entry_date": entry_date,
+            "by_src": open_df["Source"].value_counts().to_dict()}
+    return ticker_data, {"open": open_df.reset_index(drop=True),
+                         "exit": exit_df.reset_index(drop=True), "meta": meta}
+
+
+def _render_position_tracking(trk: dict) -> None:
+    """Open (in portfolio) vs exited positions from the Positions export."""
+    o, x, meta = trk["open"], trk["exit"], trk.get("meta", {})
+    st.subheader("🎯 Position Tracking")
+    if meta.get("entry_date"):
+        _days = (datetime.date.today() - meta["entry_date"]).days
+        st.caption(f"📅 Entry file dated **{meta['entry_date']:%d %b %Y}** · tracked for **{_days} day(s)**")
+    rc1, rc2 = st.columns([5, 1])
+    if rc2.button("🔄 Refresh prices", key="pf_track_refresh", use_container_width=True):
+        _live_price_map(force=True)
+        st.rerun()
+    for _e in meta.get("errors", []) or []:
+        rc1.caption(f"⚠️ Kite positions fetch: {_e}")
+    _src = ", ".join(f"{v} {k}" for k, v in (meta.get("by_src") or {}).items())
+    if not meta.get("connected"):
+        rc1.warning("No Kite account connected — prices below are the file's LTP (stale). "
+                    "Connect your account to track live.")
+    elif meta.get("stale"):
+        rc1.warning(f"{len(meta['stale'])} of {meta['total_n']} open symbols are in neither Kite positions nor "
+                    f"holdings and use the file's LTP: {', '.join(meta['stale'])}")
+    else:
+        rc1.success(f"🟢 Live prices for all {meta.get('live_n', 0)} open positions ({_src}). "
+                    "Qty and Avg ₹ from the file.")
+    open_pnl, exit_pnl = float(o["P&L ₹"].sum()), float(x["P&L ₹"].sum())
+    invested = float((o["Qty"] * o["Avg ₹"]).sum())
+    exposure = float((o["Qty"] * o["LTP ₹"]).sum())
+    n_all = len(o) + len(x)
+    winners = int((o["P&L ₹"] > 0).sum())
+    m = st.columns(6)
+    m[0].metric("Open (in Portfolio)", len(o), f"{len(o) / n_all * 100:.0f}% of {n_all}" if n_all else "")
+    m[1].metric("Exited", len(x), f"{len(x) / n_all * 100:.0f}% of {n_all}" if n_all else "", delta_color="off")
+    m[2].metric("Open P&L", f"₹{open_pnl:,.0f}", f"{open_pnl / invested * 100:+.2f}%" if invested else "")
+    m[3].metric("Exit P&L (as reported)", f"₹{exit_pnl:,.0f}")
+    m[4].metric("Net P&L", f"₹{open_pnl + exit_pnl:,.0f}")
+    m[5].metric("Open win rate", f"{winners}/{len(o)}", f"{winners / len(o) * 100:.0f}%" if len(o) else "")
+    m2 = st.columns(4)
+    m2[0].metric("Capital in open", f"₹{invested:,.0f}")
+    m2[1].metric("Open exposure (LTP)", f"₹{exposure:,.0f}")
+    m2[2].metric("Avg Chg % — open", f"{o['Chg %'].mean():+.2f}%" if len(o) else "–")
+    m2[3].metric("Avg Chg % — exited", f"{x['Chg %'].mean():+.2f}%" if len(x) else "–")
+
+    def _clr(col):
+        return ["color:#15803d" if v > 0 else "color:#b91c1c" if v < 0 else "" for v in col]
+    fmt = {"Avg ₹": "{:,.2f}", "LTP ₹": "{:,.2f}", "P&L ₹": "{:+,.2f}", "Chg %": "{:+.2f}%"}
+    cols = ["Symbol", "Status", "Qty", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "Day Buy", "Day Sell"]
+    ocols = cols + ["Source"]
+    xcols = ["Symbol", "Status", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "Day Buy", "Day Sell"]
+    def _show(df):
+        """Styler needs a unique index and unique columns — always reset before styling."""
+        df = df.loc[:, ~df.columns.duplicated()].reset_index(drop=True)
+        st.dataframe(df.style.apply(_clr, subset=["P&L ₹", "Chg %"]).format(fmt),
+                     use_container_width=True, hide_index=True)
+    t_open, t_exit, t_all = st.tabs([f"🟢 Open ({len(o)})", f"🔴 Exited ({len(x)})", f"📋 All ({n_all})"])
+    with t_open:
+        if o.empty:
+            st.caption("No open positions.")
+        else:
+            _show(o[ocols].sort_values("Chg %", ascending=False))
+    with t_exit:
+        if x.empty:
+            st.caption("No exited positions.")
+        else:
+            _show(x[xcols])
+            st.caption("Exited rows are removed from the portfolio and shown exactly as reported in the file "
+                       "(Day Buy / Day Sell = entry / exit qty). Their P&L is included in Net P&L.")
+    with t_all:
+        _show(pd.concat([o, x], ignore_index=True)[cols])
+    st.caption("Open positions = Qty and Avg ₹ from the file × live Kite positions LTP (holdings LTP if not in positions). "
+               "All non-exit positions are assumed available in the Portfolio. "
+               "Today's Gain / Day Chg% use the holdings' previous close when matched.")
+
+
 def render():
     st.set_page_config(page_title="Portfolio", layout="wide", page_icon="📊")
 
@@ -443,15 +643,46 @@ def render():
     account_names = []
     input_mode    = "current"   # will be overwritten inside the active tab
 
-    tab_curr, tab_manual, tab_upload = st.tabs(
-        ["📋 Current Holdings", "✏️ Manual", "📂 File Upload"]
-    )
+    # An explicit selector replaces st.tabs: Streamlit cannot tell which tab is open, so an
+    # uploaded file used to keep winning even after "Current Holdings" was clicked.
+    _SRC_LABELS = {"current": "📋 Current Holdings", "manual": "✏️ Manual", "upload": "📂 File Upload"}
+    _src_label = st.radio("Portfolio source", list(_SRC_LABELS.values()), horizontal=True,
+                          key="holdings_source_radio", label_visibility="collapsed")
+    input_mode = next(k for k, v in _SRC_LABELS.items() if v == _src_label)
+
+    excl_set = {s.upper() for s in (getattr(st.session_state, "excluded_symbols", None) or set())}
+    _ticker_data_curr = _ticker_data_manual = _ticker_data_upload = None
+    _upload_track = None
 
     # ── Tab: Current Holdings ─────────────────────────────────────────────────
-    with tab_curr:
-        input_mode    = "current"
+    if input_mode == "current":
         account_names = []
         _ticker_data_curr = None
+
+        # Switching back from Manual / File Upload (or pressing Refresh) pulls live holdings from Kite
+        _prev_src = st.session_state.get("pf_prev_src")
+        _force_pull = _prev_src not in (None, "current")
+        _hc1, _hc2 = st.columns([5, 1])
+        if _hc2.button("🔄 Refresh holdings", key="pf_refresh_holdings", use_container_width=True):
+            _force_pull = True
+        if _force_pull and (st.session_state.get("accounts") or []):
+            try:
+                from ui.pages.trade.trade_utils import fetch_holdings
+                _fresh, _errs = dict(st.session_state.get("all_holdings") or {}), []
+                for _acc in st.session_state.get("accounts") or []:
+                    if not _acc.get("token"):
+                        continue
+                    try:
+                        _fresh[_acc["name"]] = fetch_holdings(_acc["token"])
+                    except Exception as _e:
+                        _errs.append(f"{_acc.get('name', '?')}: {_e}")
+                st.session_state["all_holdings"] = _fresh
+                if _errs:
+                    _hc1.warning("Could not refresh from Kite — showing last known holdings. " + " | ".join(_errs))
+                else:
+                    _hc1.success("🟢 Live holdings pulled from Kite.")
+            except Exception as _e:
+                _hc1.warning(f"Could not pull live holdings: {_e}")
 
         if "all_holdings" not in st.session_state or not st.session_state.all_holdings:
             st.warning(
@@ -480,7 +711,7 @@ def render():
                     _ticker_data_curr[sym][acc_name] += h.get("quantity", 0)
 
     # ── Tab: Manual ───────────────────────────────────────────────────────────
-    with tab_manual:
+    if input_mode == "manual":
         _input_mode_manual  = "manual"
         _account_names_manual = ["Manual"]
         st.markdown("Enter NSE symbols separated by commas or newlines (e.g. `RELIANCE, TCS, INFY`).")
@@ -510,12 +741,14 @@ def render():
         } if _manual_symbols else None
 
     # ── Tab: File Upload ──────────────────────────────────────────────────────
-    with tab_upload:
+    if input_mode == "upload":
         _input_mode_upload    = "upload"
         _account_names_upload = ["Uploaded"]
         st.markdown(
-            "Upload a CSV with at minimum a **`ticker`** column. "
-            "Optional columns: `quantity` (defaults to 1), `avg_cost` (defaults to 0)."
+            "Upload the **Positions export** (`Product, Instrument, Exchange, Side, Qty, Avg ₹, LTP ₹, "
+            "P&L ₹, Chg %, Day Buy, Day Sell`). Non-exit rows (LONG) are loaded into the portfolio; "
+            "CLOSED rows are treated as exits and shown in Position Tracking. \n\n"
+            "A simple CSV with a **`ticker`** column (optional `quantity`, `avg_cost`) also works."
         )
         _uploaded_file = st.file_uploader(
             "Upload CSV", type=["csv"],
@@ -523,14 +756,41 @@ def render():
             label_visibility="collapsed",
         )
         _ticker_data_upload = None
+        _upload_track = None          # {"open": df, "exit": df} when a Positions export is uploaded
+        if _uploaded_file is not None:      # remember it: the uploader resets when another source is chosen
+            st.session_state["pf_upload_bytes"] = _uploaded_file.getvalue()
+            st.session_state["pf_upload_name"] = _uploaded_file.name
+        elif st.session_state.get("pf_upload_bytes"):
+            import io as _io
+            _uploaded_file = _io.BytesIO(st.session_state["pf_upload_bytes"])
+            _uploaded_file.name = st.session_state.get("pf_upload_name", "uploaded.csv")
+            _c1, _c2 = st.columns([5, 1])
+            _c1.caption(f"📎 Using previously uploaded file: **{_uploaded_file.name}**")
+            if _c2.button("✖ Remove", key="pf_upload_clear", use_container_width=True):
+                st.session_state.pop("pf_upload_bytes", None)
+                st.session_state.pop("pf_upload_name", None)
+                st.rerun()
         if _uploaded_file is not None:
             try:
-                udf = pd.read_csv(_uploaded_file)
+                udf = pd.read_csv(_uploaded_file, encoding="utf-8-sig")   # utf-8-sig strips the BOM
                 udf.columns = [c.strip().lower() for c in udf.columns]
                 _ticker_col = next(
                     (c for c in ["ticker", "symbol", "nse_symbol"] if c in udf.columns), None
                 )
-                if _ticker_col is None:
+                if {"instrument", "side"}.issubset(udf.columns):
+                    # Positions export: LONG rows → portfolio, CLOSED rows → exits (tracking)
+                    import re as _re
+                    _m = _re.search(r"(\d{4}-\d{2}-\d{2})", getattr(_uploaded_file, "name", "") or "")
+                    _entry = (datetime.datetime.strptime(_m.group(1), "%Y-%m-%d").date() if _m else None)
+                    _live, _live_err = _live_price_map()
+                    _ticker_data_upload, _upload_track = _parse_positions_export(
+                        udf, live=_live, entry_date=_entry)
+                    if _upload_track is not None:
+                        _upload_track["meta"]["errors"] = _live_err
+                    if not _ticker_data_upload:
+                        st.warning("No open (non-exit) positions found in the uploaded file.")
+                        _ticker_data_upload = None
+                elif _ticker_col is None:
                     st.error("CSV must have a column named `ticker`, `symbol`, or `nse_symbol`.")
                 else:
                     udf["_sym"] = udf[_ticker_col].str.strip().str.upper()
@@ -553,34 +813,21 @@ def render():
             except Exception as exc:
                 st.error(f"Could not parse CSV: {exc}")
 
-    # ── Resolve active tab via session state ──────────────────────────────────
-    # Streamlit doesn't expose which tab is selected, so we track it via a
-    # hidden radio that each tab sets using st.session_state directly.
-    # Instead, we detect which data source is "ready" and prefer the last
-    # one the user interacted with (stored in session_state).
-    #
-    # Logic: whichever tab has non-None data AND matches the persisted mode
-    # is used. Clicking a tab that has data will persist its mode.
-    if _ticker_data_upload is not None:
-        st.session_state.holdings_input_mode = "upload"
-    elif _ticker_data_manual is not None and st.session_state.get("manual_tickers_raw", "").strip():
-        st.session_state.holdings_input_mode = "manual"
-    elif _ticker_data_curr is not None:
-        st.session_state.holdings_input_mode = "current"
+    st.session_state["pf_prev_src"] = input_mode
 
-    input_mode = st.session_state.get("holdings_input_mode", "current")
-
+    # ── Resolve data source: exactly the one selected above ──────────────────
     if input_mode == "upload" and _ticker_data_upload is not None:
         ticker_data   = _ticker_data_upload
         account_names = ["Uploaded"]
     elif input_mode == "manual" and _ticker_data_manual is not None:
         ticker_data   = _ticker_data_manual
         account_names = ["Manual"]
-    elif _ticker_data_curr is not None:
+    elif input_mode == "current" and _ticker_data_curr is not None:
         ticker_data   = _ticker_data_curr
         account_names = list(st.session_state.all_holdings.keys())
-        input_mode    = "current"
     else:
+        if input_mode == "upload":
+            st.info("Upload a CSV above to continue.")
         st.stop()
 
     # ── Load ticker metadata from DuckDB (industry, market_cap, p_e, dividend_yield) ──
@@ -762,6 +1009,10 @@ def render():
                        delta_color="normal")
 
     st.divider()
+
+    if input_mode == "upload" and _upload_track is not None:
+        _render_position_tracking(_upload_track)
+        st.divider()
 
     # ── PORTFOLIO MOVEMENT (period selector) ──────────────────────────────────
     st.subheader("Portfolio Movement")

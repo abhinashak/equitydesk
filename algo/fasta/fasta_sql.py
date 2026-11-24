@@ -14,7 +14,7 @@ def build_nifty_sql(cutoff_date: str | date) -> str:
                 arg_max(close, date) AS close_price
             FROM {NIFTY_TABLE}
             WHERE ticker = '{NIFTY_TICKER}'
-              AND date < DATE '{cutoff_date}'
+              AND date <= DATE '{cutoff_date}'
             GROUP BY date_trunc('week', date)
         ),
         nifty_lag AS (
@@ -41,12 +41,12 @@ def build_weekly_momentum_sql(start_date: str | date, cutoff_date: str | date) -
             date_trunc('week', date) AS w_date,
             min(date) AS first_date,
             max(date) AS last_date,
-            arg_min(CASE WHEN date IS NOT NULL THEN close END, date) AS open_price,
+            arg_min(open, date) AS open_price,
             arg_max(close, date) AS close_price,
             min(low) AS low_price,
             avg(volume) AS avg_volume
         FROM ticker_prices
-        WHERE date < DATE '{cutoff_date}'
+        WHERE date <= DATE '{cutoff_date}'
         GROUP BY ticker, date_trunc('week', date)
     ),
     with_lag AS (
