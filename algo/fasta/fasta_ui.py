@@ -72,6 +72,7 @@ class Params:
     portfolio_halt_pct: float = -4.0
     min_history: int = 10
     decay_factor: float = 0.98
+    equal_weight_basket: bool = False # False = follow strategy/pick allocation; True = split equally across unique tickers
 
     # Strategies & capital split (keys from the STRATEGIES registry)
     strategies: tuple = ("trend_shift_off", "trend_shift_on")
@@ -215,9 +216,11 @@ def get_connection():
 
 def _cache_paths(p: Params):
     tag = f"{p.start_date}_{p.cutoff_date}"
-    return (CACHE_DIR / f"cache_market_df_pit_v3_{tag}.parquet",
-            CACHE_DIR / f"cache_nifty_df_{p.cutoff_date}.parquet",
-            CACHE_DIR / "cache_daily_stop_df.parquet")
+    return (
+        CACHE_DIR / f"cache_market_df_pit_v3_{tag}.parquet",
+        CACHE_DIR / f"cache_nifty_df_{p.cutoff_date}.parquet",
+        CACHE_DIR / f"cache_daily_stop_df_{p.cutoff_date}.parquet",
+    )
 
 
 def load_market_data(con, p: Params, log):
@@ -279,8 +282,8 @@ def load_nifty_benchmark(con, p: Params, log):
 
 
 def load_daily_stop_data(con, p: Params, log):
-    """Daily open/low per ticker, used to fill a stop at the OPEN when a stock gaps down through the stop price.
-    Returns {ticker: (dates, opens, lows)}, or None when disabled / daily open+low columns are missing."""
+    """Daily open/low per ticker up to cutoff_date, used to fill a stop at the OPEN when a stock gaps down
+    through the stop price. Returns {ticker: (dates, opens, lows)}, or None when disabled / unavailable."""
     if not p.gap_aware_stop:
         return None
     _, _, daily_cache = _cache_paths(p)
@@ -289,26 +292,48 @@ def load_daily_stop_data(con, p: Params, log):
         if not {'ticker', 'date', 'open', 'low'}.issubset(cols):
             log("[Gap-aware stop] ticker_prices has no daily open/low columns - using exact stop fills.")
             return None
-        latest = pd.to_datetime(con.execute("SELECT max(date) FROM ticker_prices").fetchone()[0]).normalize()
+
+        if p.cutoff_date:
+            cutoff_day = pd.Timestamp(p.cutoff_date).normalize()
+            max_avail = pd.to_datetime(
+                con.execute(
+                    "SELECT max(date) FROM ticker_prices WHERE CAST(date AS DATE) <= ?",
+                    [cutoff_day.date()],
+                ).fetchone()[0]
+            ).normalize()
+        else:
+            max_avail = pd.to_datetime(con.execute("SELECT max(date) FROM ticker_prices").fetchone()[0]).normalize()
+            cutoff_day = max_avail
+
         daily = None
         if daily_cache.exists():
             cached = pd.read_parquet(daily_cache)
-            if not cached.empty and pd.to_datetime(cached['date']).max().normalize() == latest:
-                daily = cached
+            if not cached.empty:
+                c_dates = pd.to_datetime(cached['date']).dt.normalize()
+                if pd.notna(max_avail) and c_dates.max() == max_avail and c_dates.max() <= cutoff_day:
+                    daily = cached
+
         if daily is None:
             log("[Cache Miss] Loading daily open/low for gap-aware stop fills…")
             daily = con.execute("""
                 SELECT ticker, CAST(date AS DATE) AS date, open, low
                 FROM ticker_prices
                 WHERE open IS NOT NULL AND low IS NOT NULL
+                  AND CAST(date AS DATE) <= ?
                 ORDER BY ticker, date
-            """).fetchdf()
+            """, [cutoff_day.date()]).fetchdf()
             daily.columns = [c.lower() for c in daily.columns]
             daily_cache.parent.mkdir(parents=True, exist_ok=True)
             daily.to_parquet(daily_cache, index=False)
-        return {ticker: (pd.to_datetime(g['date']).values.astype('datetime64[ns]'),
-                         g['open'].to_numpy(dtype=float), g['low'].to_numpy(dtype=float))
-                for ticker, g in daily.groupby('ticker', sort=False)}
+
+        return {
+            ticker: (
+                pd.to_datetime(g['date']).values.astype('datetime64[ns]'),
+                g['open'].to_numpy(dtype=float),
+                g['low'].to_numpy(dtype=float),
+            )
+            for ticker, g in daily.groupby('ticker', sort=False)
+        }
     except Exception as exc:
         log(f"[Gap-aware stop] unavailable ({exc}) - using exact stop fills.")
         return None
@@ -402,12 +427,6 @@ def get_recency_ngram_prediction(train_str, n, decay_factor):
 # ==========================================
 # STRATEGIES (pluggable "visitors")
 # ==========================================
-# The engine (`run_simulation`) walks the market data once. Each selected strategy is a visitor: for every
-# eligible ticker-week the engine hands it a `TickerWeek` and gets a `Signal` back. Exits, stop-losses and the
-# stock shadow-ban belong to the ticker-week itself, so they are computed once and shared by all strategies.
-#
-# To add a strategy: subclass `Strategy`, implement `visit()`, decorate the class with `@register`.
-# It then appears in the UI's strategy list and takes part in the capital split automatically.
 @dataclass(frozen=True)
 class TickerWeek:
     """One ticker in one signal week, as a strategy sees it.
@@ -498,13 +517,7 @@ class _StrategyRun:
 
 
 def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
-    """Back-test with point-in-time inputs and completed-week outcomes only.
-
-    At a week's entry, the model sees only L/P history through the prior week and the prior
-    week's volume. A trade is recorded only when both its entry week and its following-week
-    exit data are complete. The latest partial week can still update the current shadow state
-    and generate PEEKs, but it is never counted as a historical trade.
-    """
+    """Back-test with point-in-time inputs and completed-week outcomes only."""
     if df.empty:
         return pd.DataFrame(), pd.DataFrame()
 
@@ -523,9 +536,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
     if not all_weeks:
         return pd.DataFrame(), pd.DataFrame()
 
-    # Determine whether the latest data week is complete. Earlier weeks are complete because
-    # a later weekly row exists. A Friday-morning run (data through Thursday) remains partial;
-    # a weekend cutoff after Friday, or an actual Friday data row, marks the week complete.
     latest_week = pd.Timestamp(all_weeks[-1]).normalize()
     latest_rows = work.loc[work['w_date'] == latest_week]
     latest_data_date = latest_rows['last_date'].max()
@@ -547,8 +557,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
     if latest_week_complete:
         completed_weeks.add(latest_week)
 
-    # The liquidity gate for week W is based on each ticker's volume in W-1,
-    # compared with the market-wide median volume in that same completed week.
     has_volume = 'avg_volume' in work.columns
     median_volume_by_week = (
         work.groupby('w_date')['avg_volume'].median().to_dict() if has_volume else {}
@@ -619,7 +627,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
             prior_volume = tdict['prior_volumes'][i]
             was_in_shadow = ticker in stock_in_shadow
 
-            # First actual trading day's OPEN, not the first daily close.
             buy_price = tdict['opens'][i]
             if not np.isfinite(buy_price) or buy_price <= 0:
                 continue
@@ -628,8 +635,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
                     i + 1 < len(tdict['dates'])
                     and pd.Timestamp(tdict['dates'][i + 1]).normalize() == week_dt + pd.Timedelta(days=7)
             )
-            # The existing strategy exits at the following week's close, so monitor the stop
-            # throughout both weeks rather than only the entry week.
             holding_lows = tdict['lows'][i:i + (2 if has_next_week_row else 1)]
             week_low = float(np.nanmin(holding_lows)) if np.isfinite(holding_lows).any() else np.nan
             potential_sl_pnl = ((week_low - buy_price) / buy_price) * 100.0
@@ -694,7 +699,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
                     continue
                 sig = strat.visit(ctx, p)
                 if sig.buy and liquidity_ok and has_complete_exit:
-                    # Only completed entry + exit windows contribute to historical strategy state.
                     run.trades.append({
                         'ticker': ticker,
                         'strategy': strat.key,
@@ -715,7 +719,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
             elif run.week_pnls and sum(run.week_pnls) / len(run.week_pnls) <= p.portfolio_halt_pct:
                 run.halted = True
 
-    # Current/latest PEEK: past-only L/P history plus the prior completed week's volume gate.
     picks = []
     latest_dt = pd.Timestamp(all_weeks[-1]).normalize()
     for strat in strategies:
@@ -747,11 +750,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
 # ==========================================
 # CAPITAL ALLOCATION ACROSS STRATEGIES
 # ==========================================
-# Each week the capital pool is split between the strategies that have trades that week, in proportion to their
-# recency-weighted win ratio. The win ratio is scored on each strategy's stand-alone trades from EARLIER weeks
-# only (no look-ahead). A trade n weeks old counts `allocation_decay ** n`; a small 50% prior
-# (`win_ratio_prior` pseudo-trades) stops the first few trades from swinging the split.
-_WEEK0 = pd.Timestamp("1970-01-05")  # a Monday; week numbers count Monday-anchored weeks from here
+_WEEK0 = pd.Timestamp("1970-01-05")
 _NO_TRADES = (np.array([], dtype=np.int64), np.array([], dtype=float))
 
 
@@ -764,7 +763,6 @@ def _week_nos(dates):
 
 
 def _track_record(trades_df):
-    """{strategy: (week numbers, win flags)} from the raw trades. A win is a trade that closed above its entry."""
     if trades_df.empty:
         return {}
     weeks = _week_nos(trades_df['buy_date']).to_numpy()
@@ -777,7 +775,6 @@ def _track_record(trades_df):
 
 
 def recency_win_ratio(weeks, wins, as_of, p: Params):
-    """Recency-weighted share of winning trades among those from weeks before `as_of` (0.5 with no history)."""
     past = weeks < as_of
     w = p.allocation_decay ** (as_of - weeks[past])
     denom = float(w.sum()) + p.win_ratio_prior
@@ -787,14 +784,11 @@ def recency_win_ratio(weeks, wins, as_of, p: Params):
 
 
 def split_capital(win_ratios, active):
-    """Share of the pool per active strategy, proportional to its win ratio. Swap this to change the policy."""
     total = sum(win_ratios[k] for k in active)
     return {k: (win_ratios[k] / total if total > 0 else 1.0 / len(active)) for k in active}
 
 
 def allocate_capital(trades_df, p: Params):
-    """Give each trade its slice of the weekly pool: pool x strategy share / that strategy's trades that week.
-    Returns (trades with strategy_win_ratio / strategy_weight / position_capital, per-week allocation history)."""
     if trades_df.empty:
         return trades_df, pd.DataFrame()
     df = trades_df.copy()
@@ -818,7 +812,6 @@ def allocate_capital(trades_df, p: Params):
 
 
 def allocate_picks(picks_df, win_ratios, p: Params):
-    """The same split for the live picks, using the win ratios as of the pick week."""
     df = picks_df.copy()
     weights = split_capital(win_ratios, sorted(df['strategy'].unique()))
     df['strategy_win_ratio'] = df['strategy'].map(win_ratios)
@@ -828,7 +821,6 @@ def allocate_picks(picks_df, win_ratios, p: Params):
 
 
 def pick_window(df):
-    """Return the latest Monday-anchored signal week and Thursday-close readiness."""
     if df.empty:
         return pd.NaT, pd.NaT, False
 
@@ -839,19 +831,18 @@ def pick_window(df):
 
     latest_week = pd.Timestamp(pd.to_datetime(df['w_date']).max()).normalize()
     latest_data_date = pd.Timestamp(pd.to_datetime(df['last_date']).max()).normalize()
-    signal_week_end = latest_week + pd.Timedelta(days=3)  # Thursday
+    signal_week_end = latest_week + pd.Timedelta(days=3)
     for_next_week = latest_data_date >= signal_week_end
     return latest_week, signal_week_end, for_next_week
 
 
 # ==========================================
-# ANALYSIS (everything the report needs, computed once)
+# ANALYSIS
 # ==========================================
 _DROP_FOR_DISPLAY = ['sort_date', 'week_period', 'quarter_period', 'year_period']
 
 
 def _parse_symbols(text):
-    """'welcorp.ns, TCS\nM&M' -> ('WELCORP', 'TCS', 'M&M'): split on commas / whitespace, drop .NS/.BO, upper-case, de-dupe."""
     seen = {}
     for tok in re.split(r"[\s,;]+", text or ""):
         sym = _bare(tok.strip()).upper()
@@ -869,7 +860,6 @@ def _load_settings():
 
 
 def _save_settings(**updates):
-    """Merge `updates` into the settings file (atomic write). Returns False if it could not be saved."""
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         tmp = SETTINGS_FILE.with_suffix(".tmp")
@@ -887,7 +877,6 @@ def has_universe_filter(p: Params) -> bool:
 
 @st.cache_data(show_spinner=False, ttl=600)
 def load_market_cap_options():
-    """Distinct `market_cap` buckets from the tickers table (empty list if the table/column is unavailable)."""
     try:
         rows = get_connection().cursor().execute(
             "SELECT DISTINCT market_cap FROM tickers WHERE market_cap IS NOT NULL ORDER BY market_cap").fetchall()
@@ -897,8 +886,6 @@ def load_market_cap_options():
 
 
 def universe_symbols(con, p: Params):
-    """Bare upper-case nse_symbols in `tickers` that satisfy every inclusion filter (AND).
-    A stock with NULL in a filtered column fails that filter, since NULL > n is never true."""
     where, args = [], []
     if p.market_caps:
         where.append(f"market_cap IN ({', '.join('?' * len(p.market_caps))})")
@@ -916,8 +903,6 @@ def universe_symbols(con, p: Params):
 
 
 def universe_counts(p: Params):
-    """(stocks passing the filters, all stocks) in the tickers table; index rows like ^NSEI are ignored.
-    Returns (0, None) if the table cannot be read."""
     try:
         con = get_connection().cursor()
         everyone = {x for x in universe_symbols(con, Params()) if not x.startswith("^")}
@@ -928,12 +913,11 @@ def universe_counts(p: Params):
 
 
 def analyze(p: Params, progress=None, log=lambda m: None):
-    con = get_connection().cursor()  # per-run cursor: the cached connection is shared across sessions
+    con = get_connection().cursor()
     df = load_market_data(con, p, log)
     if df.empty:
         raise ValueError("The market-data query returned no rows for this date window.")
     if has_universe_filter(p):
-        # Also applied after the cached load, so the parquet cache keeps the full universe.
         allowed = universe_symbols(con, p)
         bare = df['ticker'].map(lambda t: _bare(t).upper())
         before = bare.nunique()
@@ -944,7 +928,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         if df.empty:
             raise ValueError("No tickers pass the universe filters. Relax market cap / holding thresholds.")
     if p.restrict_tickers:
-        # Filter AFTER the cached load, so the parquet cache always holds the full universe.
         wanted = set(p.restrict_tickers)
         bare = df['ticker'].map(lambda t: _bare(t).upper())
         df = df[bare.isin(wanted)].copy()
@@ -956,7 +939,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         if df.empty:
             raise ValueError("None of the portfolio tickers were found in the market data.")
     if p.exclude_tickers:
-        # Also applied after the cached load. Excluded stocks are left out of the back-test AND the picks.
         unwanted = set(p.exclude_tickers)
         bare = df['ticker'].map(lambda t: _bare(t).upper())
         removed = sorted(set(bare[bare.isin(unwanted)]))
@@ -973,9 +955,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     strategies = resolve_strategies(p.strategies)
     raw_trades, picks_df = run_simulation(df, daily_stops, strategies, p, progress)
     wk_start, wk_end, is_next = pick_window(df)
-    # State the actual point-in-time training boundary separately from the pick window.
-    # The signal week is Mon-Thu; model features are formed only from data dated before
-    # that Monday (the last completed prior-week data date may be earlier if a week is absent).
     prior_data = df[pd.to_datetime(df['w_date']).dt.normalize() < wk_start]
     training_through = (
         pd.to_datetime(prior_data['last_date']).max().normalize()
@@ -992,7 +971,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         f"CARRY = already held)"
     )
 
-    # Capital: each strategy's share of the weekly pool follows its recency-weighted win ratio (past weeks only).
     record = _track_record(raw_trades)
     win_ratios_now = {s.key: recency_win_ratio(*record.get(s.key, _NO_TRADES), _week_no(wk_start), p)
                       for s in strategies}
@@ -1012,7 +990,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     }
 
     if not trades_df.empty:
-        # ---- stop-loss statistics (before trades_df is re-sorted) ----
         n_stops = int(trades_df['exit_reason'].str.startswith('STOCK_STOP_LOSS').sum())
         gaps = trades_df[trades_df['exit_reason'] == 'STOCK_STOP_LOSS_GAP']
         nodata = int((trades_df['exit_reason'] == 'STOCK_STOP_LOSS_NODATA').sum())
@@ -1031,14 +1008,9 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         trades_df['year_period'] = trades_df['sort_date'].dt.to_period('Y')
         res["trades"] = trades_df
 
-        # ---- weekly ----
         weekly_net = trades_df.groupby('week_period')['net_profit_rupees'].sum()
         weekly_pct = (weekly_net / p.weekly_capital) * 100.0
         weekly_cnt = trades_df.groupby('week_period').size()
-        # Build the weekly log from the market-data calendar, not from the first week
-        # that happened to produce a trade. Otherwise a week with zero completed trades
-        # can disappear (for example, 16-22 Nov between traded weeks 9-15 and the
-        # current pick week starting 23 Nov).
         market_week_starts = pd.to_datetime(df['w_date']).dt.normalize()
         first_market_week = market_week_starts.min().to_period('W')
         last_closed_entry_week = (pd.Timestamp(wk_start).normalize() - pd.Timedelta(days=1)).to_period('W')
@@ -1059,7 +1031,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         weekly_df['year_period'] = weekly_df['week_period'].dt.asfreq('Y')
         res["weekly"] = weekly_df
 
-        # ---- quarterly / yearly ----
         q = weekly_df.groupby('quarter_period')['portfolio_ret'].sum()
         res["quarterly"] = pd.DataFrame({
             'Quarter': q.index.astype(str), 'Portfolio PnL %': q.values,
@@ -1071,20 +1042,17 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         for key in ("quarterly", "yearly"):
             res[key]['Alpha %'] = res[key]['Portfolio PnL %'] - res[key]['Nifty 50 %']
 
-        # ---- cumulative chart (sum of weekly returns, same convention as the quarterly/yearly roll-ups) ----
         ch = weekly_df.sort_values('week_period')
         res["chart"] = pd.DataFrame({
             'Portfolio (cumulative %)': ch['portfolio_ret'].cumsum().values,
             'Nifty 50 (cumulative %, traded weeks)': ch['nifty_ret'].cumsum().values,
         }, index=ch['week_period'].dt.start_time)
 
-        # ---- exit reasons ----
         res["exit_stats"] = (trades_df.groupby('exit_reason')
                              .agg(trades=('ticker', 'count'), avg_pnl_pct=('pnl_pct', 'mean'),
                                   avg_net_pnl_pct=('net_pnl_pct', 'mean'), net_rupees=('net_profit_rupees', 'sum'))
                              .reset_index().sort_values('trades', ascending=False))
 
-        # ---- per-strategy breakdown ----
         keys = [s.key for s in strategies]
         by = trades_df.groupby('strategy')
         stats = pd.DataFrame({
@@ -1100,7 +1068,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         res["strategy_stats"] = stats.rename_axis('strategy').reset_index()
         res["win_ratio_chart"] = alloc_df.pivot(index='week', columns='strategy', values='win_ratio') * 100
 
-        # ---- headline numbers ----
         total_trades = len(trades_df)
         overall = float(weekly_pct.sum())
         capital = float(trades_df.groupby('week_period')['position_capital'].sum().sum())
@@ -1192,7 +1159,6 @@ def build_text_report(res, p: Params):
 # UI HELPERS
 # ==========================================
 def _display(df):
-    """Arrow can't serialise Period columns - show them as text."""
     out = df.copy()
     for c in out.columns:
         if isinstance(out[c].dtype, pd.PeriodDtype):
@@ -1210,7 +1176,6 @@ def _signed(x, money=False, pct=False):
 
 
 def _portfolio_symbols():
-    """Bare, upper-case symbols held across all accounts (minus excluded ones) - same rules as the Holdings page."""
     holdings = st.session_state.get("all_holdings") or {}
     excl = {s.upper() for s in (st.session_state.get("excluded_symbols") or set())}
     return sorted({h["tradingsymbol"].upper()
@@ -1219,7 +1184,6 @@ def _portfolio_symbols():
 
 
 def _parameter_form():
-    """Returns (Params, submitted)."""
     D = Params(cutoff_date=date.today().isoformat())
     open_it = RESULT_KEY not in st.session_state
     with st.expander("⚙️ Parameters", expanded=open_it):
@@ -1266,6 +1230,11 @@ def _parameter_form():
                 decay = c2.number_input("Recency decay factor", 0.5, 1.0, D.decay_factor, 0.01)
                 gap = c3.checkbox("Gap-aware stop fills", D.gap_aware_stop,
                                   help="A stock that opens below the stop price exits at that open, not at the stop.")
+                eq_basket = st.checkbox(
+                    "Equal-weight order basket across unique tickers",
+                    value=D.equal_weight_basket,
+                    help="When unchecked, the order basket sums each ticker's strategy-weighted allocation from the "
+                         "picks table. When checked, capital is split equally across unique tickers.")
                 strategies = st.multiselect(
                     "Strategies", list(STRATEGIES), default=list(D.strategies),
                     format_func=lambda k: STRATEGIES[k].label,
@@ -1313,7 +1282,8 @@ def _parameter_form():
     p = Params(
         start_date=start.isoformat(), cutoff_date=cutoff.isoformat(),
         restrict_tickers=tuple(held) if (restrict and held) else (),
-        confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap, strategies=tuple(strategies),
+        confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap,
+        equal_weight_basket=eq_basket, strategies=tuple(strategies),
         allocation_decay=alloc_decay, win_ratio_prior=win_prior,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
         exclude_tickers=_parse_symbols(exclude_text),
@@ -1347,18 +1317,24 @@ def _clear_caches():
 # REPORT SECTIONS
 # ==========================================
 def _bare(ticker):
-    """Copy-list ticker without the exchange suffix (RELIANCE.NS -> RELIANCE)."""
     return re.sub(r"\.(NS|BO)$", "", ticker, flags=re.IGNORECASE)
 
 
-def _basket(picks, capital):
-    """Equal-weight whole-share basket across unique tickers.
+def _basket(picks, capital, equal_weight=False):
+    """Build order basket across unique tickers.
 
-    A ticker selected by both strategies is counted only once, so overlapping picks
-    do not receive double allocation. Capital is split equally across unique tickers.
+    When `equal_weight=True`, capital is split equally across unique tickers.
+    When `equal_weight=False`, allocations from `picks` are summed per unique ticker
+    so they match the strategy-weighted `allocation` column in the picks table.
     """
-    df = picks.drop_duplicates(subset=['ticker'], keep='first').copy()
-    df['allocation'] = capital / max(len(df), 1)
+    if equal_weight:
+        df = picks.drop_duplicates(subset=['ticker'], keep='first').copy()
+        df['allocation'] = capital / max(len(df), 1)
+    else:
+        df = (
+            picks.groupby('ticker', as_index=False, sort=False)
+            .agg(price=('price', 'first'), allocation=('allocation', 'sum'))
+        )
     ok = df['price'] > 0
     df['qty'] = np.where(ok, np.floor(df['allocation'] / df['price'].where(ok, 1.0)), 0).astype(int)
     out = df[['ticker', 'price', 'allocation', 'qty']].copy()
@@ -1384,11 +1360,13 @@ def _show_picks(res):
             "strategy_weight": st.column_config.NumberColumn("capital weight", format="%.3f"),
             "allocation": st.column_config.NumberColumn("allocation ₹", format="%.0f")})
     with c2:
+        eq_weight = bool(res["params"].get("equal_weight_basket", False))
         capital = st.number_input("Capital (₹)", 0.0, 1e10, float(res["params"]["weekly_capital"]), 10_000.0,
                                   key="fasta_pick_capital",
-                                  help="Split across the strategies by their capital weights, then equally across each "
-                                       "strategy's picks. Quantity = whole shares at the latest close.")
-        basket = _basket(picks, capital)
+                                  help=("Equal weight across unique tickers. " if eq_weight else
+                                        "Summed strategy allocations per unique ticker (scaled to Capital when changed). ")
+                                       + "Quantity = whole shares at the latest close.")
+        basket = _basket(picks, capital, equal_weight=eq_weight)
         mode = st.radio("List as", ["Quantity", "Amount ₹"], horizontal=True, key="fasta_pick_mode",
                         help="Quantity: whole shares at the last close. Amount: the rupee allocation per ticker.")
         if mode == "Quantity":
@@ -1586,6 +1564,7 @@ def render():
                        f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
                        f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
                        f"· ₹{rp.weekly_capital:,.0f}/week"
+                       + (" · equal-weight basket" if rp.equal_weight_basket else " · strategy-weighted basket")
                        + (f" · portfolio only ({len(rp.restrict_tickers)} tickers)" if rp.restrict_tickers else "")
                        + (f" · {len(rp.exclude_tickers)} excluded" if rp.exclude_tickers else "")
                        + (f" · cap {'/'.join(rp.market_caps)}" if rp.market_caps else "")
