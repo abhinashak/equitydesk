@@ -2,7 +2,7 @@
 live_execution.py — Live Order Execution
 ─────────────────────────────────────────
 4 sections:
-  1. Exchange Orders  — open/executed from Kite today, with refresh + cancel
+  1. Exchange Orders  — open/executed/cancelled from Kite today, with 3 tabs + cancel controls
   2. Order Builder    — MARKET or LIMIT, price tiers per ticker, fee summary
   3. Order Staging    — editable list, send 1-by-1 or send all to exchange
   +  Positions        — live Kite positions (net/day) with P&L
@@ -160,6 +160,48 @@ def _positions_ltp_map(token: str) -> dict:
             out[sym] = lp
     return out
 
+def _fallback_ltp_map(token: str = "") -> dict[str, float]:
+    """Build {SYMBOL: ltp} from Positions first, then cached builder prices / holdings."""
+    out: dict[str, float] = {}
+    for hlds in (st.session_state.get("all_holdings") or {}).values():
+        for h in hlds:
+            sym = str(h.get("tradingsymbol") or h.get("ticker") or "").upper()
+            lp = float(h.get("last_price") or 0)
+            if sym and lp > 0:
+                out[sym] = lp
+    for r in (st.session_state.get("le_prices") or []):
+        sym = str(r.get("Ticker") or "").upper()
+        lp = float(r.get("LTP ₹") or 0)
+        if sym and lp > 0:
+            out[sym] = lp
+    if token:
+        try:
+            out.update(_positions_ltp_map(token))
+        except Exception:
+            pass
+    return out
+
+def _resolve_order_ltp(o: dict, ltp_map: dict | None = None):
+    """Return float LTP from Kite order if available and > 0, else from ltp_map (Positions/fallback)."""
+    sym = str(o.get("ticker") or o.get("tradingsymbol") or "").upper()
+    raw_ltp = o.get("last_price")
+    if raw_ltp not in (None, "", 0, 0.0):
+        try:
+            val = float(raw_ltp)
+            if val > 0:
+                return val
+        except (TypeError, ValueError):
+            pass
+    mapped = (ltp_map or {}).get(sym)
+    if mapped not in (None, "", 0, 0.0):
+        try:
+            val = float(mapped)
+            if val > 0:
+                return val
+        except (TypeError, ValueError):
+            pass
+    return ""
+
 def _reprice_staged(orders: list, idxs: list, get_tok, persist: bool = True):
     """Re-price STAGGER tiers 2-4 (PENDING, LIMIT) from the live LTP in Positions.
     Tier 1 is never touched. Mutates orders[i]; returns (changes, missing)."""
@@ -244,15 +286,16 @@ def _do_cancel(token: str, order_id: str) -> dict:
     """Route all cancellations through trade_utils → proxy."""
     return cancel_order(token, order_id, mock=False)
 
-def _normalise_kite_order(o: dict) -> dict:
-    """Map Kite API field names to internal names for display."""
+def _normalise_kite_order(o: dict, ltp_map: dict | None = None) -> dict:
+    """Map Kite API field names to internal names for display, filling LTP from ltp_map when absent."""
+    ltp = _resolve_order_ltp(o, ltp_map)
     return {
         "Time":       o.get("order_timestamp","") or o.get("fill_timestamp","") or o.get("placed_at",""),
         "Ticker":     o.get("ticker") or o.get("tradingsymbol",""),
         "Type":       o.get("side")   or o.get("transaction_type",""),
         "Product":    o.get("product","CNC"),
         "Qty":        f"{o.get('filled_quantity',0)} / {o.get('qty') or o.get('quantity',0)}",
-        "LTP":        o.get("last_price",""),
+        "LTP":        ltp,
         "Price":      o.get("price") or o.get("average_price",0),
         "Status":     o.get("status","") or o.get("state",""),
         "Order ID":   o.get("order_id",""),
@@ -362,6 +405,144 @@ def _render_positions(token_map: dict, selected_acct: str = "") -> None:
                "Chg % = P&L ÷ (|qty| × avg price); closed positions are set to −2%. Click 🔄 to re-fetch.")
 
 
+def _classify_order_bucket(status_str: str) -> str:
+    """Bucket Kite order status into 'open', 'executed', or 'cancelled'."""
+    s = str(status_str or "").strip().upper()
+    if s in {"OPEN", "TRIGGER PENDING", "PENDING", "AMO REQ RECEIVED"}:
+        return "open"
+    if s in {"CANCELLED", "REJECTED", "EXPIRED"}:
+        return "cancelled"
+    if s in {"COMPLETE", "EXECUTED", "FILLED"}:
+        return "executed"
+    return "executed"
+
+
+def _render_unified_orders(ex_orders: list, token: str, selected_acct: str = "") -> None:
+    """Merged Orders view with 3 status tabs (Open, Executed, Cancelled/Rejected),
+    a red Cancel (<n>) Open Orders button, specific-order cancellation controls,
+    and LTP populated from Kite order or Positions/fallback map."""
+    st.markdown("### 📋 Orders")
+    if not token:
+        st.warning("Connect a Kite account to view/cancel orders.")
+        return
+
+    ltp_map = _fallback_ltp_map(token)
+    raw_list = list(ex_orders or [])
+
+    CANCELLABLE = {"OPEN", "TRIGGER PENDING", "AMO REQ RECEIVED"}
+    open_raw = [o for o in raw_list if str(o.get("status") or o.get("state") or "").upper() in CANCELLABLE]
+    exec_raw = [o for o in raw_list if _classify_order_bucket(o.get("status") or o.get("state") or "") == "executed"]
+    canc_raw = [o for o in raw_list if _classify_order_bucket(o.get("status") or o.get("state") or "") == "cancelled"]
+
+    h1, h2 = st.columns([4, 2])
+    acct_label = f" · Account: **{selected_acct}**" if selected_acct else ""
+    h1.caption(f"Open orders on exchange: **{len(open_raw)}**{acct_label} · LTP falls back to Positions when omitted by Kite.")
+    with h2:
+        st.markdown(
+            """<style>
+            div[data-testid="stButton"] button[kind="primary"] {
+                background-color: #dc2626 !important;
+                border-color: #dc2626 !important;
+                color: #ffffff !important;
+            }
+            div[data-testid="stButton"] button[kind="primary"]:hover {
+                background-color: #b91c1c !important;
+                border-color: #b91c1c !important;
+                color: #ffffff !important;
+            }
+            </style>""",
+            unsafe_allow_html=True,
+        )
+        if st.button(f"🚫 Cancel ({len(open_raw)}) Open Orders", disabled=not bool(open_raw),
+                     key="le_orders_cancel_all", type="primary", use_container_width=True):
+            cancelled, failed = 0, 0
+            for o in open_raw:
+                oid = str(o.get("order_id") or "")
+                if not oid:
+                    continue
+                try:
+                    _do_cancel(token, oid)
+                    cancelled += 1
+                except Exception as e:
+                    st.warning(f"❌ {o.get('tradingsymbol', '')} ({oid}): {e}")
+                    failed += 1
+            st.session_state.pop("le_exchange_orders", None)
+            st.success(f"✅ Cancelled {cancelled} order(s)." + (f" {failed} failed." if failed else ""))
+            st.rerun()
+
+    def _clr(row):
+        c = "background-color:#dcfce7;color:#15803d" if str(row.get("Type", "")).upper() == "BUY" \
+            else "background-color:#fee2e2;color:#b91c1c" if str(row.get("Type", "")).upper() == "SELL" \
+            else ""
+        return [c] * len(row)
+
+    col_cfg = {
+        "Price": st.column_config.NumberColumn(format="₹%.2f"),
+        "LTP":   st.column_config.NumberColumn(format="₹%.2f"),
+    }
+
+    tab_open, tab_exec, tab_canc = st.tabs([
+        f"🟡 Open ({len(open_raw)})",
+        f"✅ Executed ({len(exec_raw)})",
+        f"🚫 Cancelled/Rejected ({len(canc_raw)})",
+    ])
+
+    with tab_open:
+        if not open_raw:
+            st.caption("No open orders.")
+        else:
+            open_df = pd.DataFrame([_normalise_kite_order(o, ltp_map) for o in open_raw])
+            st.dataframe(open_df.style.apply(_clr, axis=1),
+                         use_container_width=True, hide_index=True,
+                         column_config=col_cfg)
+
+            st.markdown("##### 🎯 Cancel Specific Open Order")
+            for idx, o in enumerate(open_raw):
+                oid = str(o.get("order_id") or "")
+                sym = str(o.get("tradingsymbol") or o.get("ticker") or "").upper()
+                side = str(o.get("transaction_type") or o.get("side") or "").upper()
+                qty = o.get("quantity") or o.get("qty") or 0
+                filled_qty = o.get("filled_quantity") or 0
+                price = float(o.get("price") or o.get("average_price") or 0.0)
+                ltp = _resolve_order_ltp(o, ltp_map)
+                ltp_text = f"₹{float(ltp):,.2f}" if ltp not in (None, "") else "—"
+                status = str(o.get("status") or "")
+                exch = str(o.get("exchange") or "NSE")
+                with st.container(border=True):
+                    r1, r2, r3, r4 = st.columns([3, 2, 2.5, 1.5])
+                    r1.markdown(f"**{sym}** · `{exch}` · **{side}** · `{status}`")
+                    r2.markdown(f"Qty: **{filled_qty} / {qty}**")
+                    r3.markdown(f"LTP: **{ltp_text}** · Price: **₹{price:,.2f}** · ID: `{oid}`")
+                    if r4.button("🚫 Cancel", key=f"le_order_cancel_row_{idx}_{oid}",
+                                 use_container_width=True):
+                        if oid:
+                            try:
+                                _do_cancel(token, oid)
+                                st.session_state.pop("le_exchange_orders", None)
+                                st.success(f"✅ Cancelled {sym} ({oid})")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Failed to cancel {sym} ({oid}): {e}")
+
+    with tab_exec:
+        if not exec_raw:
+            st.caption("No executed orders.")
+        else:
+            exec_df = pd.DataFrame([_normalise_kite_order(o, ltp_map) for o in exec_raw])
+            st.dataframe(exec_df.style.apply(_clr, axis=1),
+                         use_container_width=True, hide_index=True,
+                         column_config=col_cfg)
+
+    with tab_canc:
+        if not canc_raw:
+            st.caption("No cancelled or rejected orders.")
+        else:
+            canc_df = pd.DataFrame([_normalise_kite_order(o, ltp_map) for o in canc_raw])
+            st.dataframe(canc_df.style.apply(_clr, axis=1),
+                         use_container_width=True, hide_index=True,
+                         column_config=col_cfg)
+
+
 def render() -> None:
 
     # One-time cleanup of stale Order Builder cache/state from older app runs.
@@ -394,7 +575,7 @@ def render() -> None:
             acct_opts,
             key="le_active_acct",
         )
-        _p_info.caption("Shared across Positions, Order Builder sellable holdings, and Order Staging.")
+        _p_info.caption("Shared across Positions, Orders, Order Builder sellable holdings, and Order Staging.")
     else:
         selected_acct = ""
 
@@ -426,24 +607,22 @@ def render() -> None:
             "msg": str(err), "at": _now()}
 
     # ═══════════════════════════════════════════════════════════════════════
-    # PART 1 — EXCHANGE ORDERS  (open + executed today from Kite)
+    # PART 1 — EXCHANGE ORDERS & PROTECTIVE GTTs
     # ═══════════════════════════════════════════════════════════════════════
     st.markdown("### 1️⃣ Exchange Orders")
 
     p1h, p1r = st.columns([5, 1])
-    p1h.markdown("Open, executed and cancelled orders for today from the exchange.")
+    p1h.markdown("Open, executed, and cancelled/rejected orders for today from the exchange.")
     refresh = p1r.button("🔄 Refresh", key="le_p1_refresh", use_container_width=True)
     if refresh:
-        #_ltp.clear(); _fluc.clear()
         st.session_state.pop("le_exchange_orders", None)
         st.rerun()
 
     # Fetch from exchange (or mock)
     if "le_exchange_orders" not in st.session_state or refresh:
-        if first_tok:
+        if active_tok:
             try:
-                # fetch_orders → proxy /orders  (open + all today's terminal orders)
-                raw = fetch_orders(first_tok, mock=False,
+                raw = fetch_orders(active_tok, mock=False,
                                    live_orders=st.session_state["live_orders"])
             except Exception as e:
                 st.error(f"Exchange error: {e}")
@@ -457,43 +636,7 @@ def render() -> None:
     if not ex_orders:
         st.caption("No orders found on exchange today.")
     else:
-        norm = [_normalise_kite_order(o) for o in ex_orders]
-        ex_df = pd.DataFrame(norm)
-
-        # Colour rows by type
-        def _clr(row):
-            c = "background-color:#dcfce7;color:#15803d" if str(row.get("Type","")).upper()=="BUY" \
-                else "background-color:#fee2e2;color:#b91c1c" if str(row.get("Type","")).upper()=="SELL" \
-                else ""
-            return [c]*len(row)
-
-        open_df = ex_df[ex_df["Status"].str.upper().isin(["OPEN","TRIGGER PENDING","PENDING","AMO REQ RECEIVED"])] \
-            if "Status" in ex_df.columns else pd.DataFrame()
-        done_df = ex_df[~ex_df.index.isin(open_df.index)] if not open_df.empty else ex_df
-
-        tab_open, tab_done = st.tabs([
-            f"🟡 Open ({len(open_df)})",
-            f"✅ Executed / Cancelled ({len(done_df)})"
-        ])
-
-        col_cfg = {"Price": st.column_config.NumberColumn(format="₹%.2f"),
-                   "LTP":   st.column_config.NumberColumn(format="₹%.2f")}
-
-        with tab_open:
-            if open_df.empty:
-                st.caption("No open orders.")
-            else:
-                st.dataframe(open_df.style.apply(_clr, axis=1),
-                             use_container_width=True, hide_index=True,
-                             column_config=col_cfg)
-
-        with tab_done:
-            if done_df.empty:
-                st.caption("No executed/cancelled orders.")
-            else:
-                st.dataframe(done_df.style.apply(_clr, axis=1),
-                             use_container_width=True, hide_index=True,
-                             column_config=col_cfg)
+        _render_unified_orders(ex_orders, active_tok, selected_acct)
 
     # ── Protective GTTs for COMPLETE BUY orders ──────────────────────────
     st.markdown("### 🛡 Protective GTT — −2% MARKET SELL")
@@ -538,14 +681,14 @@ def render() -> None:
     complete_buys = [o for o in all_complete_buys
                      if str(o.get("tradingsymbol", "")).upper() not in _excl]
     _n_excl_hidden = len(all_complete_buys) - len(complete_buys)
-    if not first_tok:
+    if not active_tok:
         st.warning("Connect a Kite account to view/place protective GTTs.")
     elif not complete_buys:
         st.caption("No COMPLETE BUY orders to protect."
                    + (f" ({_n_excl_hidden} excluded by your GTT exclusion list.)" if _n_excl_hidden else ""))
     else:
         try:
-            gtt_existing = fetch_gtts(first_tok)
+            gtt_existing = fetch_gtts(active_tok)
             gtt_fetch_ok = True
         except Exception as gtt_err:
             gtt_existing = []
@@ -695,7 +838,7 @@ def render() -> None:
                     if st.button("🛡 Place MARKET SELL GTT", disabled=not confirm,
                                  key=f"gtt_place_{order_id}", type="primary"):
                         try:
-                            result = place_gtt_market_sell(first_tok, symbol, exch, qty, trigger, avg, "CNC")
+                            result = place_gtt_market_sell(active_tok, symbol, exch, qty, trigger, avg, "CNC")
                             st.success(f"GTT submitted for {symbol}. Trigger ID: {result.get('data', {}).get('trigger_id', 'unknown')}")
                             st.session_state.pop("le_exchange_orders", None)
                             st.rerun()
@@ -710,62 +853,12 @@ def render() -> None:
 
     st.divider()
 
-    # Cancel orders — source of truth is the exchange, not session state
-    live_now = st.session_state.get("live_orders", [])
-    CANCELLABLE = {"OPEN", "TRIGGER PENDING", "AMO REQ RECEIVED"}
-    ex_open  = [o for o in ex_orders
-                if str(o.get("status") or "").upper() in CANCELLABLE]
-    has_open = bool(ex_open)
-
-    ca1, ca2 = st.columns([1, 3])
-
-    # ── Cancel ALL ─────────────────────────────────────────────────────────
-    if ca1.button("🚫 Cancel ALL Open Orders", disabled=not has_open,
-                  key="le_cancel_all", type="secondary", use_container_width=True):
-        cancelled, failed = 0, 0
-        for o in ex_open:
-            oid = o.get("order_id", "")
-            if not oid:
-                continue
-            try:
-                _do_cancel(first_tok, oid)
-                cancelled += 1
-            except Exception as e:
-                st.warning(f"❌ {o.get('tradingsymbol','')} ({oid}): {e}")
-                failed += 1
-        st.session_state.pop("le_exchange_orders", None)
-        st.success(f"✅ Cancelled {cancelled} order(s)." + (f" {failed} failed." if failed else ""))
-        st.rerun()
-
-    # ── Cancel specific order by ID ────────────────────────────────────────
-    if ex_open:
-        with ca2.expander(f"🎯 Cancel specific order ({len(ex_open)} open)"):
-            opts = {
-                f"{o.get('tradingsymbol','')} · {o.get('transaction_type','')} · "
-                f"{o.get('quantity','')} @ ₹{o.get('price','')} · {o.get('order_id','')}": o.get("order_id","")
-                for o in ex_open
-            }
-            chosen_label = st.selectbox("Select order", list(opts.keys()),
-                                        key="le_cancel_specific_sel",
-                                        label_visibility="collapsed")
-            if st.button("🚫 Cancel Selected", key="le_cancel_specific_btn",
-                         type="secondary", use_container_width=True):
-                oid = opts.get(chosen_label, "")
-                if oid:
-                    try:
-                        _do_cancel(first_tok, oid)
-                        st.session_state.pop("le_exchange_orders", None)
-                        st.success(f"✅ Cancelled {oid}")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Failed: {e}")
-
-    st.divider()
-
     # ═══════════════════════════════════════════════════════════════════════
     # PART 2 — ORDER BUILDER
     # ═══════════════════════════════════════════════════════════════════════
     st.markdown("### 2️⃣ Order Builder")
+
+    live_now = st.session_state.get("live_orders", [])
 
     # ── Source: prefer execution_plan (set by rebalance_planner Execute Plan)
     #           fallback to rebalance_plan (legacy) or disk
@@ -908,11 +1001,6 @@ def render() -> None:
     order_account = bulk_acct or (acct_opts[0] if acct_opts else "")
 
     # ── Portfolio sellable qty map  {ticker: sellable_qty} ─────────────────
-    # Kite holdings fields:
-    #   quantity        — total qty held (includes T1 unsettled)
-    #   t1_quantity     — qty bought today, not yet settled (cannot sell CNC)
-    #   authorised_quantity — qty pending demat authorisation (cannot sell)
-    # Sellable = quantity - t1_quantity - authorised_quantity
     portfolio_qty_map: dict[str, int] = {}
     all_holdings = st.session_state.get("all_holdings") or {}
     holdings_src = (all_holdings.get(order_account) or
@@ -926,8 +1014,6 @@ def render() -> None:
         authorised_qty = int(h.get("authorised_quantity")  or 0)
         sellable       = max(0, total_qty - t1_qty - authorised_qty)
         portfolio_qty_map[sym] = portfolio_qty_map.get(sym, 0) + sellable
-
-    # ── Build ticker-level reconciliation rows from exchange/local tallies ──
 
     # ── Build the Order Builder table ──────────────────────────────────────
     builder_rows: list[dict] = []
@@ -953,8 +1039,6 @@ def render() -> None:
         else:  # BUY
             sellable_qty = ""
             residual = remaining
-        already_sold = filled
-        already_bought = filled
 
         if residual == 0:
             continue
@@ -1015,8 +1099,6 @@ def render() -> None:
 
     # ── Ticker reconciliation summary when no executable rows ──────────────
     if not builder_rows:
-        # Report the plan ticker-by-ticker; empty builder rows alone do NOT prove
-        # the plan is filled (e.g. SELL qty may be blocked by sellable holdings).
         recon_rows = []
         all_accounted = True
         for row in plan:
@@ -1038,7 +1120,6 @@ def render() -> None:
                                "Open": open_qty, "Remaining": remaining,
                                "Sellable": sellable, "Executable": executable})
         if recon_rows:
-
             st.error(":shield: Remove Existing GTT Orders Before Sell Execution.")
             st.markdown("##### 📊 Plan reconciliation by ticker")
             st.dataframe(pd.DataFrame(recon_rows), use_container_width=True, hide_index=True)
@@ -1065,11 +1146,7 @@ def render() -> None:
         "Price tiers are shown for reference in STAGGER mode."
     )
 
-    # ── Select All / Clear All ─────────────────────────────────────────────
-    # Build a stable row key per ticker+side to track checkbox state
     row_keys = [f"{r['Ticker']}_{r['Side']}" for r in builder_rows]
-
-    # Initialise state for any new rows (default: selected)
     check_state: dict = st.session_state.setdefault("le_check_state", {})
     for k in row_keys:
         if k not in check_state:
@@ -1083,7 +1160,6 @@ def render() -> None:
         for k in row_keys:
             check_state[k] = False
 
-    # Apply persisted checkbox state to the dataframe before rendering
     builder_df["✓"] = [check_state.get(k, True) for k in row_keys]
     builder_df["🗑 Delete"] = False
 
@@ -1123,8 +1199,6 @@ def render() -> None:
         key=f"le_builder_editor_{st.session_state.get('le_builder_editor_version', 0)}",
     )
 
-    # Delete selected Order Builder rows. Keep this as a review-only removal;
-    # it does not cancel or alter orders already sent to the exchange.
     if "🗑 Delete" in edited_builder.columns and edited_builder["🗑 Delete"].any():
         delete_mask = edited_builder["🗑 Delete"].fillna(False).astype(bool)
         deleted_keys = [k for k, remove in zip(row_keys, delete_mask.tolist()) if remove]
@@ -1139,25 +1213,20 @@ def render() -> None:
     else:
         edited_builder = edited_builder.drop(columns=["🗑 Delete"], errors="ignore")
 
-    # Persist any manual checkbox changes back to session state
     for k, checked in zip(row_keys, edited_builder["✓"].tolist()):
         check_state[k] = checked
 
-    # Recompute Send Value ₹ after any qty/price edits
     edited_builder["Send Value ₹"] = (
             edited_builder["Send Qty"].astype(float) *
             edited_builder["Exec Price ₹"].astype(float)
     ).round(0)
 
-    # ── Refresh price controls ─────────────────────────────────────────────
     rc1, _ = st.columns([1, 5])
     if rc1.button("🔄 Re-fetch Prices", key="le_refetch", use_container_width=True):
-        #_ltp.clear(); _fluc.clear()
         st.session_state.pop("le_prices", None)
         st.session_state["le_staged_built"] = False
         st.rerun()
 
-    # ── Fee / value summary for selected rows ─────────────────────────────
     selected = edited_builder[edited_builder["✓"] == True].copy()
     buy_sel  = selected[selected["Side"] == "BUY"]
     sell_sel = selected[selected["Side"] == "SELL"]
@@ -1178,7 +1247,6 @@ def render() -> None:
 
     st.divider()
 
-    # ── Build Staged Orders ────────────────────────────────────────────────
     bc1, _ = st.columns([1, 3])
     if bc1.button("⚙️ Build Staged Orders →", type="primary",
                   use_container_width=True, disabled=selected.empty,
@@ -1198,7 +1266,6 @@ def render() -> None:
                 probe_needed = (int(r.get("Filled", 0) or 0) + int(r.get("Open", 0) or 0)) == 0
                 batch = _build_probe_and_brackets(sym, exch, side, ltp, qty, fluc, probe_needed)
             else:
-                # Single order — use edited exec price
                 exec_p = float(r["Exec Price ₹"])
                 batch  = [{
                     "ticker":      sym,
@@ -1223,7 +1290,7 @@ def render() -> None:
                 o["account"] = o.get("account") or row_account
             staged.extend(batch)
 
-        staged.sort(key=lambda o: 0 if str(o.get("side", "")).upper() == "SELL" else 1)  # SELLs first
+        staged.sort(key=lambda o: 0 if str(o.get("side", "")).upper() == "SELL" else 1)
         st.session_state["staged_orders"]   = staged
         st.session_state["le_staged_built"] = True
         st.success(f"Built **{len(staged)}** staged orders from **{len(selected)}** rows. Scroll to Part 3 ↓")
@@ -1253,11 +1320,9 @@ def render() -> None:
         f"**{sum(1 for o in staged if o.get('state')=='CANCELLED')}** cancelled"
     )
 
-    # ── Editable staged table with inline actions ─────────────────────────
     st.markdown("##### 📋 Review, Edit & Send")
     st.caption("Edit **Price** or **Qty** directly. Use the action buttons on each row to send or remove.")
 
-    # Apply editor delta from session state before rendering
     updated_staged = [dict(o) for o in staged]
     editor_state = st.session_state.get("le_staged_editor", {})
     for row_str, changes in (editor_state.get("edited_rows") or {}).items():
@@ -1272,7 +1337,6 @@ def render() -> None:
 
     pending_indices = [i for i, o in enumerate(updated_staged) if o.get("state") == "PENDING"]
 
-    # ── Compact number_input CSS — remove padding/margins so inputs match cell width ──
     st.markdown("""
     <style>
     div[data-testid="stNumberInput"] {
@@ -1292,13 +1356,11 @@ def render() -> None:
     div[data-testid="stNumberInput"] button {
         display: none !important;
     }
-    /* Match action buttons to same height */
     div[data-testid="stButton"] button {
         height: 38px !important;
         min-height: 38px !important;
         padding: 0 8px !important;
     }
-    /* Remove gap between column rows */
     div[data-testid="stHorizontalBlock"] {
         gap: 0 !important;
         margin-bottom: 0 !important;
@@ -1310,7 +1372,6 @@ def render() -> None:
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Header row ────────────────────────────────────────────────────────
     _BG_HEAD = "background:#f0f2f6;padding:0 6px;font-size:0.78rem;font-weight:600;color:#444;height:38px;display:flex;align-items:center;border-bottom:1px dotted #aaa"
     h0,h1,h2,h3,h4,h5,h6,h7,h8,h9 = st.columns([1,2,1,1,1,1,1,1,1,2])
     h0.markdown(f'<div style="{_BG_HEAD}">#</div>',       unsafe_allow_html=True)
@@ -1324,7 +1385,6 @@ def render() -> None:
     h8.markdown(f'<div style="{_BG_HEAD}">State</div>',   unsafe_allow_html=True)
     h9.markdown(f'<div style="{_BG_HEAD}">Actions</div>', unsafe_allow_html=True)
 
-    # ── One row per staged order ───────────────────────────────────────────
     for i, o in enumerate(updated_staged):
         side      = str(o.get("side","")).upper()
         state     = str(o.get("state","PENDING"))
@@ -1339,7 +1399,6 @@ def render() -> None:
         c3.markdown(f'<div style="{_CELL}">{o.get("order_type","LIMIT")}</div>', unsafe_allow_html=True)
         c4.markdown(f'<div style="{_CELL}">{"Probe" if o.get("probe") else o.get("tier","")}</div>', unsafe_allow_html=True)
 
-        # Editable qty & price only for PENDING rows
         if is_pending:
             new_qty = c5.number_input(
                 "qty", value=int(o.get("qty",1)), min_value=1, step=1,
@@ -1349,7 +1408,6 @@ def render() -> None:
                 "price", value=float(o.get("price",0.0)), min_value=0.0, step=0.10, format="%.2f",
                 key=f"le_price_{i}", label_visibility="collapsed"
             )
-            # Persist edits immediately on any change
             if new_qty != int(o.get("qty",1)) or new_price != float(o.get("price",0.0)):
                 updated_staged[i]["qty"]   = new_qty
                 updated_staged[i]["price"] = new_price
@@ -1372,7 +1430,6 @@ def render() -> None:
             btn_a, btn_b = c9.columns(2)
             if btn_a.button("📤", key=f"le_send_{i}", use_container_width=True,
                             help="Send To Exchange"):
-                # Apply latest qty/price edits before placing
                 o2 = dict(updated_staged[i])
                 o2["qty"]   = int(st.session_state.get(f"le_qty_{i}",   o2["qty"]))
                 o2["price"] = float(st.session_state.get(f"le_price_{i}", o2["price"]))
@@ -1438,7 +1495,6 @@ def render() -> None:
 
     st.divider()
 
-    # ── Bulk send / clear controls ─────────────────────────────────────────
     _sh, _sm, _sd = st.columns([2, 2, 1])
     _sh.markdown("##### Send to Exchange")
     _sm.number_input("Max order amount (₹)", min_value=0, value=0, step=10_000, key="le_max_order_amt",
@@ -1451,7 +1507,6 @@ def render() -> None:
     if dry_run:
         st.warning("🧪 **DRY RUN is ON** — orders are only logged (see the Dry-run log in Part 3). "
                    "Nothing is sent to the exchange and order states do not change.")
-    # STAGGER-only controls: shown only when the staged list actually contains STAGGER orders
     has_stagger = any(o.get("probe") or o.get("bracket") or int(o.get("tier", 1)) >= 2
                       for o in updated_staged)
     if has_stagger:
@@ -1473,7 +1528,6 @@ def render() -> None:
         return batch_sel == "All pending" or (t == 0 if batch_sel == "Probe" else t == int(batch_sel[-1]))
     batch_indices = [i for i in pending_indices if _in_batch(i)]
 
-    # Preview/refresh tier 2-4 prices from Positions without sending
     if has_stagger and s3.button("🔄 Reprice brackets", use_container_width=True, key="le_reprice_now",
                                  disabled=not pending_indices,
                                  help="Update PENDING bracket prices from the live Positions LTP (nothing is sent)."):
@@ -1486,7 +1540,6 @@ def render() -> None:
                                              _reprice_summary(ch, miss) or "Nothing to reprice.")
         st.rerun()
 
-    # Send pending (selected batch)
     if s1.button("⚡ Send Pending", type="primary",
                  use_container_width=True, disabled=not batch_indices,
                  key="le_send_all"):
@@ -1496,7 +1549,6 @@ def render() -> None:
             st.error("🛑 Sending is halted after an insufficient-funds rejection. "
                      "Use “Resume sending” at the top.")
         else:
-            # SELL first, then BUY, then by tier (stable)
             send_order = sorted(batch_indices, key=lambda i: (
                 0 if str(updated_staged[i].get("side", "")).upper() == "SELL" else 1,
                 int(updated_staged[i].get("tier", 1))))
@@ -1513,10 +1565,10 @@ def render() -> None:
                 o = dict(work[i])
                 if o.get("bracket") and ((not dry_run and not _probe_sent(updated_staged, o))
                                          or o.get("_unpriced")):
-                    held += 1                               # probe not sent / not in Positions yet → stays PENDING
+                    held += 1
                     continue
                 o.pop("_unpriced", None)
-                if _exceeds_limit(o):                       # over the max order amount → skip, stays PENDING
+                if _exceeds_limit(o):
                     o["skip_reason"] = f"Exceeds max order amount ₹{max_order_amt:,}"
                     if not dry_run:
                         updated_staged[i] = o
@@ -1530,18 +1582,22 @@ def render() -> None:
                 try:
                     resp = _do_place(tk, o)
                     oid  = resp.get("data",{}).get("order_id","?")
-                    o.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
+                    o2 = dict(o)
+                    o2.update({"state":"PLACED","order_id":oid,"placed_at":_now()})
+                    o = o2
                     sent += 1
                 except Exception as e:
-                    o.update({"state":"ERROR","error":str(e)})
+                    o2 = dict(o)
+                    o2.update({"state":"ERROR","error":str(e)})
+                    o = o2
                     if _is_insufficient_funds(e):
                         _halt_on_funds(o, e)
                         halted_on = o
                 updated_staged[i] = o
-                if halted_on:                               # stop ALL remaining BUY/SELL requests
+                if halted_on:
                     break
                 if n < len(send_order) - 1:
-                    time.sleep(0.5)                         # rate limit: 2 orders/sec
+                    time.sleep(0.5)
             remaining = sum(1 for o in updated_staged if o.get("state") == "PENDING")
             if held:
                 notes += (f"  ·  ⏸ {held} bracket(s) held back — send the 1-qty probe first and wait "
@@ -1572,7 +1628,6 @@ def render() -> None:
         st.session_state["le_staged_built"] = False
         st.rerun()
 
-    # ── Dry-run log ────────────────────────────────────────────────────────
     _dlog = st.session_state.get("le_dry_log", [])
     if _dlog:
         with st.expander(f"🧪 Dry-run log ({len(_dlog)})", expanded=dry_run):

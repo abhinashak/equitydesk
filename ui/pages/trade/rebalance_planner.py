@@ -206,7 +206,7 @@ def render() -> None:
     # ══════════════════════════════════════════════════════════════════════════
     mode = st.radio(
         "Rebalance mode",
-        ["💰 Scale Capital (+/- %)", "✏️ Manual (+ Buy / - Sell ₹)"],
+        [ "✏️ Manual (+ Buy / - Sell ₹)", "💰 Scale Capital (+/- %)"],
         horizontal=True,
         key="rb_mode_v2",
         help=(
