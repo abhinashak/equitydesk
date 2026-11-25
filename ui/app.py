@@ -94,4 +94,7 @@ elif page == "news":
 elif page == "dcf_analysis":
     from ui.pages.dcf_analysis import render; render()
 
+elif page == "todo":
+    from ui.pages.page_todo import render; render()
+
 

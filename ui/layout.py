@@ -24,10 +24,10 @@ NAV: dict[str, dict[str, str]] = {
         "⚖️ Portfolio Evaluator":    "portfolio_evaluator",
     },
     "ALGOS": {
-        "🔮 Genetic Algorithm":      "algo_ga",
+        "🧬 Genetic Algorithm":      "algo_ga",
         "⚡ Momentum Rules":         "algo_momentum",
         "🧮 Rule Discovery":         "algo_rules",
-        "🧬 FASTA":                  "algo_fasta",
+        "🔮 FAST AI":                  "algo_fasta",
     },
     "DATA": {
         "📈 Market Data":            "data_ticker",
@@ -36,6 +36,7 @@ NAV: dict[str, dict[str, str]] = {
         "🤖 Financial Analyst":            "sql_analyst",  
     },
     "CONFIG": {
+        "✅ TODO":                   "todo",
         "🗂 Tickers":                "config_tickers",
         "⚙️ App Settings":           "config_app",
     },

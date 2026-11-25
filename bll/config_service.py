@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 
 from dal.config_manager import ConfigManager
-from dal.ticker_config import TickerConfigDAL
+from dal.ticker_config import TickerConfigDAL, SectorHierarchy
 from utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -19,13 +19,18 @@ log = get_logger(__name__)
 class ConfigService:
 
     def __init__(
-        self,
-        app_config_path: str = "config/app_config.py",
-        ticker_path: str     = "config/tickers.csv",
-        periods_path: str    = "config/periods.json",
+            self,
+            app_config_path: str  = "config/app_config.py",
+            ticker_path: str      = "config/tickers.csv",
+            periods_path: str     = "config/periods.json",
+            hierarchy_path: str   = "config/sectors_hierarchy.csv",
     ):
         self._cfg     = ConfigManager(path=app_config_path)
-        self._ticker  = TickerConfigDAL(ticker_path=ticker_path, periods_path=periods_path)
+        self._ticker  = TickerConfigDAL(
+            ticker_path=ticker_path,
+            periods_path=periods_path,
+            hierarchy_path=hierarchy_path,
+        )
 
     # ── App config ────────────────────────────────────────────────────────────
 
@@ -55,8 +60,13 @@ class ConfigService:
     def add_ticker(self, row: dict) -> None:
         self._ticker.add_ticker(row)
 
-    def delete_ticker(self, name: str) -> None:
-        self._ticker.delete_ticker(name)
+    def delete_ticker(self, ticker: str) -> None:
+        self._ticker.delete_ticker(ticker)
+
+    # ── Sector hierarchy ──────────────────────────────────────────────────────
+
+    def get_sector_hierarchy(self) -> SectorHierarchy:
+        return self._ticker.load_sector_hierarchy()
 
     # ── Periods ───────────────────────────────────────────────────────────────
 
