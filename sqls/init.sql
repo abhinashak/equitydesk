@@ -77,12 +77,8 @@ FROM 'data/fundamental_clean/shareholding_yearly.parquet';
 
 -- Tickers and momentum
  CREATE OR REPLACE VIEW tickers AS
- WITH ticker_raw AS (
-     SELECT *, ticker as nse_symbol
-     FROM read_csv("config/tickers.csv")  -- ◄── FIX 1: Specify your source table here
- )
  SELECT t.Name, t."Yahoo Symbol", t.ticker as nse_symbol,
-    t.market_cap, t.Sector as industry, t.sector_group, t.macro_sector,
+    t.market_cap as market_cap, t.Sector as industry, t.sector_group, t.macro_sector,
     t.market_cap_cr as market_cap_amt, fii_hold_pct, public_hold_pct,
      t.nse_symbol, g.stock_p_e as p_e, dividend_yield
  FROM ticker_raw t LEFT JOIN general_info g ON g.ticker = t.nse_symbol;
@@ -90,6 +86,10 @@ FROM 'data/fundamental_clean/shareholding_yearly.parquet';
 CREATE OR REPLACE VIEW ticker_prices AS
 SELECT Date, Close, High, Low, Open, Volume, Ticker, split_part(Ticker, '.', 1) AS nse_symbol, year
 FROM "data/ticker/year=*/*.parquet";
+
+CREATE OR REPLACE VIEW ticker_prices_extended AS
+select p.*,industry,sector_group,macro_sector,market_cap
+from ticker_prices p, tickers t  where p.nse_symbol = t.nse_symbol;
 
 CREATE OR REPLACE VIEW benchmark_prices AS
 SELECT Date, Close, High, Low, Open, Volume, Ticker, split_part(Ticker, '.', 1) AS nse_symbol, year

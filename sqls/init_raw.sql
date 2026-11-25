@@ -2,6 +2,11 @@
 -- Creates DuckDB virtual views over the per-ticker parquet files.
 -- ============================================================
 
+CREATE OR REPLACE VIEW ticker_raw AS (
+     SELECT *, ticker as nse_symbol
+     FROM read_csv("config/tickers.csv")  -- ◄── FIX 1: Specify your source table here
+ );
+
 -- General company info (one row per ticker)
 CREATE OR REPLACE VIEW general_info_raw AS
 SELECT * FROM 'data/fundamental/*/general_info.parquet';

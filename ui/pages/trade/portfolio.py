@@ -11,7 +11,7 @@ Features:
   - Today's gain % per holding
   - Today's winner / loser highlighted rows
   - Sector orientation based on defined sectors
-  - Historical data via DuckDB (one_ticker_common.py connection)
+  - Historical data via DuckDB (util/connection.py → sqls/all.sql views)
 """
 
 import os
@@ -22,14 +22,18 @@ import pandas as pd
 import numpy as np
 import time
 import plotly.graph_objects as go
-from ui.pages.one_ticker_common import get_duckdb_connection, initialize_views_or_mock, COLORS, COLORS_PALE
 from plotly.subplots import make_subplots
 
-# ── Import shared DuckDB bootstrap ──────────────────────────────────────────
 try:
+    from utils.db_utils import get_connection
     _HAS_COMMON = True
 except ImportError:
     _HAS_COMMON = False
+
+# ── Shared UI colours (fallback palette if the common module is unavailable) ──
+try:
+    from ui.pages.one_ticker_common import COLORS, COLORS_PALE
+except ImportError:
     COLORS      = ["#2563eb", "#dc2626", "#16a34a", "#d97706"]
     COLORS_PALE = ["#93c5fd", "#fca5a5", "#86efac", "#fde68a"]
 
@@ -247,12 +251,11 @@ def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = Fa
     if not _HAS_COMMON or not nse_symbols:
         return pd.DataFrame()
 
-    table_name = "benchmark_prices" if is_benchmark else "ticker_prices"
+    table_name = "benchmark_prices" if is_benchmark else "ticker_prices_extended"
     query = ""
     t0 = time.perf_counter()
     try:
-        conn = get_duckdb_connection()
-        initialize_views_or_mock(conn)
+        conn = get_connection()
 
         sym_list = ", ".join(f"'{s}'" for s in nse_symbols)
         end_clause = f"AND Date <= DATE '{end_date:%Y-%m-%d}'" if end_date else ""
@@ -574,86 +577,6 @@ def _render_live_today_status(qty_map: dict) -> None:
         frag(_live_today_body)(qty_map)
 
 
-def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=None):
-    """Positions export → (ticker_data, tracking).
-
-    Non-exit rows (Side != CLOSED and Qty > 0) are the portfolio holdings.
-    CLOSED / Qty == 0 rows are exits; their Chg % is recomputed as 100*P&L/(LTP*Day Buy - P&L).
-    Qty and Avg ₹ come from the file; the current price + previous close + day change come from
-    Kite HOLDINGS (fallback: Kite positions, then the file's LTP, flagged "File (stale)").
-    Exits (CLOSED) use the file's P&L ₹, LTP ₹, Day Buy/Sell; Chg % comes from the formula above.
-    """
-    live = live or {}
-    d = pd.DataFrame({
-        "Symbol":   udf["instrument"].astype(str).str.strip().str.upper(),
-        "Product":  udf["product"] if "product" in udf.columns else "",
-        "Side":     udf["side"].astype(str).str.strip().str.upper(),
-        "Qty":      _num(udf["qty"]) if "qty" in udf.columns else 0.0,
-        "Avg ₹":    _num(udf["avg ₹"]) if "avg ₹" in udf.columns else 0.0,
-        "LTP ₹":    _num(udf["ltp ₹"]) if "ltp ₹" in udf.columns else 0.0,
-        "P&L ₹":    _num(udf["p&l ₹"]) if "p&l ₹" in udf.columns else 0.0,
-        "Chg %":    _num(udf["chg %"]) if "chg %" in udf.columns else 0.0,
-        "Day Buy":  _num(udf["day buy"]).astype(int) if "day buy" in udf.columns else 0,
-        "Day Sell": _num(udf["day sell"]).astype(int) if "day sell" in udf.columns else 0,
-    })
-    d = d[d["Symbol"] != ""]
-    is_exit = (d["Side"] == "CLOSED") | (d["Qty"] == 0)
-    open_df, exit_df = d[~is_exit].copy(), d[is_exit].copy()
-
-    # one row per symbol (weighted average cost if a symbol repeats across products)
-    if not open_df.empty:
-        open_df["_cost"] = open_df["Qty"] * open_df["Avg ₹"]
-        g = open_df.groupby("Symbol", as_index=False).agg(
-            Qty=("Qty", "sum"), _cost=("_cost", "sum"), LTP=("LTP ₹", "last"),
-            PnL=("P&L ₹", "sum"), DayBuy=("Day Buy", "sum"), DaySell=("Day Sell", "sum"),
-            Side=("Side", "first"), Product=("Product", "first"))
-        g["Avg ₹"] = (g["_cost"] / g["Qty"]).where(g["Qty"] > 0, 0.0)
-        open_df = pd.DataFrame({
-            "Symbol": g["Symbol"], "Product": g["Product"], "Side": g["Side"], "Qty": g["Qty"],
-            "Avg ₹": g["Avg ₹"], "LTP ₹": g["LTP"], "P&L ₹": g["PnL"],
-            "Chg %": (g["PnL"] / g["_cost"] * 100).where(g["_cost"] > 0, 0.0),
-            "Day Buy": g["DayBuy"], "Day Sell": g["DaySell"]})
-    open_df["Status"] = ["Partly sold" if r["Day Sell"] > 0 else "Open" for _, r in open_df.iterrows()]
-    # live price from Zerodha holdings, else the file's LTP
-    has_live = open_df["Symbol"].isin(live.keys())
-    open_df["Source"] = [live[k]["src"] if k in live else "File (stale)" for k in open_df["Symbol"]]
-    if has_live.any():
-        open_df.loc[has_live, "LTP ₹"] = [live[k]["last_price"] for k in open_df.loc[has_live, "Symbol"]]
-        _pnl = (open_df["LTP ₹"] - open_df["Avg ₹"]) * open_df["Qty"]
-        _chg = ((open_df["LTP ₹"] - open_df["Avg ₹"]) / open_df["Avg ₹"] * 100).where(open_df["Avg ₹"] > 0, 0.0)
-        open_df["P&L ₹"] = _pnl.where(has_live, open_df["P&L ₹"])
-        open_df["Chg %"] = _chg.where(has_live, open_df["Chg %"])
-    exit_df["Status"] = "Exited"
-    # Exits: Chg % = 100 × P&L ÷ (LTP × Day Buy − P&L)   (replaces the export's assumed -2%).
-    # Falls back to the file's own Chg % only when the formula can't be computed.
-    _den = exit_df["LTP ₹"] * exit_df["Day Buy"] - exit_df["P&L ₹"]
-    _calc = (100 * exit_df["P&L ₹"] / _den).where((_den > 0) & (exit_df["Day Buy"] > 0))
-    exit_df["Chg %"] = _calc.fillna(exit_df["Chg %"])
-    exit_df = exit_df[~exit_df["Symbol"].isin(open_df["Symbol"])]   # re-bought names stay open
-
-    ticker_data = {}
-    for _, r in open_df.iterrows():
-        L = live.get(r["Symbol"])
-        if L and L["close_price"] > 0:           # real previous close → true "today" move
-            close_p, day_pct = L["close_price"], L["day_change_pct"]
-        else:                                     # no live data: treat as entered today
-            close_p = float(r["Avg ₹"])
-            day_pct = float((r["LTP ₹"] - r["Avg ₹"]) / r["Avg ₹"] * 100) if r["Avg ₹"] else 0.0
-        ticker_data[r["Symbol"]] = {
-            "last_price": float(r["LTP ₹"]),
-            "close_price": float(close_p),
-            "day_change_pct": float(day_pct),
-            "avg_cost": float(r["Avg ₹"]),
-            "Uploaded": float(r["Qty"]),
-        }
-    stale = open_df.loc[~has_live, "Symbol"].tolist()
-    meta = {"live_n": int(has_live.sum()), "total_n": len(open_df), "stale": stale,
-            "connected": bool(live), "entry_date": entry_date,
-            "by_src": open_df["Source"].value_counts().to_dict()}
-    return ticker_data, {"open": open_df.reset_index(drop=True),
-                         "exit": exit_df.reset_index(drop=True), "meta": meta}
-
-
 # ── Estimated Zerodha equity charges (NSE) ────────────────────────────────────
 # Same-day buy+sell of a CNC stock is charged as INTRADAY (FIFO): STT 0.025% on the sell side only,
 # brokerage 0.03%. Quantity that stays held is DELIVERY: STT 0.1% on the buy (and again on a later sell).
@@ -679,126 +602,245 @@ def _charges(buy_i=0.0, sell_i=0.0, buy_d=0.0, sell_d=0.0, dp_scrips=0):
     return stt, brk + txn + sebi + stamp + gst + dp_scrips * _DP_PER_SCRIP
 
 
-def _with_charges(df: "pd.DataFrame", kind: str) -> "pd.DataFrame":
-    """Add STT ₹ / Charges ₹ / Net P&L ₹ (and, for open rows, 'If sold now ₹') estimates."""
-    d = df.copy()
-    stt_l, tot_l, now_l = [], [], []
-    for _, r in d.iterrows():
-        if kind == "exit":                     # bought and sold the same day → intraday
-            n = max(int(r["Day Buy"]), int(r["Day Sell"]))
-            buy_i = n * float(r["LTP ₹"])      # entry/exit value is not in the file → qty × LTP
-            sell_i = buy_i + float(r["P&L ₹"])
-            stt, oth = _charges(buy_i=buy_i, sell_i=sell_i)
-            now = 0.0
+def _analyze_tradebook(udf: "pd.DataFrame", live: dict = None, today: "datetime.date" = None):
+    """Zerodha tradebook CSV → (ticker_data, tracking).
+
+    Columns used: symbol, trade_type (buy/sell), quantity, price, trade_date and/or
+    order_execution_time (segment, if present, must be EQ).
+
+    * Trades are replayed in execution-time order and matched FIFO (a sell closes the oldest buy).
+        Realized P&L   = Σ (sell price − buy price) × matched qty
+        Open lots      = buys not yet sold  → portfolio holdings (avg cost = weighted lot price)
+        Unrealized P&L = Σ (live LTP − lot price) × open qty        (LTP from Kite holdings / positions)
+    * Charges are computed per symbol per day from the executed trades. Qty bought and sold the same day
+      is intraday (STT 0.025% on the sell, brokerage); the rest is delivery (STT 0.1% on buy and sell,
+      DP charge on the sell). Exchange, SEBI, stamp duty and GST are included (see `_charges`).
+        Net P&L = Realized + Unrealized − STT − other charges      (all charges paid so far)
+    * Sells with no earlier buy in the file (older holdings, or a short) are NOT given a cost basis: they are
+      excluded from P&L and listed as a warning — upload the full history to include them.
+    """
+    from collections import deque
+    live = live or {}
+    today = today or datetime.date.today()
+
+    t = pd.DataFrame({
+        "Symbol": udf["symbol"].astype(str).str.strip().str.upper(),
+        "Type":   udf["trade_type"].astype(str).str.strip().str.lower(),
+        "Qty":    _num(udf["quantity"]),
+        "Price":  _num(udf["price"]),
+    })
+    _none = pd.Series(pd.NaT, index=udf.index)
+    ts = pd.to_datetime(udf["order_execution_time"], errors="coerce") if "order_execution_time" in udf.columns else _none
+    dd = pd.to_datetime(udf["trade_date"], errors="coerce") if "trade_date" in udf.columns else _none
+    ts = ts.fillna(dd)
+    t["_ts"] = ts
+    t["Date"] = ts.dt.date
+    ok = (t["Symbol"] != "") & t["Type"].isin(["buy", "sell"]) & (t["Qty"] > 0) & (t["Price"] > 0) & ts.notna()
+    if "segment" in udf.columns:
+        ok &= udf["segment"].astype(str).str.strip().str.upper().eq("EQ")
+    skipped = int((~ok).sum())
+    t = t[ok].sort_values("_ts", kind="stable").reset_index(drop=True)
+    t["Val"] = t["Qty"] * t["Price"]
+    if t.empty:
+        return None, None
+
+    # ── FIFO matching ────────────────────────────────────────────────────────
+    lots, closed = {}, []                       # lots: {sym: deque([signed qty, price, date])}
+    unmatched = {}                              # sold with no earlier buy in the file → no cost basis
+    for r in t.itertuples(index=False):
+        dq = lots.setdefault(r.Symbol, deque())
+        if dq and dq[0][0] < 0 and any(l[2] != r.Date for l in dq):
+            # a sell from an earlier day with no buy is older holdings, not a short a later buy can cover
+            for l in dq:
+                if l[2] != r.Date:
+                    unmatched[r.Symbol] = unmatched.get(r.Symbol, 0.0) + abs(l[0])
+            keep = [l for l in dq if l[2] == r.Date]
+            dq.clear(); dq.extend(keep)
+        rem = r.Qty if r.Type == "buy" else -r.Qty
+        while abs(rem) > 1e-9 and dq and (dq[0][0] > 0) != (rem > 0):
+            lot = dq[0]
+            m = min(abs(rem), abs(lot[0]))
+            if lot[0] > 0:                      # sell closes an earlier buy
+                bpx, bdt, spx, sdt, side = lot[1], lot[2], r.Price, r.Date, "Long"
+            else:                               # buy covers an earlier sell (same-day short)
+                bpx, bdt, spx, sdt, side = r.Price, r.Date, lot[1], lot[2], "Short"
+            closed.append({"Symbol": r.Symbol, "Side": side, "Qty": m, "Buy Date": bdt, "Buy ₹": bpx,
+                           "Sell Date": sdt, "Sell ₹": spx, "P&L ₹": (spx - bpx) * m,
+                           "Days": (max(bdt, sdt) - min(bdt, sdt)).days,
+                           "Type": "Intraday" if bdt == sdt else "Delivery", "Close Date": r.Date})
+            lot[0] += -m if lot[0] > 0 else m
+            rem += m if rem < 0 else -m
+            if abs(lot[0]) < 1e-9:
+                dq.popleft()
+        if abs(rem) > 1e-9:
+            dq.append([rem, r.Price, r.Date])
+    lots_cols = ["Symbol", "Side", "Qty", "Buy Date", "Buy ₹", "Sell Date", "Sell ₹", "P&L ₹", "Days", "Type", "Close Date"]
+    closed_df = pd.DataFrame(closed, columns=lots_cols)
+
+    # ── Charges per symbol per day ───────────────────────────────────────────
+    ch = []
+    for (sym, dt), g in t.groupby(["Symbol", "Date"], sort=False):
+        b_, s_ = g[g["Type"] == "buy"], g[g["Type"] == "sell"]
+        bq, bv, sq, sv = b_["Qty"].sum(), b_["Val"].sum(), s_["Qty"].sum(), s_["Val"].sum()
+        iq = min(bq, sq)                                         # bought and sold the same day → intraday
+        ab, asl = (bv / bq if bq else 0.0), (sv / sq if sq else 0.0)
+        stt, oth = _charges(buy_i=iq * ab, sell_i=iq * asl, buy_d=(bq - iq) * ab, sell_d=(sq - iq) * asl,
+                            dp_scrips=1 if (sq - iq) > 1e-9 else 0)
+        ch.append({"Symbol": sym, "Date": dt, "STT ₹": stt, "Other ₹": oth})
+    ch_df = pd.DataFrame(ch, columns=["Symbol", "Date", "STT ₹", "Other ₹"])
+
+    # ── Open lots → holdings, unrealized P&L ─────────────────────────────────
+    open_rows, ticker_data, short_open = [], {}, []
+    for sym, dq in lots.items():
+        longs = [l for l in dq if l[0] > 1e-9]
+        for l in dq:
+            if l[0] < -1e-9:
+                unmatched[sym] = unmatched.get(sym, 0.0) + abs(l[0])
+        q = sum(l[0] for l in longs)
+        if q <= 1e-9:
+            continue
+        avg = sum(l[0] * l[1] for l in longs) / q
+        tq = sum(l[0] for l in longs if l[2] == today)                 # part bought today
+        tcost = sum(l[0] * l[1] for l in longs if l[2] == today)
+        L = live.get(sym)
+        if L:
+            lp = L["last_price"]
+            cp = L["close_price"] if L["close_price"] > 0 else avg
+            pct = L["day_change_pct"] if L["close_price"] > 0 else ((lp - avg) / avg * 100 if avg else 0.0)
         else:
-            p = float(r["Avg ₹"])
-            qi = min(int(r["Day Buy"]), int(r["Day Sell"]))        # squared off today → intraday leg
-            stt, oth = _charges(buy_i=qi * p, sell_i=qi * p, buy_d=float(r["Qty"]) * p)
-            s2, o2 = _charges(sell_d=float(r["Qty"]) * float(r["LTP ₹"]),
-                              dp_scrips=1 if r["Qty"] > 0 else 0)   # charges if the rest is sold at LTP now
-            now = s2 + o2
-        stt_l.append(stt); tot_l.append(stt + oth); now_l.append(now)
-    d["STT ₹"] = stt_l
-    d["Charges ₹"] = tot_l
-    d["Net P&L ₹"] = d["P&L ₹"] - d["Charges ₹"]
-    if kind != "exit":
-        d["If sold now ₹"] = now_l
-    return d
+            lp = cp = avg
+            pct = 0.0
+        if tq > 0:                    # qty bought today moved from its buy price, not from yesterday's close
+            cp = ((q - tq) * cp + tcost) / q
+            pct = (lp - cp) / cp * 100 if cp else 0.0
+        ticker_data[sym] = {"last_price": float(lp), "close_price": float(cp), "day_change_pct": float(pct),
+                            "avg_cost": float(avg), "Uploaded": float(q)}
+        s2, o2 = _charges(sell_d=q * lp, dp_scrips=1)                  # cost of selling the lot now
+        open_rows.append({"Symbol": sym, "Qty": q, "Avg ₹": avg, "LTP ₹": lp, "Invested ₹": q * avg,
+                          "Value ₹": q * lp, "Unrealized ₹": q * (lp - avg),
+                          "Unreal %": (lp / avg - 1) * 100 if avg else 0.0, "Sell charges ₹": s2 + o2,
+                          "Source": L["src"] if L else "No live price"})
+    short_open = [f"{k} ({v:g})" for k, v in unmatched.items()]
+    open_df = pd.DataFrame(open_rows, columns=["Symbol", "Qty", "Avg ₹", "LTP ₹", "Invested ₹", "Value ₹",
+                                               "Unrealized ₹", "Unreal %", "Sell charges ₹", "Source"])
+
+    # ── By-symbol and by-day summaries ───────────────────────────────────────
+    real_s = closed_df.groupby("Symbol")["P&L ₹"].sum() if len(closed_df) else pd.Series(dtype=float)
+    ch_s = ch_df.groupby("Symbol")[["STT ₹", "Other ₹"]].sum()
+    od = open_df.set_index("Symbol") if len(open_df) else open_df.set_index(pd.Index([], name="Symbol"))
+    sym_df = pd.DataFrame({"Symbol": sorted(t["Symbol"].unique())})
+    sym_df["Open Qty"] = sym_df["Symbol"].map(od["Qty"]).fillna(0.0)
+    sym_df["Avg ₹"] = sym_df["Symbol"].map(od["Avg ₹"])
+    sym_df["LTP ₹"] = sym_df["Symbol"].map(od["LTP ₹"])
+    sym_df["Unrealized ₹"] = sym_df["Symbol"].map(od["Unrealized ₹"]).fillna(0.0)
+    sym_df["Realized ₹"] = sym_df["Symbol"].map(real_s).fillna(0.0)
+    sym_df["STT ₹"] = sym_df["Symbol"].map(ch_s["STT ₹"]).fillna(0.0)
+    sym_df["Other ₹"] = sym_df["Symbol"].map(ch_s["Other ₹"]).fillna(0.0)
+    sym_df["Net P&L ₹"] = sym_df["Realized ₹"] + sym_df["Unrealized ₹"] - sym_df["STT ₹"] - sym_df["Other ₹"]
+    sym_df = sym_df.sort_values("Net P&L ₹", ascending=False).reset_index(drop=True)
+
+    dr = closed_df.groupby("Close Date")["P&L ₹"].sum().rename("Realized ₹") if len(closed_df) else pd.Series(dtype=float, name="Realized ₹")
+    dc = ch_df.groupby("Date")[["STT ₹", "Other ₹"]].sum()
+    daily = pd.concat([dr, dc], axis=1).fillna(0.0)
+    daily.index.name = "Date"
+    daily["Net Realized ₹"] = daily["Realized ₹"] - daily["STT ₹"] - daily["Other ₹"]
+    daily = daily.sort_index(ascending=False).reset_index()
+
+    stale = [r["Symbol"] for r in open_rows if r["Source"] == "No live price"]
+    meta = {"connected": bool(live), "stale": stale, "short_open": short_open, "skipped": skipped,
+            "n_trades": len(t), "first": min(t["Date"]), "last": max(t["Date"]),
+            "sell_now": float(open_df["Sell charges ₹"].sum()) if len(open_df) else 0.0,
+            "by_src": open_df["Source"].value_counts().to_dict() if len(open_df) else {}}
+    return (ticker_data or None), {"symbols": sym_df, "open": open_df, "lots": closed_df,
+                                   "daily": daily, "meta": meta}
 
 
-def _render_position_tracking(trk: dict) -> None:
-    """Open (in portfolio) vs exited positions from the Positions export."""
-    o, x, meta = trk["open"], trk["exit"], trk.get("meta", {})
-    o, x = _with_charges(o, "open"), _with_charges(x, "exit")
-    st.subheader("🎯 Position Tracking")
-    if meta.get("entry_date"):
-        _days = (datetime.date.today() - meta["entry_date"]).days
-        st.caption(f"📅 Entry file dated **{meta['entry_date']:%d %b %Y}** · tracked for **{_days} day(s)**")
+def _render_trade_pnl(trk: dict) -> None:
+    """Realized / unrealized / STT / net P&L from the Zerodha tradebook."""
+    sym, o, lots, daily, meta = trk["symbols"], trk["open"], trk["lots"], trk["daily"], trk["meta"]
+    st.subheader("🎯 Trade P&L")
+    st.caption(f"📅 Tradebook **{meta['first']:%d %b %Y} → {meta['last']:%d %b %Y}** · "
+               f"{meta['n_trades']} trades · FIFO matching")
     rc1, rc2 = st.columns([5, 1])
     if rc2.button("🔄 Refresh prices", key="pf_track_refresh", use_container_width=True):
         _live_price_map(force=True)
         st.rerun()
     for _e in meta.get("errors", []) or []:
-        rc1.caption(f"⚠️ Kite positions fetch: {_e}")
-    _src = ", ".join(f"{v} {k}" for k, v in (meta.get("by_src") or {}).items())
+        rc1.caption(f"⚠️ Kite fetch: {_e}")
     if not meta.get("connected"):
-        rc1.warning("No Kite account connected — prices below are the file's LTP (stale). "
-                    "Connect your account to track live.")
+        rc1.warning("No Kite account connected — open lots are valued at cost, so Unrealized P&L is 0. "
+                    "Connect your account for live prices.")
     elif meta.get("stale"):
-        rc1.warning(f"{len(meta['stale'])} of {meta['total_n']} open symbols are in neither Kite holdings nor "
-                    f"holdings and use the file's LTP: {', '.join(meta['stale'])}")
+        rc1.warning(f"No live price for {', '.join(meta['stale'])} — valued at cost.")
     else:
-        rc1.success(f"🟢 Live prices for all {meta.get('live_n', 0)} open positions ({_src}). "
-                    "Qty and Avg ₹ from the file.")
-    open_pnl, exit_pnl = float(o["P&L ₹"].sum()), float(x["P&L ₹"].sum())
-    invested = float((o["Qty"] * o["Avg ₹"]).sum())
-    exposure = float((o["Qty"] * o["LTP ₹"]).sum())
-    n_all = len(o) + len(x)
-    winners = int((o["P&L ₹"] > 0).sum())
-    m = st.columns(6)
-    m[0].metric("Open (in Portfolio)", len(o), f"{len(o) / n_all * 100:.0f}% of {n_all}" if n_all else "")
-    m[1].metric("Exited", len(x), f"{len(x) / n_all * 100:.0f}% of {n_all}" if n_all else "", delta_color="off")
-    m[2].metric("Open P&L", f"₹{open_pnl:,.0f}", f"{open_pnl / invested * 100:+.2f}%" if invested else "")
-    m[3].metric("Exit P&L (as reported)", f"₹{exit_pnl:,.0f}")
-    m[4].metric("Net P&L", f"₹{open_pnl + exit_pnl:,.0f}")
-    m[5].metric("Open win rate", f"{winners}/{len(o)}", f"{winners / len(o) * 100:.0f}%" if len(o) else "")
-    m2 = st.columns(4)
-    m2[0].metric("Capital in open", f"₹{invested:,.0f}")
-    m2[1].metric("Open exposure (LTP)", f"₹{exposure:,.0f}")
-    m2[2].metric("Avg Chg % — open", f"{o['Chg %'].mean():+.2f}%" if len(o) else "–")
-    m2[3].metric("Avg Chg % — exited", f"{x['Chg %'].mean():+.2f}%" if len(x) else "–")
+        _src = ", ".join(f"{v} {k}" for k, v in (meta.get("by_src") or {}).items())
+        rc1.success(f"🟢 Live prices for all {len(o)} open symbols ({_src}).")
+    if meta.get("short_open"):
+        st.warning("Sold with no earlier buy in this file (older holdings or a short) — excluded from P&L; "
+                   "upload the full history to include them: " + ", ".join(meta["short_open"]))
+    if meta.get("skipped"):
+        st.caption(f"ℹ️ {meta['skipped']} row(s) skipped (blank, non-equity or invalid).")
 
-    # ── After STT & charges (estimates) ──────────────────────────────────────
-    stt_all = float(o["STT ₹"].sum() + x["STT ₹"].sum())
-    chg_all = float(o["Charges ₹"].sum() + x["Charges ₹"].sum())
-    net_all = open_pnl + exit_pnl - chg_all
-    sell_now = float(o["If sold now ₹"].sum()) if "If sold now ₹" in o.columns else 0.0
-    st.markdown("**After STT & other charges (estimated)**")
-    m3 = st.columns(5)
-    m3[0].metric("STT", f"₹{stt_all:,.2f}")
-    m3[1].metric("Other charges", f"₹{chg_all - stt_all:,.2f}", help="Brokerage on same-day square-offs, exchange, SEBI, stamp, GST")
-    m3[2].metric("Net P&L after charges", f"₹{net_all:,.0f}", f"{net_all - (open_pnl + exit_pnl):+,.0f} vs gross",
-                 delta_color="inverse" if chg_all else "off")
-    m3[3].metric("Open P&L after charges", f"₹{open_pnl - float(o['Charges ₹'].sum()):,.0f}")
-    m3[4].metric("Net if all open sold now", f"₹{net_all - sell_now:,.0f}", f"{-sell_now:+,.0f} sell-side charges",
-                 delta_color="inverse", help="Adds delivery STT 0.1% on the sell, exchange/SEBI/GST and ₹13+GST DP per scrip.")
+    realized = float(sym["Realized ₹"].sum())
+    unreal = float(sym["Unrealized ₹"].sum())
+    stt = float(sym["STT ₹"].sum())
+    other = float(sym["Other ₹"].sum())
+    gross = realized + unreal
+    net = gross - stt - other
+    invested = float(o["Invested ₹"].sum()) if len(o) else 0.0
+    value = float(o["Value ₹"].sum()) if len(o) else 0.0
+    wins = int((lots["P&L ₹"] > 0).sum()) if len(lots) else 0
+
+    m = st.columns(5)
+    m[0].metric("Realized P&L", f"₹{realized:,.2f}")
+    m[1].metric("Unrealized P&L", f"₹{unreal:,.2f}", f"{unreal / invested * 100:+.2f}%" if invested else "")
+    m[2].metric("STT", f"₹{stt:,.2f}")
+    m[3].metric("Other charges", f"₹{other:,.2f}",
+                help="Brokerage on intraday, exchange, SEBI, stamp duty, GST and DP charges (estimated).")
+    m[4].metric("Net P&L", f"₹{net:,.2f}", f"{net - gross:+,.2f} charges", delta_color="off",
+                help="Realized + Unrealized − STT − other charges.")
+    m2 = st.columns(5)
+    m2[0].metric("Gross P&L", f"₹{gross:,.2f}")
+    m2[1].metric("Invested (open)", f"₹{invested:,.0f}")
+    m2[2].metric("Value (open, LTP)", f"₹{value:,.0f}")
+    m2[3].metric("Closed lots", len(lots), f"{wins / len(lots) * 100:.0f}% winners" if len(lots) else "", delta_color="off")
+    m2[4].metric("Net if all open sold now", f"₹{net - meta.get('sell_now', 0.0):,.2f}",
+                 f"{-meta.get('sell_now', 0.0):+,.2f} sell charges", delta_color="off")
 
     def _clr(col):
         return ["color:#15803d" if v > 0 else "color:#b91c1c" if v < 0 else "" for v in col]
-    fmt = {"Avg ₹": "{:,.2f}", "LTP ₹": "{:,.2f}", "P&L ₹": "{:+,.2f}", "Chg %": "{:+.2f}%",
-           "STT ₹": "{:,.2f}", "Charges ₹": "{:,.2f}", "Net P&L ₹": "{:+,.2f}", "If sold now ₹": "{:,.2f}"}
-    cols = ["Symbol", "Status", "Qty", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "STT ₹", "Charges ₹",
-            "Net P&L ₹", "Day Buy", "Day Sell"]
-    ocols = cols + ["If sold now ₹", "Source"]
-    xcols = ["Symbol", "Status", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "STT ₹", "Charges ₹",
-             "Net P&L ₹", "Day Buy", "Day Sell"]
-    def _show(df):
-        """Styler needs a unique index and unique columns — always reset before styling."""
-        df = df.loc[:, ~df.columns.duplicated()].reset_index(drop=True)
-        st.dataframe(df.style.apply(_clr, subset=["P&L ₹", "Chg %", "Net P&L ₹"]).format(fmt),
+    def _show(df, money, pct=(), plain=()):
+        df = df.reset_index(drop=True)
+        fmt = {c: "{:+,.2f}" for c in money}
+        fmt.update({c: "{:+.2f}%" for c in pct})
+        fmt.update({c: "{:,.2f}" for c in plain})
+        st.dataframe(df.style.apply(_clr, subset=list(money) + list(pct)).format(fmt, na_rep="–"),
                      use_container_width=True, hide_index=True)
-    t_open, t_exit, t_all = st.tabs([f"🟢 Open ({len(o)})", f"🔴 Exited ({len(x)})", f"📋 All ({n_all})"])
+
+    t_sym, t_open, t_lots, t_day = st.tabs(
+        [f"📊 By symbol ({len(sym)})", f"🟢 Open ({len(o)})", f"✅ Closed lots ({len(lots)})", "🗓️ By day"])
+    with t_sym:
+        _show(sym, money=["Unrealized ₹", "Realized ₹", "Net P&L ₹"], plain=["Avg ₹", "LTP ₹", "STT ₹", "Other ₹"])
     with t_open:
         if o.empty:
             st.caption("No open positions.")
         else:
-            _show(o[ocols].sort_values("Chg %", ascending=False))
-    with t_exit:
-        if x.empty:
-            st.caption("No exited positions.")
+            _show(o.sort_values("Unrealized ₹", ascending=False),
+                  money=["Unrealized ₹"], pct=["Unreal %"],
+                  plain=["Qty", "Avg ₹", "LTP ₹", "Invested ₹", "Value ₹", "Sell charges ₹"])
+    with t_lots:
+        if lots.empty:
+            st.caption("No closed lots yet.")
         else:
-            _show(x[xcols])
-            st.caption("Exited rows are removed from the portfolio and shown exactly as reported in the file "
-                       "(Day Buy / Day Sell = entry / exit qty). Their P&L is included in Net P&L; charges are "
-                       "estimated as intraday (value = qty × LTP, since entry/exit values are not in the file).")
-    with t_all:
-        _show(pd.concat([o, x], ignore_index=True)[cols])
-    st.caption("Open positions = Qty and Avg ₹ from the file × live Kite holdings LTP (positions LTP if not in holdings). "
-               "All non-exit positions are assumed available in the Portfolio. "
-               "Today's Gain / Day Chg% use Kite holdings' previous close when matched.")
-    st.caption("💸 Charges are Zerodha equity estimates (NSE, not the contract note): quantity bought and sold the same day "
-               "is intraday — STT 0.025% on the sell side only, brokerage 0.03%, no DP charge; quantity still held is "
-               "delivery — STT 0.1% on the buy (and 0.1% again when sold), zero brokerage. Also counted: exchange "
+            _show(lots.drop(columns=["Close Date"]).sort_values("Sell Date", ascending=False),
+                  money=["P&L ₹"], plain=["Qty", "Buy ₹", "Sell ₹"])
+            st.caption("Each sell is matched to the oldest open buy (FIFO). Intraday = bought and sold the same day.")
+    with t_day:
+        _show(daily, money=["Realized ₹", "Net Realized ₹"], plain=["STT ₹", "Other ₹"])
+        st.caption("Realized ₹ is booked on the day the closing trade happened; charges are those incurred that day.")
+    st.caption("💸 Charges are Zerodha equity estimates (NSE, not the contract note): qty bought and sold the same day "
+               "is intraday — STT 0.025% on the sell, brokerage 0.03%, no DP charge; the rest is delivery — "
+               "STT 0.1% on buy and sell, zero brokerage, DP charge on the sell. Also counted: exchange "
                "0.00322%, SEBI ₹10/crore, stamp duty, 18% GST. STT is not rounded and the ₹20/order brokerage cap "
                "is not applied.")
 
@@ -937,9 +979,10 @@ def render():
         _input_mode_upload    = "upload"
         _account_names_upload = ["Uploaded"]
         st.markdown(
-            "Upload the **Positions export** (`Product, Instrument, Exchange, Side, Qty, Avg ₹, LTP ₹, "
-            "P&L ₹, Chg %, Day Buy, Day Sell`). Non-exit rows (LONG) are loaded into the portfolio; "
-            "CLOSED rows are treated as exits and shown in Position Tracking. \n\n"
+            "Upload the **Zerodha tradebook** CSV (`symbol, isin, trade_date, exchange, segment, series, "
+            "trade_type, auction, quantity, price, trade_id, order_id, order_execution_time`). "
+            "Open lots (FIFO) become the portfolio; Realized P&L, STT / charges, Unrealized P&L and Net P&L "
+            "are shown under **Trade P&L**. \n\n"
             "A simple CSV with a **`ticker`** column (optional `quantity`, `avg_cost`) also works."
         )
         _uploaded_file = st.file_uploader(
@@ -948,7 +991,7 @@ def render():
             label_visibility="collapsed",
         )
         _ticker_data_upload = None
-        _upload_track = None          # {"open": df, "exit": df} when a Positions export is uploaded
+        _upload_track = None          # trade P&L tables when a Zerodha tradebook is uploaded
         if _uploaded_file is not None:      # remember it: the uploader resets when another source is chosen
             st.session_state["pf_upload_bytes"] = _uploaded_file.getvalue()
             st.session_state["pf_upload_name"] = _uploaded_file.name
@@ -969,19 +1012,16 @@ def render():
                 _ticker_col = next(
                     (c for c in ["ticker", "symbol", "nse_symbol"] if c in udf.columns), None
                 )
-                if {"instrument", "side"}.issubset(udf.columns):
-                    # Positions export: LONG rows → portfolio, CLOSED rows → exits (tracking)
-                    import re as _re
-                    _m = _re.search(r"(\d{4}-\d{2}-\d{2})", getattr(_uploaded_file, "name", "") or "")
-                    _entry = (datetime.datetime.strptime(_m.group(1), "%Y-%m-%d").date() if _m else None)
+                if {"symbol", "trade_type", "quantity", "price"}.issubset(udf.columns):
+                    # Zerodha tradebook: FIFO-match the trades → open lots (portfolio) + P&L tables
                     _live, _live_err = _live_price_map()
-                    _ticker_data_upload, _upload_track = _parse_positions_export(
-                        udf, live=_live, entry_date=_entry)
-                    if _upload_track is not None:
+                    _ticker_data_upload, _upload_track = _analyze_tradebook(udf, live=_live)
+                    if _upload_track is None:
+                        st.warning("No valid equity trades found in the tradebook.")
+                    else:
                         _upload_track["meta"]["errors"] = _live_err
-                    if not _ticker_data_upload:
-                        st.warning("No open (non-exit) positions found in the uploaded file.")
-                        _ticker_data_upload = None
+                        if not _ticker_data_upload:
+                            st.warning("No open positions left in the tradebook (everything is sold).")
                 elif _ticker_col is None:
                     st.error("CSV must have a column named `ticker`, `symbol`, or `nse_symbol`.")
                 else:
@@ -1028,7 +1068,10 @@ def render():
         account_names = list(st.session_state.all_holdings.keys())
     else:
         if input_mode == "upload":
-            st.info("Upload a CSV above to continue.")
+            if _upload_track is not None:          # tradebook fully sold: still show the P&L
+                _render_trade_pnl(_upload_track)
+            else:
+                st.info("Upload a CSV above to continue.")
         st.stop()
 
     # ── Load ticker metadata from DuckDB (industry, market_cap, p_e, dividend_yield) ──
@@ -1037,8 +1080,7 @@ def render():
     ticker_meta = {}
     if _HAS_COMMON:
         try:
-            conn = get_duckdb_connection()
-            initialize_views_or_mock(conn)
+            conn = get_connection()
             sql_stmt = f"""
                 SELECT nse_symbol AS matched_symbol,
                     industry, market_cap, market_cap_amt, p_e, dividend_yield
@@ -1216,7 +1258,7 @@ def render():
         st.divider()
 
     if input_mode == "upload" and _upload_track is not None:
-        _render_position_tracking(_upload_track)
+        _render_trade_pnl(_upload_track)
         st.divider()
 
     # ── PORTFOLIO MOVEMENT (period selector) ──────────────────────────────────
