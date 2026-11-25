@@ -1,0 +1,112 @@
+[
+  {
+    "id": "64657e52",
+    "text": "Use ADAM optimizer to find out how to do BUY, SELL for a ticker.",
+    "priority": "Medium",
+    "due": null,
+    "note": "It is Based on (Stock movement, Sector movement,  NIFTY Movement,  Skip for 1d  allowed)",
+    "done": false,
+    "created": "2026-11-23T18:26:20",
+    "completed": null
+  },
+  {
+    "id": "0613c12f",
+    "text": "Add all stocks from (NIFTYBEES.NS, NIFTYMIDCAP150.NS , NIFTYSMLCAP250.NS).",
+    "priority": "Medium",
+    "due": null,
+    "note": "Also manage a weight in FASTA for %ge allocation from these. We can do an ADAM training here.",
+    "done": false,
+    "created": "2026-11-23T18:28:36",
+    "completed": null
+  },
+  {
+    "id": "fd92e20c",
+    "text": "Find out best starting/ending time for the trade. 9:30 or 10:30",
+    "priority": "Medium",
+    "due": null,
+    "note": "<p>Morning the volume might be small to give a true picture. How about starting after the market settles down.</p><p>Similarly the end time.</p>",
+    "done": false,
+    "created": "2026-11-23T18:35:33",
+    "completed": null
+  },
+  {
+    "id": "c1253010",
+    "text": "Remove stock picking Bias by removing all stocks entered after 2017 to NIFTY50+150+250",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": false,
+    "created": "2026-11-23T18:37:44",
+    "completed": null
+  },
+  {
+    "id": "b6aa3141",
+    "text": "Setup DCB Bank’s sweep facility",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": false,
+    "created": "2026-11-23T18:39:39",
+    "completed": null
+  },
+  {
+    "id": "2bc767da",
+    "text": "Explore intraday trade profit. It will lower the risk.",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": false,
+    "created": "2026-11-24T08:34:54",
+    "completed": null
+  },
+  {
+    "id": "33bdb608",
+    "text": "Calculate Sector using Zerodha listing.",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": false,
+    "created": "2026-11-24T08:36:08",
+    "completed": null
+  },
+  {
+    "id": "85b320de",
+    "text": "GTT  f ( interval from aquisition, Stock) - Model it.",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": false,
+    "created": "2026-11-24T13:04:31",
+    "completed": null
+  },
+  {
+    "id": "2ec5ba3c",
+    "text": "Remove Auction Stocks",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": true,
+    "created": "2026-11-24T13:18:06",
+    "completed": "2026-11-24T13:21:14"
+  },
+  {
+    "id": "2741aa08",
+    "text": "Remove low liquidity stocks.",
+    "priority": "Medium",
+    "due": null,
+    "note": "",
+    "done": true,
+    "created": "2026-11-24T13:18:16",
+    "completed": "2026-11-24T13:21:11"
+  },
+  {
+    "id": "c593ee95",
+    "text": "Remove low liquidity stocks",
+    "priority": "Medium",
+    "due": null,
+    "note": "<p>select * from NIFTY500.csv as a where Size &gt; 50 order by Size desc ;</p><p>order_size / market_cap &lt; 25%</p>",
+    "done": false,
+    "created": "2026-11-24T13:22:53",
+    "completed": null
+  }
+]

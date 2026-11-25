@@ -1,0 +1,112 @@
+Macro Sector,Sector Group,Sector
+Financial Services,Banking & Lending,Banks
+Financial Services,Banking & Lending,Finance
+Financial Services,Banking & Lending,Finance - Lending
+Financial Services,Banking & Lending,Finance - NBFC
+Financial Services,Banking & Lending,Housing Finance
+Financial Services,Banking & Lending,Microfinance
+Financial Services,Capital Markets & Wealth,Asset Management
+Financial Services,Capital Markets & Wealth,Depository Services
+Financial Services,Capital Markets & Wealth,Finance - Investment
+Financial Services,Capital Markets & Wealth,Fintech
+Financial Services,Capital Markets & Wealth,Ratings
+Financial Services,Capital Markets & Wealth,Stock Broking
+Financial Services,Insurance,Insurance
+Capital Goods & Industrials,Engineering & Heavy Equipment,Bearings
+Capital Goods & Industrials,Engineering & Heavy Equipment,Castings & Forgings
+Capital Goods & Industrials,Engineering & Heavy Equipment,Compressors / Pumps
+Capital Goods & Industrials,Engineering & Heavy Equipment,Construction Vehicles
+Capital Goods & Industrials,Engineering & Heavy Equipment,Diesel Engines
+Capital Goods & Industrials,Engineering & Heavy Equipment,Electrodes & Welding
+Capital Goods & Industrials,Engineering & Heavy Equipment,Engineering - Construction
+Capital Goods & Industrials,Engineering & Heavy Equipment,Engineering - Industrial Equipments
+Capital Goods & Industrials,Engineering & Heavy Equipment,Engineering Consultancy
+Capital Goods & Industrials,Engineering & Heavy Equipment,Forgings
+Capital Goods & Industrials,Engineering & Heavy Equipment,Railways
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Batteries
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Cables
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",EMS
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Electric Equipment
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Electronics
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Solar Panels
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Transformers
+Capital Goods & Industrials,"Electrical, Electronics & Energy Hardware",Wires & Cables
+Capital Goods & Industrials,Aerospace & Defense,Aerospace & Defense
+Capital Goods & Industrials,Materials & Recycling,Recycling
+Capital Goods & Industrials,Materials & Recycling,Refractories
+Automobiles & Auto Components,Vehicles,Automobiles
+Automobiles & Auto Components,Vehicles,Commercial Vehicle
+Automobiles & Auto Components,Vehicles,Passenger Vehicle
+Automobiles & Auto Components,Vehicles,Two & Three Wheelers
+Automobiles & Auto Components,Auto Ancillary & Mobility,Auto Ancillary
+Automobiles & Auto Components,Auto Ancillary & Mobility,Cycles
+Automobiles & Auto Components,Auto Ancillary & Mobility,Tyres
+Healthcare,Pharmaceuticals & CDMO,CDMO
+Healthcare,Pharmaceuticals & CDMO,Pharmaceuticals
+Healthcare,Care & Diagnostics,Diagnostics
+Healthcare,Care & Diagnostics,Hospital & Healthcare
+Healthcare,Devices,Medical Equipment
+Consumer Discretionary & Durables,Durables & Home Improvement,Air Conditioners
+Consumer Discretionary & Durables,Durables & Home Improvement,Consumer Durables
+Consumer Discretionary & Durables,Durables & Home Improvement,Glass
+Consumer Discretionary & Durables,Durables & Home Improvement,Paints
+Consumer Discretionary & Durables,Durables & Home Improvement,Tiles & Sanitaryware
+Consumer Discretionary & Durables,"Lifestyle, Apparel & Retail",Diamond & Jewellery
+Consumer Discretionary & Durables,"Lifestyle, Apparel & Retail",Footwear
+Consumer Discretionary & Durables,"Lifestyle, Apparel & Retail",Household & Personal Products
+Consumer Discretionary & Durables,"Lifestyle, Apparel & Retail",Printing & Stationery
+Consumer Discretionary & Durables,"Lifestyle, Apparel & Retail",Retailing
+Consumer Discretionary & Durables,Hospitality & Leisure,Hotels & Restaurants
+Consumer Discretionary & Durables,Hospitality & Leisure,Restaurants
+Consumer Discretionary & Durables,Hospitality & Leisure,Travel Services
+Fast Moving Consumer Goods (FMCG),Food & Beverages,Alcoholic Beverages
+Fast Moving Consumer Goods (FMCG),Food & Beverages,Aquaculture
+Fast Moving Consumer Goods (FMCG),Food & Beverages,Consumer Food
+Fast Moving Consumer Goods (FMCG),Food & Beverages,Edible Oil
+Fast Moving Consumer Goods (FMCG),Food & Beverages,Sugar
+Fast Moving Consumer Goods (FMCG),Food & Beverages,Tea/Coffee
+Fast Moving Consumer Goods (FMCG),Tobacco,Tobacco
+Information Technology & Software,Software & IT,IT - Software
+Information Technology & Software,Software & IT,Software Platform
+Information Technology & Software,Software & IT,Software Services
+Chemicals & Agriculture,Chemicals,Carbon Black
+Chemicals & Agriculture,Chemicals,Chemicals
+Chemicals & Agriculture,Chemicals,Industrial Gases & Fuels
+Chemicals & Agriculture,Agro & Fertilizers,Agrochemicals
+Chemicals & Agriculture,Agro & Fertilizers,Fertilizers
+Chemicals & Agriculture,Agro & Fertilizers,Pesticides
+Metals & Mining,Iron & Steel,Steel & Iron Products
+Metals & Mining,Iron & Steel,Steel Pipes
+Metals & Mining,Iron & Steel,Steel/Sponge /Pig Iron
+Metals & Mining,Non-Ferrous & Mining,Aluminium
+Metals & Mining,Non-Ferrous & Mining,Metal - Non Ferrous
+Metals & Mining,Non-Ferrous & Mining,Mining & Minerals
+Energy & Oil & Gas,"Oil, Gas & Refining",Energy
+Energy & Oil & Gas,"Oil, Gas & Refining",Gas Transmission
+Energy & Oil & Gas,"Oil, Gas & Refining",Lubricants
+Energy & Oil & Gas,"Oil, Gas & Refining",Oil Exploration
+Energy & Oil & Gas,"Oil, Gas & Refining",Refineries
+Energy & Oil & Gas,Power,Power Generation
+"Services, Logistics & Infrastructure",Transport & Logistics,Airport Management Services
+"Services, Logistics & Infrastructure",Transport & Logistics,Aviation
+"Services, Logistics & Infrastructure",Transport & Logistics,Courier Services
+"Services, Logistics & Infrastructure",Transport & Logistics,Logistics
+"Services, Logistics & Infrastructure",Transport & Logistics,Port
+"Services, Logistics & Infrastructure",Transport & Logistics,Shipping
+"Services, Logistics & Infrastructure",Commercial & Advisory Services,Business Support
+"Services, Logistics & Infrastructure",Commercial & Advisory Services,Educational Institutions
+"Services, Logistics & Infrastructure",Commercial & Advisory Services,Professional Services
+"Services, Logistics & Infrastructure",Commercial & Advisory Services,Services
+"Services, Logistics & Infrastructure",Commercial & Advisory Services,Trading
+"Services, Logistics & Infrastructure",Real Estate & Building Materials,Cement
+"Services, Logistics & Infrastructure",Real Estate & Building Materials,Plastic Pipes
+"Services, Logistics & Infrastructure",Real Estate & Building Materials,Real Estate
+Telecommunication & Media,Telecom,Telecom
+Telecommunication & Media,Telecom,Telecom - Equipment
+Telecommunication & Media,Telecom,Telecom - Infrastructure
+Telecommunication & Media,Media,Media & Entertainment
+Telecommunication & Media,Media,TV Broadcasting & Software Production
+Textiles,Textiles,Textile
+Textiles,Textiles,Textile - Spinning
+Broad / Composite,Composite & Index,Diversified
+Broad / Composite,Composite & Index,Index
