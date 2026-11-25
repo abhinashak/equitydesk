@@ -415,11 +415,41 @@ def _num(series, default=0.0):
     return pd.to_numeric(series, errors="coerce").fillna(default)
 
 
-def _live_price_map(force: bool = False, ttl: int = 60) -> tuple:
-    """Live prices for tracking → ({SYMBOL: {last_price, close_price, day_change_pct, src}}, errors).
+def _fetch_live_holdings(errors: list) -> dict:
+    """Fresh Kite holdings per connected account ({account: [holding, ...]}).
 
-    1. Kite POSITIONS LTP (net overrides day) for every connected account   → src "Kite positions"
-    2. Zerodha holdings last_price for symbols that are not in positions    → src "Holdings"
+    Re-fetched from Kite so day change is real-time; falls back to the copy already in
+    session state for any account that cannot be fetched.
+    """
+    fresh = {}
+    accounts = st.session_state.get("accounts") or []
+    fetch_holdings = None
+    if accounts:
+        try:
+            from ui.pages.trade.trade_utils import fetch_holdings
+        except Exception as e:                               # pragma: no cover
+            errors.append(f"fetch_holdings unavailable: {e}")
+    if fetch_holdings is not None:
+        for acc in accounts:
+            tok = acc.get("token")
+            if not tok:
+                continue
+            try:
+                fresh[acc.get("name", "?")] = fetch_holdings(tok) or []
+            except Exception as e:
+                errors.append(f"{acc.get('name', '?')} holdings: {e}")
+    for name, hlds in (st.session_state.get("all_holdings") or {}).items():
+        fresh.setdefault(name, hlds)                         # session copy as fallback
+    return fresh
+
+
+def _live_price_map(force: bool = False, ttl: int = 60) -> tuple:
+    """Live prices + day change → ({SYMBOL: {last_price, close_price, day_change_pct, src}}, errors).
+
+    1. Kite HOLDINGS (current portfolio) — last_price, previous close and day change %
+       for every holding                                                  → src "Kite holdings"
+    2. Kite POSITIONS LTP for symbols that are not in holdings (net overrides day)
+                                                                          → src "Kite positions"
     Cached in session state for `ttl` seconds; `force=True` re-fetches.
     """
     cache = st.session_state.get("pf_live_cache")
@@ -427,12 +457,27 @@ def _live_price_map(force: bool = False, ttl: int = 60) -> tuple:
         return cache["map"], cache["errors"]
 
     out, errors = {}, []
+
+    # 1) holdings — the source of truth for day change
+    for hlds in _fetch_live_holdings(errors).values():
+        for h in hlds:
+            sym = str(h.get("tradingsymbol", "")).strip().upper()
+            lp = float(h.get("last_price") or 0)
+            if not sym or lp <= 0 or sym in out:
+                continue
+            cp = float(h.get("close_price") or 0)
+            pct = float(h.get("day_change_percentage") or 0)
+            if pct == 0 and cp > 0:
+                pct = (lp - cp) / cp * 100
+            out[sym] = {"last_price": lp, "close_price": cp,
+                        "day_change_pct": pct, "src": "Kite holdings"}
+
+    # 2) positions — only for symbols holdings does not have (e.g. bought today, not yet settled)
     try:
         from ui.pages.trade.trade_utils import fetch_positions
     except Exception as e:                                   # pragma: no cover
         fetch_positions = None
         errors.append(f"fetch_positions unavailable: {e}")
-
     if fetch_positions is not None:
         for acc in (st.session_state.get("accounts") or []):
             tok = acc.get("token")
@@ -446,22 +491,87 @@ def _live_price_map(force: bool = False, ttl: int = 60) -> tuple:
             for row in (pos.get("day") or []) + (pos.get("net") or []):      # net overrides day
                 sym = str(row.get("tradingsymbol", "")).strip().upper()
                 lp = float(row.get("last_price") or 0)
-                if sym and lp > 0:
+                if sym and lp > 0 and (sym not in out or out[sym]["src"] == "Kite positions"):
                     cp = float(row.get("close_price") or 0)
                     out[sym] = {"last_price": lp, "close_price": cp,
                                 "day_change_pct": ((lp - cp) / cp * 100) if cp > 0 else 0.0,
                                 "src": "Kite positions"}
-    for hlds in (st.session_state.get("all_holdings") or {}).values():
-        for h in hlds:
-            sym = str(h.get("tradingsymbol", "")).strip().upper()
-            lp = float(h.get("last_price") or 0)
-            if sym and lp > 0 and sym not in out:
-                out[sym] = {"last_price": lp,
-                            "close_price": float(h.get("close_price") or 0),
-                            "day_change_pct": float(h.get("day_change_percentage") or 0),
-                            "src": "Holdings"}
     st.session_state["pf_live_cache"] = {"ts": time.time(), "map": out, "errors": errors}
     return out, errors
+
+
+# ── Real-time "today" panel (File Upload mode) ────────────────────────────────
+LIVE_REFRESH_OPTIONS = {"Off": 0, "10s": 10, "30s": 30, "60s": 60}
+
+
+def _live_today_body(qty_map: dict) -> None:
+    """Today's status for every uploaded ticker, straight from Kite holdings (re-runs on a timer)."""
+    live, errs = _live_price_map(ttl=5)          # ttl dedups bursts; timer is >= 10s
+    rows, missing = [], []
+    for sym, qty in qty_map.items():
+        L = live.get(str(sym).upper())
+        if not L or L["close_price"] <= 0:
+            missing.append(sym)
+            continue
+        lp, cp = L["last_price"], L["close_price"]
+        rows.append({"Symbol": sym, "Qty": qty, "Prev Close ₹": cp, "LTP ₹": lp,
+                     "Day Chg%": L["day_change_pct"], "Today's Gain ₹": qty * (lp - cp),
+                     "Source": L["src"]})
+
+    _ts = (st.session_state.get("pf_live_cache") or {}).get("ts")
+    st.caption(f"🕒 Last updated: **{datetime.datetime.fromtimestamp(_ts):%H:%M:%S}**"
+               if _ts else "🕒 Not updated yet")
+    for e in errs or []:
+        st.caption(f"⚠️ Kite fetch: {e}")
+    if not live:
+        st.warning("No Kite account connected — cannot read day change. Connect your account to see live status.")
+        return
+    if not rows:
+        st.info("None of the uploaded tickers were found in your Kite holdings / positions.")
+        return
+
+    d = pd.DataFrame(rows).sort_values("Day Chg%", ascending=False).reset_index(drop=True)
+    prev_val = float((d["Qty"] * d["Prev Close ₹"]).sum())
+    gain = float(d["Today's Gain ₹"].sum())
+    up, down = int((d["Day Chg%"] > 0).sum()), int((d["Day Chg%"] < 0).sum())
+    best, worst = d.iloc[0], d.iloc[-1]
+
+    m = st.columns(5)
+    m[0].metric("Today's Gain", f"₹{gain:,.0f}", f"{gain / prev_val * 100:+.2f}%" if prev_val else "")
+    m[1].metric("Advancers / Decliners", f"{up} / {down}", f"{len(d)} tickers", delta_color="off")
+    m[2].metric("🏆 Top", best["Symbol"], f"{best['Day Chg%']:+.2f}%")
+    m[3].metric("📉 Bottom", worst["Symbol"], f"{worst['Day Chg%']:+.2f}%")
+    m[4].metric("Live coverage", f"{len(d)}/{len(qty_map)}", delta_color="off")
+
+    def _clr(col):
+        return ["color:#15803d" if v > 0 else "color:#b91c1c" if v < 0 else "" for v in col]
+    st.dataframe(
+        d.style.apply(_clr, subset=["Day Chg%", "Today's Gain ₹"])
+        .format({"Qty": "{:,.0f}", "Prev Close ₹": "{:,.2f}", "LTP ₹": "{:,.2f}",
+                 "Day Chg%": "{:+.2f}%", "Today's Gain ₹": "{:+,.0f}"}),
+        use_container_width=True, hide_index=True)
+    if missing:
+        st.caption(f"⚠️ No Kite data for: {', '.join(missing)}")
+    st.caption("Outside market hours this shows the last session's move.")
+
+
+def _render_live_today_status(qty_map: dict) -> None:
+    """Header + auto-refresh controls; the table itself refreshes on a timer via st.fragment."""
+    st.subheader("⚡ Today's Live Status")
+    c1, c2 = st.columns([5, 1])
+    choice = c1.radio("Auto-refresh", list(LIVE_REFRESH_OPTIONS), index=1, horizontal=True,
+                      key="pf_live_every")
+    if c2.button("🔄 Refresh now", key="pf_live_refresh_now", use_container_width=True):
+        _live_price_map(force=True)
+    every = LIVE_REFRESH_OPTIONS[choice] or None
+    frag = getattr(st, "fragment", None)
+    if frag is None:                              # old Streamlit: no timer, refresh via button
+        _live_today_body(qty_map)
+        return
+    try:
+        frag(run_every=every)(_live_today_body)(qty_map)
+    except TypeError:                             # Streamlit < 1.37: fragment without run_every
+        frag(_live_today_body)(qty_map)
 
 
 def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=None):
@@ -469,8 +579,8 @@ def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=N
 
     Non-exit rows (Side != CLOSED and Qty > 0) are the portfolio holdings.
     CLOSED / Qty == 0 rows are exits; their Chg % is recomputed as 100*P&L/(LTP*Day Buy - P&L).
-    Qty and Avg ₹ come from the file; the current price comes from Kite positions LTP
-    (fallback: Zerodha holdings, then the file's LTP, flagged "File (stale)").
+    Qty and Avg ₹ come from the file; the current price + previous close + day change come from
+    Kite HOLDINGS (fallback: Kite positions, then the file's LTP, flagged "File (stale)").
     Exits (CLOSED) use the file's P&L ₹, LTP ₹, Day Buy/Sell; Chg % comes from the formula above.
     """
     live = live or {}
@@ -615,7 +725,7 @@ def _render_position_tracking(trk: dict) -> None:
         rc1.warning("No Kite account connected — prices below are the file's LTP (stale). "
                     "Connect your account to track live.")
     elif meta.get("stale"):
-        rc1.warning(f"{len(meta['stale'])} of {meta['total_n']} open symbols are in neither Kite positions nor "
+        rc1.warning(f"{len(meta['stale'])} of {meta['total_n']} open symbols are in neither Kite holdings nor "
                     f"holdings and use the file's LTP: {', '.join(meta['stale'])}")
     else:
         rc1.success(f"🟢 Live prices for all {meta.get('live_n', 0)} open positions ({_src}). "
@@ -683,9 +793,9 @@ def _render_position_tracking(trk: dict) -> None:
                        "estimated as intraday (value = qty × LTP, since entry/exit values are not in the file).")
     with t_all:
         _show(pd.concat([o, x], ignore_index=True)[cols])
-    st.caption("Open positions = Qty and Avg ₹ from the file × live Kite positions LTP (holdings LTP if not in positions). "
+    st.caption("Open positions = Qty and Avg ₹ from the file × live Kite holdings LTP (positions LTP if not in holdings). "
                "All non-exit positions are assumed available in the Portfolio. "
-               "Today's Gain / Day Chg% use the holdings' previous close when matched.")
+               "Today's Gain / Day Chg% use Kite holdings' previous close when matched.")
     st.caption("💸 Charges are Zerodha equity estimates (NSE, not the contract note): quantity bought and sold the same day "
                "is intraday — STT 0.025% on the sell side only, brokerage 0.03%, no DP charge; quantity still held is "
                "delivery — STT 0.1% on the buy (and 0.1% again when sold), zero brokerage. Also counted: exchange "
@@ -877,6 +987,7 @@ def render():
                 else:
                     udf["_sym"] = udf[_ticker_col].str.strip().str.upper()
                     udf["_sym"] = udf["_sym"].str.replace(r"\.(NS|BO)$", "", regex=True)
+                    _live, _live_err = _live_price_map()       # day change from Kite holdings
                     _ticker_data_upload = {}
                     for _, row in udf.iterrows():
                         sym = row["_sym"]
@@ -884,11 +995,19 @@ def render():
                             continue
                         qty      = float(row["quantity"]) if "quantity" in row and pd.notna(row["quantity"]) else 1.0
                         avg_cost = float(row["avg_cost"])  if "avg_cost"  in row and pd.notna(row["avg_cost"])  else 0.0
+                        L = _live.get(sym)
                         _ticker_data_upload[sym] = {
-                            "last_price": 0, "close_price": 0,
-                            "day_change_pct": 0, "avg_cost": avg_cost,
+                            "last_price":     L["last_price"]     if L else 0,
+                            "close_price":    L["close_price"]    if L else 0,
+                            "day_change_pct": L["day_change_pct"] if L else 0,
+                            "avg_cost": avg_cost,
                             "Uploaded": qty,
                         }
+                    _no_live = [k for k in _ticker_data_upload if k not in _live]
+                    if not _live:
+                        st.warning("No Kite account connected — day change will show as 0.")
+                    elif _no_live:
+                        st.caption(f"⚠️ Not found in Kite holdings/positions: {', '.join(_no_live)}")
                     if not _ticker_data_upload:
                         st.warning("No valid tickers found in the uploaded file.")
                         _ticker_data_upload = None
@@ -1091,6 +1210,10 @@ def render():
                        delta_color="normal")
 
     st.divider()
+
+    if input_mode == "upload":
+        _render_live_today_status(holdings_qty)
+        st.divider()
 
     if input_mode == "upload" and _upload_track is not None:
         _render_position_tracking(_upload_track)
