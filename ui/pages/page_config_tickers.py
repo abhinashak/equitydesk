@@ -6,7 +6,7 @@ Sector choices come from config/sectors_hierarchy.csv via SectorHierarchy:
     • pick a Sector        → Sector Group + Macro Sector auto-populate
     • pick a Sector Group  → Macro Sector auto-populates
     • any field can still be overwritten manually afterwards
-market_cap_segment is a dropdown: smallcap250 / midcap150 / nifty50 / NULL.
+market_cap is a dropdown: smallcap250 / midcap150 / nifty50 / NULL.
 
 Required addition in bll/config_service.py (one line, delegates to the DAL):
     def get_sector_hierarchy(self) -> SectorHierarchy:
@@ -413,7 +413,7 @@ def render():
         c2.text_input("ticker (Screener symbol) *", key="add_ticker", placeholder="ZYDUSWELL")
         c1.text_input("Yahoo Symbol", key="add_yahoo",
                       placeholder="default: <ticker>.NS")
-        c2.selectbox("market_cap_segment", seg_opts, key="add_seg", format_func=_none_label)
+        c2.selectbox("market_cap", seg_opts, key="add_seg", format_func=_none_label)
 
         st.caption("Pick a Sector to auto-fill its Sector Group and Macro Sector; "
                    "any of the three can be overridden afterwards.")

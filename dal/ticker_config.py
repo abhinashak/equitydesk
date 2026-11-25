@@ -28,7 +28,7 @@ class TickerCol:
     TICKER        = "ticker"
     SECTOR_GROUP  = "sector_group"
     MACRO_SECTOR  = "macro_sector"
-    SEGMENT       = "market_cap_segment"
+    SEGMENT       = "market_cap"
     MCAP_CR       = "market_cap_cr"
     FII_PCT       = "fii_hold_pct"
     PUBLIC_PCT    = "public_hold_pct"
