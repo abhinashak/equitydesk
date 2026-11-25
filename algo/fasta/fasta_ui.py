@@ -56,6 +56,7 @@ class Params:
     # Data window
     start_date: str = "2017-04-01"
     cutoff_date: str = ""
+    picks_training_cutoff: str = ""   # empty = auto (cutoff_date); or explicit YYYY-MM-DD (e.g. Friday/Sunday or mid-week)
     restrict_tickers: tuple = ()      # bare upper-case symbols; empty = analyse the whole market universe
     exclude_tickers: tuple = ()       # bare upper-case symbols never traded or picked (applied after restrict_tickers)
 
@@ -516,6 +517,32 @@ class _StrategyRun:
     trades: list = field(default_factory=list)
 
 
+def resolve_picks_window(df, p: Params):
+    """Resolve the entry week and completed training cutoff for PICKS without intra-week look-ahead.
+
+    - If `p.picks_training_cutoff` is provided (e.g. Friday, Saturday/Sunday weekend, or any day in the
+      running week), anchors to the last completed Friday on or before that date (`weekday`: Mon=0..Sun=6).
+    - Passing Saturday or Sunday includes the completed Friday week (and weekend shadow updates),
+      targeting the following Monday's entry window.
+    - Passing any day of the running Mon–Thu week resolves back to the prior Friday so live intra-week
+      bars never mutate `stock_in_shadow` or pick prices.
+    """
+    latest_data_date = pd.Timestamp(pd.to_datetime(df['last_date']).max()).normalize()
+    if getattr(p, "picks_training_cutoff", ""):
+        anchor_day = pd.Timestamp(p.picks_training_cutoff).normalize()
+    elif getattr(p, "cutoff_date", ""):
+        anchor_day = pd.Timestamp(p.cutoff_date).normalize()
+    else:
+        anchor_day = latest_data_date
+
+    days_since_friday = (anchor_day.weekday() - 4) % 7
+    last_completed_friday = anchor_day - pd.Timedelta(days=days_since_friday)
+    target_entry_week = last_completed_friday + pd.Timedelta(days=3)  # Entry Monday
+    signal_week_end = target_entry_week + pd.Timedelta(days=3)      # Signal Thursday
+    is_next_week = last_completed_friday >= latest_data_date
+    return last_completed_friday, target_entry_week, signal_week_end, is_next_week
+
+
 def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
     """Back-test with point-in-time inputs and completed-week outcomes only."""
     if df.empty:
@@ -556,6 +583,8 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
     completed_weeks = set(pd.Timestamp(w).normalize() for w in all_weeks[:-1])
     if latest_week_complete:
         completed_weeks.add(latest_week)
+
+    last_completed_friday, target_entry_week, _, _ = resolve_picks_window(work, p)
 
     has_volume = 'avg_volume' in work.columns
     median_volume_by_week = (
@@ -611,6 +640,12 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
         if progress and w_idx % 3 == 0:
             progress(w_idx / max(len(all_weeks), 1), f"Simulating week {w_idx + 1} of {len(all_weeks)}…")
         week_dt = pd.Timestamp(w_date).normalize()
+
+        # Stop strictly before `target_entry_week` and skip incomplete weeks so intra-week
+        # price movements cannot mutate `stock_in_shadow` before picks are generated.
+        if week_dt >= target_entry_week or week_dt not in completed_weeks:
+            continue
+
         for run in runs.values():
             run.week_pnls.clear()
             run.shadow_pnls.clear()
@@ -631,9 +666,12 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
             if not np.isfinite(buy_price) or buy_price <= 0:
                 continue
             buy_date = pd.Timestamp(tdict['first_dates'][i])
+            next_week_dt = week_dt + pd.Timedelta(days=7)
             has_next_week_row = (
                     i + 1 < len(tdict['dates'])
-                    and pd.Timestamp(tdict['dates'][i + 1]).normalize() == week_dt + pd.Timedelta(days=7)
+                    and pd.Timestamp(tdict['dates'][i + 1]).normalize() == next_week_dt
+                    and next_week_dt < target_entry_week
+                    and next_week_dt in completed_weeks
             )
             holding_lows = tdict['lows'][i:i + (2 if has_next_week_row else 1)]
             week_low = float(np.nanmin(holding_lows)) if np.isfinite(holding_lows).any() else np.nan
@@ -664,7 +702,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
                 elif daily_stops is not None:
                     exit_reason = "STOCK_STOP_LOSS_NODATA"
             else:
-                if i + 1 < len(tdict['closes']):
+                if has_next_week_row:
                     sell_price = tdict['closes'][i + 1]
                     sell_date = pd.Timestamp(tdict['last_dates'][i + 1])
                 else:
@@ -684,13 +722,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
 
             ctx = TickerWeek(ticker, week_dt, tdict['chars'][:i], prior_volume)
             liquidity_ok = passes_liquidity(tdict, i)
-            next_week = week_dt + pd.Timedelta(days=7)
-            has_complete_exit = (
-                    next_week in completed_weeks
-                    and week_dt in completed_weeks
-                    and i + 1 < len(tdict['dates'])
-                    and pd.Timestamp(tdict['dates'][i + 1]).normalize() == next_week
-            )
+            has_complete_exit = has_next_week_row
             for strat in strategies:
                 run = runs[strat.key]
                 if run.halted:
@@ -719,27 +751,42 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
             elif run.week_pnls and sum(run.week_pnls) / len(run.week_pnls) <= p.portfolio_halt_pct:
                 run.halted = True
 
+    # Generate PICKS strictly from completed history prior to `target_entry_week`
     picks = []
-    latest_dt = pd.Timestamp(all_weeks[-1]).normalize()
+    expected_prior_week = target_entry_week - pd.Timedelta(days=7)
     for strat in strategies:
         if runs[strat.key].halted:
             continue
         for ticker, tdict in ticker_data.items():
             if ticker in stock_in_shadow:
                 continue
-            idx_match = np.where(tdict['dates'] == latest_dt.to_datetime64())[0]
-            if len(idx_match) == 0:
+            valid_idx = np.where(tdict['dates'] < target_entry_week.to_datetime64())[0]
+            if len(valid_idx) == 0:
                 continue
-            i = int(idx_match[0])
-            if i < p.min_history or not passes_liquidity(tdict, i):
+            last_i = int(valid_idx[-1])
+            last_week_dt = pd.Timestamp(tdict['dates'][last_i]).normalize()
+            if last_week_dt != expected_prior_week:
                 continue
-            sig = strat.visit(TickerWeek(ticker, latest_dt, tdict['chars'][:i], tdict['prior_volumes'][i]), p)
+
+            history_slice = tdict['chars'][:last_i + 1]
+            if len(history_slice) < p.min_history:
+                continue
+
+            if has_volume:
+                vol = tdict['volumes'][last_i]
+                med = median_volume_by_week.get(last_week_dt, np.nan)
+                if not (np.isfinite(vol) and np.isfinite(med) and vol >= med):
+                    continue
+            else:
+                vol = np.nan
+
+            sig = strat.visit(TickerWeek(ticker, target_entry_week, history_slice, vol), p)
             if sig.buy:
                 picks.append({
                     'ticker': ticker,
                     'strategy': strat.key,
-                    'entry_date': latest_dt.strftime('%Y-%m-%d'),
-                    'price': tdict['closes'][i],
+                    'entry_date': target_entry_week.strftime('%Y-%m-%d'),
+                    'price': float(tdict['closes'][last_i]),
                     'confidence': sig.confidence
                 })
 
@@ -954,12 +1001,7 @@ def analyze(p: Params, progress=None, log=lambda m: None):
 
     strategies = resolve_strategies(p.strategies)
     raw_trades, picks_df = run_simulation(df, daily_stops, strategies, p, progress)
-    wk_start, wk_end, is_next = pick_window(df)
-    prior_data = df[pd.to_datetime(df['w_date']).dt.normalize() < wk_start]
-    training_through = (
-        pd.to_datetime(prior_data['last_date']).max().normalize()
-        if not prior_data.empty else pd.NaT
-    )
+    training_through, wk_start, wk_end, is_next = resolve_picks_window(df, p)
     training_label = (
         f"training data available through {training_through:%a %Y-%m-%d}"
         if pd.notna(training_through) else "no prior-week training data available"
@@ -1252,9 +1294,22 @@ def _parameter_form():
                     help="Never traded or picked, in the back-test and in the picks. .NS / .BO is ignored. "
                          "Saved when you press Run analysis and remembered across sessions.")
             with t_data:
-                c1, c2 = st.columns(2)
+                c1, c2, c3 = st.columns(3)
                 start = c1.date_input("Start date", date(2017, 4, 1))
                 cutoff = c2.date_input("Cutoff date", date.today())
+                use_custom_picks = c3.checkbox(
+                    "Custom picks training cutoff",
+                    value=True,
+                    help="Anchor picks to the last completed Mon–Fri week on or before this date "
+                         "(e.g., Friday/Sunday weekend to include weekend shadow updates, or any day of the running week)."
+                )
+                picks_cutoff = c3.date_input(
+                    "Picks training cutoff",
+                    value=date.today(),
+                    disabled=not use_custom_picks,
+                    help="Friday or Saturday/Sunday includes that week's completed bars and shadow state; "
+                         "any mid-week date resolves to the prior Friday so live intra-week bars cannot leak."
+                )
                 held = _portfolio_symbols()
                 restrict = st.checkbox(
                     "Restrict to portfolio tickers", value=False, disabled=not held,
@@ -1280,7 +1335,9 @@ def _parameter_form():
             submitted = st.form_submit_button("▶ Run analysis", type="primary")
 
     p = Params(
-        start_date=start.isoformat(), cutoff_date=cutoff.isoformat(),
+        start_date=start.isoformat(),
+        cutoff_date=cutoff.isoformat(),
+        picks_training_cutoff=picks_cutoff.isoformat() if use_custom_picks else "",
         restrict_tickers=tuple(held) if (restrict and held) else (),
         confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap,
         equal_weight_basket=eq_basket, strategies=tuple(strategies),
@@ -1561,9 +1618,10 @@ def render():
         else:
             rp = Params(**res["params"])
             st.caption(f"Window {rp.start_date} → {rp.cutoff_date} · data through {res['data_through']:%Y-%m-%d} "
-                       f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
-                       f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
-                       f"· ₹{rp.weekly_capital:,.0f}/week"
+                       + (f"· picks cutoff {rp.picks_training_cutoff} " if rp.picks_training_cutoff else "")
+                       + f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
+                         f"· confidence ≥ {rp.confidence_cutoff:g}% · stop {rp.stop_loss_pct:+.2f}% "
+                         f"· ₹{rp.weekly_capital:,.0f}/week"
                        + (" · equal-weight basket" if rp.equal_weight_basket else " · strategy-weighted basket")
                        + (f" · portfolio only ({len(rp.restrict_tickers)} tickers)" if rp.restrict_tickers else "")
                        + (f" · {len(rp.exclude_tickers)} excluded" if rp.exclude_tickers else "")
