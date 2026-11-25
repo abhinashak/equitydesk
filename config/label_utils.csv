@@ -1,0 +1,21 @@
+key,message
+manual_help,"Enter NSE symbols separated by commas or newlines (e.g. RELIANCE, TCS, INFY)."
+manual_placeholder,"RELIANCE, TCS, INFY, HDFCBANK"
+manual_ticker_required,Enter at least one ticker symbol above to continue.
+upload_instructions,"Upload the Zerodha tradebook CSV (symbol, isin, trade_date, exchange, segment, series, trade_type, auction, quantity, price, trade_id, order_id, order_execution_time). Open lots (FIFO) become the portfolio; Realized P&L, STT / charges, Unrealized P&L and Net P&L are shown under Trade P&L.
+
+A simple CSV with a ticker column (optional quantity, avg_cost) also works."
+upload_csv_column_required,"CSV must have a column named ticker, symbol, or nse_symbol."
+upload_no_valid_trades,No valid equity trades found in the tradebook.
+upload_no_open_positions,No open positions left in the tradebook (everything is sold).
+upload_no_kite_day_change,No Kite account connected — day change will show as 0.
+upload_no_live_symbols,Not found in Kite holdings/positions: {symbols}
+upload_no_valid_tickers,No valid tickers found in the uploaded file.
+upload_parse_error,Could not parse CSV: {error}
+upload_no_data,Upload a CSV above to continue.
+upload_previous_file,Using previously uploaded file: {filename}
+kite_no_holdings,No portfolio holdings matched the matrix. Connect your broker or add holdings.
+kite_refresh_failed,Could not refresh from Kite — showing last known holdings. {errors}
+kite_refresh_success,Live holdings pulled from Kite.
+kite_pull_failed,Could not pull live holdings: {error}
+tradebook_no_connection,"No Kite account connected — open lots are valued at cost, so Unrealized P&L is 0. Connect your account for live prices."

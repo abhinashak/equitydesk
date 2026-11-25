@@ -243,3 +243,20 @@ def fetch_ticker_metadata(
             str(exc),
             )
         raise
+
+@lru_cache(maxsize=16)
+def _load_csv_table_cached(resolved_path: str) -> pd.DataFrame:
+    path = Path(resolved_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Configuration CSV not found: {path}")
+    return pd.read_csv(path, encoding="utf-8-sig")
+
+
+def load_csv_table(csv_path: str) -> pd.DataFrame:
+    """Load a configuration CSV once and return a fresh DataFrame copy.
+
+    Paths are resolved from the caller's working directory when relative.
+    The cache is keyed by the resolved path; restart the app after editing CSVs.
+    """
+    path = str(Path(csv_path).expanduser().resolve())
+    return _load_csv_table_cached(path).copy()
