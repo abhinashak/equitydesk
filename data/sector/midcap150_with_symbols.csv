@@ -1,0 +1,151 @@
+S.No.,Company,CMP Rs.,rising %,IV Rs.,momentum,Quality,growth,Debt / Eq,valuation,P/E,Mar Cap Rs.Cr.,FII Hold %,Chg in FII Hold %,Public Hold %,SYMBOL,URL
+1,Life Insurance,407.3,232.06,929.2,-4.26,16185.56,13.83,0.0,48.81,8.3,515234.31,1.55,1.11,2.28,LICI,https://www.screener.in/company/LICI/consolidated/
+2,ICICI AMC,2933.0,20.22,1543.54,,1618.94,16.62,0.0,6.12,40.96,144966.02,3.26,0.3,2.72,ICICIAMC,https://www.screener.in/company/ICICIAMC/
+3,B H E L,415.7,82.98,133.16,16.02,1281.15,28.51,0.22,20.47,50.29,144749.37,9.94,0.42,10.02,BHEL,https://www.screener.in/company/BHEL/consolidated/
+4,Billionbrains,216.46,34.22,186.96,22.81,1220.56,63.54,0.01,10.5,50.41,135798.27,10.9,4.01,48.23,GROWW,https://www.screener.in/company/GROWW/consolidated/
+5,Indian Hotels Co,906.0,16.8,285.4,28.99,1153.17,22.83,0.25,12.14,64.14,128962.96,22.12,0.41,15.31,INDHOTEL,https://www.screener.in/company/INDHOTEL/consolidated/
+6,Laurus Labs,2370.7,50.18,295.22,79.74,805.65,4.14,0.43,5.78,95.6,128091.82,30.84,2.84,29.85,LAURUSLABS,https://www.screener.in/company/LAURUSLABS/consolidated/
+7,Indian Bank,933.0,-83.72,1043.96,8.69,15835.87,22.44,10.95,79.48,9.51,125671.74,6.87,0.71,2.54,INDIANB,https://www.screener.in/company/INDIANB/consolidated/
+8,Lenskart Solut.,714.5,22.97,125.0,39.98,741.25,84.97,0.37,8.13,158.72,124306.36,18.26,5.5,36.99,LENSKART,https://www.screener.in/company/LENSKART/consolidated/
+9,Lodha Developers,1219.0,34.85,730.83,11.15,2090.13,44.18,0.41,24.32,28.01,121843.73,25.33,1.68,1.82,LODHA,https://www.screener.in/company/LODHA/consolidated/
+10,LG Electronics,1777.5,27.1,564.92,10.84,934.52,,0.05,8.89,62.69,120651.79,2.6,-0.53,3.62,LGEINDIA,https://www.screener.in/company/LGEINDIA/
+11,Marico,919.5,8.81,238.73,15.2,910.32,11.25,0.26,5.65,59.25,119558.23,22.25,-1.15,4.51,MARICO,https://www.screener.in/company/MARICO/consolidated/
+12,Meesho,253.11,,,,-444.58,14.86,0.01,,,117233.7,9.84,4.65,60.18,MEESHO,https://www.screener.in/company/MEESHO/consolidated/
+13,Aditya Birla Cap,415.8,21.82,265.12,13.55,6380.73,-0.34,4.62,41.37,25.55,113890.14,8.26,0.32,9.52,ABCAPITAL,https://www.screener.in/company/ABCAPITAL/consolidated/
+14,One 97,1730.6,8.83,359.04,30.5,255.53,23.24,0.02,15.7,132.58,111169.85,43.52,-4.57,26.96,PAYTM,https://www.screener.in/company/PAYTM/consolidated/
+15,Hero Motocorp,5535.0,105.44,4356.33,0.17,2461.3,22.61,0.06,26.64,18.19,110789.57,32.22,1.13,9.1,HEROMOTOCO,https://www.screener.in/company/HEROMOTOCO/consolidated/
+16,GMR Airports,102.32,,,2.23,,36.11,,,183.04,109083.11,22.95,1.21,4.77,GMRAIRPORT,https://www.screener.in/company/GMRAIRPORT/consolidated/
+17,Mankind Pharma,2615.1,36.58,1287.68,11.65,1367.81,16.93,0.31,18.45,46.32,108025.47,9.37,-0.08,2.46,MANKIND,https://www.screener.in/company/MANKIND/consolidated/
+18,United Spirits,1478.0,-3.79,315.99,4.27,775.27,17.49,0.05,10.12,59.29,107502.46,12.85,-0.04,12.83,UNITDSPR,https://www.screener.in/company/UNITDSPR/consolidated/
+19,GE Vernova T&D,4195.0,31.28,770.54,8.48,681.65,336.87,0.01,4.45,72.47,107412.98,19.16,-3.73,7.67,GVT&D,https://www.screener.in/company/GVT&D/
+20,Persistent Systems,6282.5,0.86,2883.86,11.39,964.25,24.91,0.07,10.46,55.71,104185.2,21.3,0.51,15.09,PERSISTENT,https://www.screener.in/company/PERSISTENT/consolidated/
+21,Aurobindo Pharma,1796.5,70.19,826.86,28.75,2526.33,18.92,0.22,42.09,25.47,103366.64,17.41,1.03,6.29,AUROPHARMA,https://www.screener.in/company/AUROPHARMA/consolidated/
+22,FSN E-Commerce,357.0,28.18,17.12,24.11,327.94,89.23,0.92,1.94,308.15,102292.92,15.65,1.92,9.92,NYKAA,https://www.screener.in/company/NYKAA/consolidated/
+23,Indus Towers,380.25,-4.13,293.19,-5.71,5999.53,34.29,0.56,46.46,14.11,100316.14,21.71,-1.49,4.07,INDUSTOWER,https://www.screener.in/company/INDUSTOWER/consolidated/
+24,Lloyds Metals,1700.1,93.23,4174.88,8.74,2977.52,62.38,1.42,22.39,18.27,95723.95,1.93,0.08,34.25,LLOYDSME,https://www.screener.in/company/LLOYDSME/consolidated/
+25,Coforge,2142.3,47.26,2101.72,28.91,1308.67,29.34,0.27,25.87,43.73,94917.36,24.75,0.44,31.47,COFORGE,https://www.screener.in/company/COFORGE/consolidated/
+26,Ashok Leyland,158.7,-6.0,70.53,-1.54,3786.03,33.47,4.85,18.22,24.63,93218.07,19.89,-0.78,11.89,ASHOKLEY,https://www.screener.in/company/ASHOKLEY/consolidated/
+27,JSW Energy,502.55,11.25,271.85,-6.53,3594.97,19.29,2.25,42.4,39.08,92141.67,10.91,-0.5,5.83,JSWENERGY,https://www.screener.in/company/JSWENERGY/consolidated/
+28,Multi Comm. Exc.,3581.6,241.0,1473.27,33.94,796.85,93.31,0.0,5.82,50.77,91327.88,27.06,-2.79,17.57,MCX,https://www.screener.in/company/MCX/consolidated/
+29,Shree Cement,25150.0,3.56,8130.06,-1.63,1545.89,8.89,0.09,28.06,57.31,90743.08,8.45,0.24,12.51,SHREECEM,https://www.screener.in/company/SHREECEM/consolidated/
+30,Lupin,1975.6,-24.48,1407.63,-8.0,3099.99,99.61,0.26,32.83,16.04,90342.81,23.28,0.86,6.08,LUPIN,https://www.screener.in/company/LUPIN/consolidated/
+31,Federal Bank,359.8,-34.55,324.22,24.57,6764.94,11.65,8.89,53.91,17.15,88989.78,28.54,0.83,22.16,FEDERALBNK,https://www.screener.in/company/FEDERALBNK/consolidated/
+32,ICICI Lombard,1742.6,32.47,1087.58,-3.16,1105.29,14.19,0.0,24.53,34.09,87084.69,18.34,-3.11,6.44,ICICIGI,https://www.screener.in/company/ICICIGI/
+33,Oracle Fin.Serv.,9675.0,41.29,4935.59,-1.77,1585.3,12.37,0.0,13.36,23.63,84325.25,11.43,1.73,8.41,OFSS,https://www.screener.in/company/OFSS/consolidated/
+34,Bharat Forge,1722.0,-1.03,390.63,-1.11,1002.58,24.87,0.68,14.87,84.04,84149.08,15.2,0.16,8.63,BHARATFORG,https://www.screener.in/company/BHARATFORG/consolidated/
+35,JSW Infrast,353.55,-2.55,164.11,20.13,930.02,23.65,0.47,23.66,54.66,82377.21,12.48,1.27,4.9,JSWINFRA,https://www.screener.in/company/JSWINFRA/consolidated/
+36,Dixon Technolog.,13390.0,-3.26,7741.68,-1.32,645.74,56.35,0.21,9.07,52.85,81957.96,18.96,1.09,23.83,DIXON,https://www.screener.in/company/DIXON/consolidated/
+37,H P C L,385.0,-9.6,138.81,-6.26,3062.56,44.17,1.4,66.27,57.0,81921.17,13.07,-0.51,9.92,HINDPETRO,https://www.screener.in/company/HINDPETRO/consolidated/
+38,Phoenix Mills,2276.2,-2.68,843.01,27.48,927.04,14.56,0.67,12.79,61.75,81420.1,31.62,-0.11,3.84,PHOENIXLTD,https://www.screener.in/company/PHOENIXLTD/consolidated/
+39,Bharti Hexacom,1599.1,37.79,503.95,-0.97,1756.14,34.88,0.82,11.64,40.12,79955.0,3.25,-0.33,15.73,BHARTIHEXA,https://www.screener.in/company/BHARTIHEXA/
+40,Uno Minda,1356.9,31.12,499.18,11.24,833.43,22.21,0.4,11.2,58.56,78356.53,8.78,0.63,5.73,UNOMINDA,https://www.screener.in/company/UNOMINDA/consolidated/
+41,REC Ltd,292.95,-128.61,624.52,-13.51,18552.29,13.9,5.63,143.06,5.1,77140.3,16.78,1.02,13.97,RECLTD,https://www.screener.in/company/RECLTD/consolidated/
+42,Info Edg.(India),1187.5,24.26,666.01,-1.33,442.87,51.98,0.01,62.03,46.49,76999.95,25.46,1.74,10.47,NAUKRI,https://www.screener.in/company/NAUKRI/consolidated/
+43,NHPC Ltd,75.36,74.57,46.76,-3.27,2030.45,0.3,1.31,63.51,17.51,75699.38,13.17,0.88,10.04,NHPC,https://www.screener.in/company/NHPC/consolidated/
+44,Bank of Maha,97.56,-69.77,128.33,34.46,7406.13,31.62,11.36,60.41,9.38,75038.81,6.5,0.68,6.14,MAHABANK,https://www.screener.in/company/MAHABANK/consolidated/
+45,IndusInd Bank,963.0,142.72,566.36,4.8,7958.86,-31.07,7.12,94.09,25.0,75031.64,30.47,1.3,12.42,INDUSINDBK,https://www.screener.in/company/INDUSINDBK/consolidated/
+46,Glenmark Pharma.,2657.0,-90.27,961.12,21.53,1121.43,45.4,0.13,17.65,37.02,74987.09,21.51,0.62,14.17,GLENMARK,https://www.screener.in/company/GLENMARK/consolidated/
+47,Motil.Oswal.Fin.,1235.0,144.9,808.44,29.12,1714.7,27.37,1.73,24.49,27.64,74585.59,6.71,-0.15,19.29,MOTILALOFS,https://www.screener.in/company/MOTILALOFS/consolidated/
+48,SRF,2514.8,36.68,1230.99,-7.06,1339.04,-2.07,0.35,23.7,31.56,74544.91,15.2,-0.25,12.0,SRF,https://www.screener.in/company/SRF/consolidated/
+49,Havells India,1184.0,30.62,574.1,-8.35,776.32,14.28,0.02,15.44,43.79,74310.54,14.47,-1.44,6.31,HAVELLS,https://www.screener.in/company/HAVELLS/consolidated/
+50,AU Small Finance,983.5,-55.0,719.09,-2.5,3838.1,24.15,8.59,33.33,23.45,73955.21,36.06,0.08,8.45,AUBANK,https://www.screener.in/company/AUBANK/
+51,IDFC First Bank,85.4,37.77,77.1,10.06,5300.05,-3.65,8.2,70.66,25.05,73686.29,36.67,0.57,30.13,IDFCFIRSTB,https://www.screener.in/company/IDFCFIRSTB/
+52,Prestige Estates,1687.0,-29.32,282.56,9.46,1221.24,16.29,1.01,24.17,77.91,72664.19,12.97,-0.3,2.27,PRESTIGE,https://www.screener.in/company/PRESTIGE/consolidated/
+53,Bank of India,159.01,-59.84,377.75,8.71,19325.58,31.81,12.36,147.14,5.79,72391.97,7.58,0.71,5.66,BANKINDIA,https://www.screener.in/company/BANKINDIA/consolidated/
+54,Dabur India,399.0,21.9,135.61,-10.28,868.32,3.97,0.13,19.11,34.76,70785.2,9.6,-0.06,5.78,DABUR,https://www.screener.in/company/DABUR/consolidated/
+55,NTPC Green Ene.,82.3,-0.52,28.12,-14.86,1044.9,80.31,1.94,28.96,105.58,69348.69,1.58,-0.09,4.12,NTPCGREEN,https://www.screener.in/company/NTPCGREEN/consolidated/
+56,Aster DM Quality,790.35,102.05,107.44,9.56,453.58,4.04,0.76,12.07,131.42,68892.63,12.26,1.73,12.17,ASTERDM,https://www.screener.in/company/ASTERDM/consolidated/
+57,Waaree Energies,2390.0,7.81,5821.93,-19.85,2117.01,83.36,0.33,28.99,17.62,68748.67,8.57,0.0,23.22,WAAREEENER,https://www.screener.in/company/WAAREEENER/consolidated/
+58,Oil India,422.5,257.29,627.25,-7.64,5118.33,-6.94,0.65,106.9,7.44,68724.18,7.15,-0.13,5.67,OIL,https://www.screener.in/company/OIL/consolidated/
+59,L&T Finance Ltd,274.0,9.24,166.34,-8.01,4092.88,174.12,4.23,47.57,19.95,68676.86,7.38,-0.33,10.9,LTF,https://www.screener.in/company/LTF/consolidated/
+60,Oberoi Realty,1860.0,-6.87,1398.26,8.37,1197.22,10.39,0.14,32.17,25.53,67630.02,15.25,0.14,2.22,OBEROIRLTY,https://www.screener.in/company/OBEROIRLTY/consolidated/
+61,ICICI Life Insurance,465.0,41.74,98.95,-14.74,269.74,19.77,0.18,24.3,38.36,67483.97,9.26,-0.96,5.26,ICICILIFE,https://www.screener.in/company/ICICILIFE/
+62,Kalyan Jewellers,652.9,19.87,293.06,41.92,936.38,41.82,0.92,12.18,42.85,67428.31,13.83,3.01,8.9,KALYANKJIL,https://www.screener.in/company/KALYANKJIL/consolidated/
+63,Bajaj Housing,80.32,-30.46,63.68,-11.71,3701.2,25.49,4.92,40.05,23.76,66925.31,0.9,0.0,11.26,BAJAJHFL,https://www.screener.in/company/BAJAJHFL/
+64,S A I L,162.0,283.23,146.77,-5.2,5028.9,18.17,0.5,102.42,11.16,66914.51,7.3,0.21,11.19,SAIL,https://www.screener.in/company/SAIL/consolidated/
+65,Nippon Life Ind.,1035.5,32.95,449.3,-0.68,700.27,26.76,0.02,9.74,39.31,66286.98,7.05,0.01,5.68,NAM-INDIA,https://www.screener.in/company/NAM-INDIA/consolidated/
+66,Radico Khaitan,4636.5,34.32,1007.01,25.9,434.04,35.48,0.11,7.2,77.32,62124.03,19.43,1.23,13.22,RADICO,https://www.screener.in/company/RADICO/consolidated/
+67,Fortis Health.,809.0,14.19,226.37,-13.18,740.99,22.09,0.3,18.91,56.92,61076.11,23.2,-2.0,11.18,FORTIS,https://www.screener.in/company/FORTIS/consolidated/
+68,Alkem Lab,5067.0,-2.39,2632.94,-7.14,1058.92,23.77,0.16,28.08,28.02,60583.59,10.32,-0.1,17.14,ALKEM,https://www.screener.in/company/ALKEM/consolidated/
+69,Adani Total Gas,550.45,-0.14,129.78,-18.32,408.26,7.52,0.47,9.47,98.77,60539.05,12.84,0.07,5.97,ATGL,https://www.screener.in/company/ATGL/
+70,Torrent Power,1198.4,24.08,644.12,-9.85,1951.74,3.81,1.11,38.85,24.95,60387.8,8.36,-0.17,9.4,TORNTPOWER,https://www.screener.in/company/TORNTPOWER/consolidated/
+71,I O B,31.22,-46.09,41.17,-10.76,7037.76,29.33,11.22,78.29,9.33,60119.07,0.48,0.01,2.8,IOB,https://www.screener.in/company/IOB/
+72,Jindal Stain.,724.85,13.89,664.69,-0.63,1881.24,12.27,0.36,41.12,18.07,59758.05,20.07,-0.38,9.61,JSL,https://www.screener.in/company/JSL/consolidated/
+73,Apar Inds.,14184.0,48.27,10572.16,16.1,826.12,15.87,0.12,16.71,42.4,59395.58,12.55,1.79,8.22,APARINDS,https://www.screener.in/company/APARINDS/consolidated/
+74,Linde India,6961.5,-14.63,730.92,6.5,297.96,-1.36,0.24,8.15,119.99,59367.67,2.12,0.09,16.14,LINDEINDIA,https://www.screener.in/company/LINDEINDIA/
+75,NMDC,67.4,1.91,214.06,-19.21,3082.37,18.54,0.2,74.64,7.98,59256.85,14.91,1.32,11.78,NMDC,https://www.screener.in/company/NMDC/consolidated/
+76,General Insuranc,333.6,99.81,576.52,-10.32,3446.59,9.34,0.0,141.9,6.53,58526.78,2.4,-0.03,2.49,GICRE,https://www.screener.in/company/GICRE/consolidated/
+77,Coromandel Inter,1971.7,-10.82,1998.06,-1.85,1007.89,-0.09,0.12,25.79,36.44,58168.39,11.34,-0.16,11.69,COROMANDEL,https://www.screener.in/company/COROMANDEL/consolidated/
+78,Biocon,356.7,-23.31,117.84,-13.93,1178.97,-7.6,0.45,61.05,85.33,58131.19,8.64,0.5,17.2,BIOCON,https://www.screener.in/company/BIOCON/consolidated/
+79,Godrej Propert.,1923.0,45.28,1225.52,-1.34,-140.03,44.2,1.03,35.8,42.38,57925.86,24.37,-0.95,14.27,GODREJPROP,https://www.screener.in/company/GODREJPROP/consolidated/
+80,Schaeffler India,3607.9,31.06,1686.15,-10.82,686.44,11.22,0.01,13.5,41.63,56392.8,4.29,-0.07,5.23,SCHAEFFLER,https://www.screener.in/company/SCHAEFFLER/
+81,Yes Bank,17.73,2.82,20.23,-21.01,6407.0,47.56,8.1,103.69,13.27,55655.8,47.83,1.71,29.11,YESBANK,https://www.screener.in/company/YESBANK/consolidated/
+82,Abbott India,26125.0,19.21,10896.33,-6.46,704.61,14.78,0.04,10.67,33.59,55515.63,0.4,0.02,15.62,ABBOTINDIA,https://www.screener.in/company/ABBOTINDIA/
+83,MRF,129605.0,-11.27,86354.71,-5.85,1560.35,38.45,0.19,43.91,23.63,54967.33,17.1,-0.33,42.58,MRF,https://www.screener.in/company/MRF/consolidated/
+84,Natl. Aluminium,298.65,112.17,429.98,-12.43,3236.65,42.15,0.0,58.49,7.67,54851.01,21.98,-0.01,15.04,NATIONALUM,https://www.screener.in/company/NATIONALUM/consolidated/
+85,SBI Cards,575.15,37.02,398.39,-18.25,1961.25,3.47,2.79,36.11,20.99,54734.11,7.12,-1.86,3.82,SBICARD,https://www.screener.in/company/SBICARD/
+86,Anthem Bioscienc,957.35,16.65,241.72,27.23,299.71,22.61,0.01,7.25,85.44,53944.21,3.79,1.22,12.71,ANTHEM,https://www.screener.in/company/ANTHEM/consolidated/
+87,Berger Paints,462.25,12.41,132.95,-13.57,656.54,7.68,0.15,15.42,43.51,53898.48,4.96,0.14,8.38,BERGEPAINT,https://www.screener.in/company/BERGEPAINT/consolidated/
+88,Gujarat Fluoroch,4895.0,22.68,1214.12,26.85,499.49,-17.16,0.28,16.87,78.88,53771.58,4.53,0.12,20.74,FLUOROCHEM,https://www.screener.in/company/FLUOROCHEM/consolidated/
+89,360 ONE,1201.15,-16.99,709.32,4.89,954.02,23.23,1.67,23.56,41.32,51514.74,56.0,-2.55,15.41,360ONE,https://www.screener.in/company/360ONE/consolidated/
+90,PB Fintech.,1089.1,34.82,443.35,-39.55,229.63,45.98,0.05,17.02,62.87,50660.51,27.12,-10.17,27.89,POLICYBZR,https://www.screener.in/company/POLICYBZR/consolidated/
+91,Max Financial,1431.9,440.92,86.84,-13.38,126.24,-21.96,0.35,11.95,268.17,49416.98,48.61,0.55,6.43,MFSL,https://www.screener.in/company/MFSL/consolidated/
+92,Tata Comm,1723.6,57.56,342.95,-5.41,1737.1,-6.28,3.93,9.38,40.58,49147.01,13.55,-0.2,7.4,TATACOMM,https://www.screener.in/company/TATACOMM/consolidated/
+93,Petronet LNG,326.05,18.27,359.22,16.64,2099.11,0.15,0.09,58.98,10.55,48907.5,25.97,-0.3,9.82,PETRONET,https://www.screener.in/company/PETRONET/consolidated/
+94,Suzlon Energy,35.86,-60.6,57.67,-31.87,1030.45,116.16,0.07,25.63,21.65,48900.03,23.63,-0.52,54.44,SUZLON,https://www.screener.in/company/SUZLON/consolidated/
+95,Swiggy,176.97,,,-43.04,-985.72,,0.15,,,48849.27,8.86,-5.1,51.67,SWIGGY,https://www.screener.in/company/SWIGGY/consolidated/
+96,F A C T,751.0,,,-15.11,25.14,,3.18,,,48595.11,0.16,0.0,0.81,FACT,https://www.screener.in/company/FACT/
+97,Colgate-Palmoliv,1755.5,16.25,488.43,-13.37,699.62,7.23,0.03,6.28,34.53,47747.08,13.71,0.11,19.82,COLPAL,https://www.screener.in/company/COLPAL/
+98,Sundaram Finance,4295.7,-29.61,2758.14,-5.33,2742.23,18.31,4.69,38.5,20.7,47726.89,17.99,-0.59,35.15,SUNDARMFIN,https://www.screener.in/company/SUNDARMFIN/consolidated/
+99,Mphasis,2468.4,25.72,1791.11,0.89,1072.9,4.85,0.3,27.18,23.27,47187.51,19.39,-0.11,4.22,MPHASIS,https://www.screener.in/company/MPHASIS/consolidated/
+100,HDB FINANC SER,567.7,1.19,468.92,-18.89,3722.64,10.26,4.71,53.22,15.94,47171.09,4.04,0.49,9.7,HDBFS,https://www.screener.in/company/HDBFS/
+101,UPL,557.7,-19.78,438.12,-15.09,3055.92,-15.0,0.98,78.14,24.6,47064.58,42.36,-0.03,9.82,UPL,https://www.screener.in/company/UPL/consolidated/
+102,Piramal Finance.,1970.2,-18.61,1275.97,3.93,2610.06,21.29,2.77,67.46,80.88,46739.11,15.61,0.16,18.38,PIRAMALFIN,https://www.screener.in/company/PIRAMALFIN/consolidated/
+103,Authum Invest,546.35,-21.02,1176.38,2.34,817.84,96.3,0.16,43.82,26.17,46397.44,14.37,0.09,16.59,AIIL,https://www.screener.in/company/AIIL/
+104,APL Apollo Tubes,1670.0,28.79,848.4,-11.98,676.36,19.79,0.17,15.2,35.4,46368.95,34.15,-0.97,16.85,APLAPOLLO,https://www.screener.in/company/APLAPOLLO/consolidated/
+105,Ipca Labs.,1815.9,34.27,651.52,11.88,797.63,30.15,0.09,21.96,31.98,46070.15,11.53,0.81,7.15,IPCALAB,https://www.screener.in/company/IPCALAB/consolidated/
+106,Glaxosmi. Pharma,2701.2,41.92,660.29,5.24,508.95,13.66,0.02,6.59,40.38,45759.96,4.75,-0.04,11.77,GLAXO,https://www.screener.in/company/GLAXO/consolidated/
+107,Balkrishna Inds,2345.3,33.99,1251.43,3.71,894.17,3.6,0.52,28.85,31.82,45338.68,9.06,-1.27,7.18,BALKRISIND,https://www.screener.in/company/BALKRISIND/consolidated/
+108,L&T Technology,4222.6,19.4,3320.68,12.6,734.08,7.56,0.08,18.91,32.11,44799.58,4.43,0.3,8.29,LTTS,https://www.screener.in/company/LTTS/consolidated/
+109,Patanjali Foods,407.0,-4.32,322.31,-7.39,625.69,22.66,0.22,35.07,21.37,44286.02,7.24,-1.29,12.0,PATANJALI,https://www.screener.in/company/PATANJALI/
+110,Vishal Mega Mart,94.5,13.78,37.64,-21.75,671.3,31.95,0.27,19.85,49.33,44271.44,18.75,-1.68,4.77,VMM,https://www.screener.in/company/VMM/consolidated/
+111,Tube Investments,2210.0,27.63,1076.94,-25.98,825.35,-2.5,0.11,20.59,62.08,42779.48,21.5,-0.85,12.32,TIINDIA,https://www.screener.in/company/TIINDIA/consolidated/
+112,J K Cements,5439.0,11.47,2450.72,1.21,808.61,26.3,1.02,19.84,42.5,42026.2,18.35,1.5,13.65,JKCEMENT,https://www.screener.in/company/JKCEMENT/consolidated/
+113,Ajanta Pharma,3310.4,80.96,1660.48,11.47,582.81,20.71,0.03,14.8,32.76,41366.44,7.62,-0.06,6.96,AJANTPHARM,https://www.screener.in/company/AJANTPHARM/consolidated/
+114,K P R Mill Ltd,1206.9,30.07,358.74,14.64,516.87,2.25,0.05,17.58,39.69,41253.53,7.01,-0.01,6.3,KPRMILL,https://www.screener.in/company/KPRMILL/consolidated/
+115,Narayana Hrudaya,1974.2,89.72,1010.62,2.53,642.89,14.74,1.21,14.65,44.59,40344.91,9.01,-0.39,16.42,NH,https://www.screener.in/company/NH/consolidated/
+116,Global Health,1500.2,66.04,505.57,15.67,383.5,18.84,0.31,12.32,62.3,40337.01,9.92,0.46,39.96,MEDANTA,https://www.screener.in/company/MEDANTA/consolidated/
+117,Voltas,1218.5,29.41,350.94,-4.45,219.99,16.47,0.23,17.95,83.08,40318.31,16.94,0.0,14.24,VOLTAS,https://www.screener.in/company/VOLTAS/consolidated/
+118,Supreme Inds.,3156.0,53.65,1500.04,-10.69,600.8,4.49,0.01,18.77,35.47,40089.68,16.57,-0.51,14.76,SUPREMEIND,https://www.screener.in/company/SUPREMEIND/consolidated/
+119,M & M Fin. Serv.,286.85,73.1,333.65,-17.11,4867.35,12.76,5.44,78.23,10.79,39877.63,9.95,0.42,5.97,M&MFIN,https://www.screener.in/company/M&MFIN/consolidated/
+120,Embassy Off.REIT,419.97,244.45,212.63,-3.78,1255.22,-8.88,1.19,53.93,47.16,39808.69,,,,EMBASSY,https://www.screener.in/company/EMBASSY/consolidated/
+121,Hindustan Copper,411.25,251.82,126.5,-6.91,751.16,40.69,0.0,14.51,25.77,39768.86,7.08,1.12,27.77,HINDCOPPER,https://www.screener.in/company/HINDCOPPER/
+122,Rail Vikas,185.1,-4.27,57.45,-28.68,319.22,-8.79,0.43,28.56,42.01,38593.72,2.38,-0.03,18.58,RVNL,https://www.screener.in/company/RVNL/consolidated/
+123,ITC Hotels,184.12,54.17,137.2,5.45,527.42,,0.01,33.16,38.75,38357.83,11.63,0.02,24.95,ITCHOTELS,https://www.screener.in/company/ITCHOTELS/consolidated/
+124,Bharat Dynamics,1020.0,28.14,180.86,-25.52,96.48,3.84,0.0,13.41,76.56,37389.38,1.76,0.07,12.52,BDL,https://www.screener.in/company/BDL/
+125,Indian Renewable,132.2,-43.29,117.1,1.87,2565.5,27.99,5.64,43.91,18.86,37138.04,2.57,0.09,23.14,IREDA,https://www.screener.in/company/IREDA/
+126,Premier Energies,809.85,67.14,1097.63,-20.05,930.78,266.42,0.72,18.88,20.77,36763.26,7.12,-0.8,14.99,PREMIERENE,https://www.screener.in/company/PREMIERENE/consolidated/
+127,Blue Star,1785.1,13.37,675.64,9.31,320.69,22.17,0.22,10.96,68.48,36704.3,12.29,-0.46,22.09,BLUESTARCO,https://www.screener.in/company/BLUESTARCO/consolidated/
+128,KEI Industries,3800.6,39.15,2761.93,-23.03,502.95,21.88,0.05,22.75,34.43,36351.06,26.14,-1.18,12.59,KEI,https://www.screener.in/company/KEI/consolidated/
+129,Godrej Industrie,1075.95,102.31,661.96,-1.62,910.86,9.38,5.05,37.42,23.84,36243.49,4.48,-0.08,17.19,GODREJIND,https://www.screener.in/company/GODREJIND/consolidated/
+130,Endurance Tech.,2555.9,30.1,1344.45,-8.59,724.19,23.4,0.19,22.88,35.78,35952.02,12.07,-0.62,2.46,ENDURANCE,https://www.screener.in/company/ENDURANCE/consolidated/
+131,I R C T C,447.2,16.1,443.96,-19.43,579.97,12.52,0.02,17.44,25.95,35776.0,3.47,-0.44,19.59,IRCTC,https://www.screener.in/company/IRCTC/
+132,Exide Inds.,401.85,71.6,201.52,1.01,712.63,3.12,0.12,43.57,32.45,34157.25,13.21,2.59,23.22,EXIDEIND,https://www.screener.in/company/EXIDEIND/consolidated/
+133,Page Industries,30100.0,4.8,8970.78,-19.34,428.82,8.82,0.26,6.84,42.53,33573.16,18.79,-0.12,5.4,PAGEIND,https://www.screener.in/company/PAGEIND/
+134,LIC Housing Fin.,606.0,-39.05,837.33,11.82,9115.6,19.22,6.5,149.28,5.65,33333.82,18.93,-2.54,14.19,LICHSGFIN,https://www.screener.in/company/LICHSGFIN/consolidated/
+135,United Breweries,1254.3,89.87,268.92,-13.38,308.51,5.49,0.25,15.07,76.34,33164.34,5.36,0.49,5.37,UBL,https://www.screener.in/company/UBL/consolidated/
+136,Astral,1225.0,8.01,426.02,-19.98,381.68,6.59,0.08,14.68,55.63,32909.64,11.09,-2.8,10.56,ASTRAL,https://www.screener.in/company/ASTRAL/consolidated/
+137,Container Corpn.,427.25,-5.46,204.42,-14.64,652.72,2.53,0.08,44.89,26.75,32540.13,8.09,0.24,7.12,CONCOR,https://www.screener.in/company/CONCOR/consolidated/
+138,Thermax,2705.5,-1.69,965.56,-26.18,305.9,10.99,0.53,18.7,59.12,32237.74,11.3,-0.16,6.32,THERMAX,https://www.screener.in/company/THERMAX/consolidated/
+139,H U D C O,158.16,53.97,214.0,-23.13,4565.09,29.65,7.19,86.55,7.1,31662.05,2.4,0.0,13.08,HUDCO,https://www.screener.in/company/HUDCO/consolidated/
+140,AIA Engineering,3388.2,-4.4,1588.12,-17.59,427.31,3.41,0.01,30.59,25.48,31618.81,16.45,-0.42,2.54,AIAENG,https://www.screener.in/company/AIAENG/consolidated/
+141,NLC India,227.16,260.13,385.61,-19.4,1993.43,5.61,1.21,86.53,8.03,31498.84,4.61,-0.01,7.98,NLCINDIA,https://www.screener.in/company/NLCINDIA/consolidated/
+142,Tata Inv.Corpn.,586.95,-14.09,481.28,-14.43,110.19,17.66,0.0,106.61,74.49,29696.91,2.91,0.25,22.69,TATAINVEST,https://www.screener.in/company/TATAINVEST/consolidated/
+143,Hexaware Tech.,483.1,38.09,441.54,-17.21,725.04,8.22,0.1,27.88,19.41,29580.99,3.25,0.06,6.12,HEXT,https://www.screener.in/company/HEXT/consolidated/
+144,CRISIL,4034.8,14.16,2269.07,-6.84,441.94,9.28,0.1,14.12,32.94,29506.5,6.94,0.56,13.79,CRISIL,https://www.screener.in/company/CRISIL/consolidated/
+145,Dalmia BharatLtd,1564.4,-50.95,560.02,-17.65,938.57,0.53,0.58,64.31,29.96,29342.82,7.41,0.6,17.7,DALBHARAT,https://www.screener.in/company/DALBHARAT/consolidated/
+146,Cochin Shipyard,1090.0,-31.18,439.38,-30.88,200.56,28.05,0.37,23.02,53.38,28675.81,3.07,0.24,22.34,COCHINSHIP,https://www.screener.in/company/COCHINSHIP/
+147,Jubilant Food.,421.0,-0.25,100.86,-15.24,673.82,13.2,1.95,10.34,71.94,27779.48,13.28,-0.04,5.8,JUBLFOOD,https://www.screener.in/company/JUBLFOOD/consolidated/
+148,Escorts Kubota,2450.0,-6.23,2045.06,-22.77,496.79,37.51,0.01,51.03,20.22,27410.05,7.08,0.72,13.25,ESCORTS,https://www.screener.in/company/ESCORTS/consolidated/
+149,Godfrey Phillips,1746.9,-16.88,1389.72,-27.73,460.73,29.62,0.04,26.97,21.76,27248.45,7.86,0.06,16.03,GODFRYPHLP,https://www.screener.in/company/GODFRYPHLP/consolidated/
+150,P I Industries,1571.0,-45.67,1614.74,-45.44,421.84,-0.13,0.03,51.4,30.06,23834.92,14.79,-0.04,7.6,PIIND,https://www.screener.in/company/PIIND/consolidated/
