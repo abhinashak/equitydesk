@@ -1026,6 +1026,8 @@ def render() -> None:
                                "Open": open_qty, "Remaining": remaining,
                                "Sellable": sellable, "Executable": executable})
         if recon_rows:
+
+            st.error(":shield: Remove Existing GTT Orders Before Sell Execution.")
             st.markdown("##### 📊 Plan reconciliation by ticker")
             st.dataframe(pd.DataFrame(recon_rows), use_container_width=True, hide_index=True)
         if all_accounted:
