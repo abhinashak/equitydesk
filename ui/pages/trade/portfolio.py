@@ -468,10 +468,10 @@ def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=N
     """Positions export → (ticker_data, tracking).
 
     Non-exit rows (Side != CLOSED and Qty > 0) are the portfolio holdings.
-    CLOSED / Qty == 0 rows are exits (the export already assumes them stopped out at -2%).
+    CLOSED / Qty == 0 rows are exits; their Chg % is recomputed as 100*P&L/(LTP*Day Buy - P&L).
     Qty and Avg ₹ come from the file; the current price comes from Kite positions LTP
     (fallback: Zerodha holdings, then the file's LTP, flagged "File (stale)").
-    Exits (CLOSED) are taken exactly as reported in the file (P&L ₹, Chg %, Day Buy/Sell).
+    Exits (CLOSED) use the file's P&L ₹, LTP ₹, Day Buy/Sell; Chg % comes from the formula above.
     """
     live = live or {}
     d = pd.DataFrame({
@@ -513,7 +513,12 @@ def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=N
         _chg = ((open_df["LTP ₹"] - open_df["Avg ₹"]) / open_df["Avg ₹"] * 100).where(open_df["Avg ₹"] > 0, 0.0)
         open_df["P&L ₹"] = _pnl.where(has_live, open_df["P&L ₹"])
         open_df["Chg %"] = _chg.where(has_live, open_df["Chg %"])
-    exit_df["Status"] = "Exited"          # exits are taken exactly as reported in the file
+    exit_df["Status"] = "Exited"
+    # Exits: Chg % = 100 × P&L ÷ (LTP × Day Buy − P&L)   (replaces the export's assumed -2%).
+    # Falls back to the file's own Chg % only when the formula can't be computed.
+    _den = exit_df["LTP ₹"] * exit_df["Day Buy"] - exit_df["P&L ₹"]
+    _calc = (100 * exit_df["P&L ₹"] / _den).where((_den > 0) & (exit_df["Day Buy"] > 0))
+    exit_df["Chg %"] = _calc.fillna(exit_df["Chg %"])
     exit_df = exit_df[~exit_df["Symbol"].isin(open_df["Symbol"])]   # re-bought names stay open
 
     ticker_data = {}
@@ -539,9 +544,62 @@ def _parse_positions_export(udf: "pd.DataFrame", live: dict = None, entry_date=N
                          "exit": exit_df.reset_index(drop=True), "meta": meta}
 
 
+# ── Estimated Zerodha equity charges (NSE) ────────────────────────────────────
+# Same-day buy+sell of a CNC stock is charged as INTRADAY (FIFO): STT 0.025% on the sell side only,
+# brokerage 0.03%. Quantity that stays held is DELIVERY: STT 0.1% on the buy (and again on a later sell).
+_STT_INTRADAY_SELL = 0.00025
+_STT_DELIVERY      = 0.001
+_BROKERAGE_INTRA   = 0.0003      # 0.03% (₹20/order cap not applied)
+_TXN_NSE           = 0.0000322   # 0.00322%
+_SEBI_FEE          = 0.000001    # ₹10 / crore
+_STAMP_INTRA_BUY   = 0.00003     # 0.003% on buy side
+_STAMP_DELIV_BUY   = 0.00015     # 0.015% on buy side
+_GST               = 0.18
+_DP_PER_SCRIP      = 13 * 1.18   # ₹13 + GST, only when delivery stock is sold from demat
+
+
+def _charges(buy_i=0.0, sell_i=0.0, buy_d=0.0, sell_d=0.0, dp_scrips=0):
+    """(STT, other charges) for an intraday leg (buy_i/sell_i), a delivery buy (buy_d) and a delivery sell (sell_d)."""
+    stt = _STT_INTRADAY_SELL * sell_i + _STT_DELIVERY * (buy_d + sell_d)
+    brk = _BROKERAGE_INTRA * (buy_i + sell_i)
+    turnover = buy_i + sell_i + buy_d + sell_d
+    txn, sebi = _TXN_NSE * turnover, _SEBI_FEE * turnover
+    stamp = _STAMP_INTRA_BUY * buy_i + _STAMP_DELIV_BUY * buy_d
+    gst = _GST * (brk + txn + sebi)
+    return stt, brk + txn + sebi + stamp + gst + dp_scrips * _DP_PER_SCRIP
+
+
+def _with_charges(df: "pd.DataFrame", kind: str) -> "pd.DataFrame":
+    """Add STT ₹ / Charges ₹ / Net P&L ₹ (and, for open rows, 'If sold now ₹') estimates."""
+    d = df.copy()
+    stt_l, tot_l, now_l = [], [], []
+    for _, r in d.iterrows():
+        if kind == "exit":                     # bought and sold the same day → intraday
+            n = max(int(r["Day Buy"]), int(r["Day Sell"]))
+            buy_i = n * float(r["LTP ₹"])      # entry/exit value is not in the file → qty × LTP
+            sell_i = buy_i + float(r["P&L ₹"])
+            stt, oth = _charges(buy_i=buy_i, sell_i=sell_i)
+            now = 0.0
+        else:
+            p = float(r["Avg ₹"])
+            qi = min(int(r["Day Buy"]), int(r["Day Sell"]))        # squared off today → intraday leg
+            stt, oth = _charges(buy_i=qi * p, sell_i=qi * p, buy_d=float(r["Qty"]) * p)
+            s2, o2 = _charges(sell_d=float(r["Qty"]) * float(r["LTP ₹"]),
+                              dp_scrips=1 if r["Qty"] > 0 else 0)   # charges if the rest is sold at LTP now
+            now = s2 + o2
+        stt_l.append(stt); tot_l.append(stt + oth); now_l.append(now)
+    d["STT ₹"] = stt_l
+    d["Charges ₹"] = tot_l
+    d["Net P&L ₹"] = d["P&L ₹"] - d["Charges ₹"]
+    if kind != "exit":
+        d["If sold now ₹"] = now_l
+    return d
+
+
 def _render_position_tracking(trk: dict) -> None:
     """Open (in portfolio) vs exited positions from the Positions export."""
     o, x, meta = trk["open"], trk["exit"], trk.get("meta", {})
+    o, x = _with_charges(o, "open"), _with_charges(x, "exit")
     st.subheader("🎯 Position Tracking")
     if meta.get("entry_date"):
         _days = (datetime.date.today() - meta["entry_date"]).days
@@ -580,16 +638,34 @@ def _render_position_tracking(trk: dict) -> None:
     m2[2].metric("Avg Chg % — open", f"{o['Chg %'].mean():+.2f}%" if len(o) else "–")
     m2[3].metric("Avg Chg % — exited", f"{x['Chg %'].mean():+.2f}%" if len(x) else "–")
 
+    # ── After STT & charges (estimates) ──────────────────────────────────────
+    stt_all = float(o["STT ₹"].sum() + x["STT ₹"].sum())
+    chg_all = float(o["Charges ₹"].sum() + x["Charges ₹"].sum())
+    net_all = open_pnl + exit_pnl - chg_all
+    sell_now = float(o["If sold now ₹"].sum()) if "If sold now ₹" in o.columns else 0.0
+    st.markdown("**After STT & other charges (estimated)**")
+    m3 = st.columns(5)
+    m3[0].metric("STT", f"₹{stt_all:,.2f}")
+    m3[1].metric("Other charges", f"₹{chg_all - stt_all:,.2f}", help="Brokerage on same-day square-offs, exchange, SEBI, stamp, GST")
+    m3[2].metric("Net P&L after charges", f"₹{net_all:,.0f}", f"{net_all - (open_pnl + exit_pnl):+,.0f} vs gross",
+                 delta_color="inverse" if chg_all else "off")
+    m3[3].metric("Open P&L after charges", f"₹{open_pnl - float(o['Charges ₹'].sum()):,.0f}")
+    m3[4].metric("Net if all open sold now", f"₹{net_all - sell_now:,.0f}", f"{-sell_now:+,.0f} sell-side charges",
+                 delta_color="inverse", help="Adds delivery STT 0.1% on the sell, exchange/SEBI/GST and ₹13+GST DP per scrip.")
+
     def _clr(col):
         return ["color:#15803d" if v > 0 else "color:#b91c1c" if v < 0 else "" for v in col]
-    fmt = {"Avg ₹": "{:,.2f}", "LTP ₹": "{:,.2f}", "P&L ₹": "{:+,.2f}", "Chg %": "{:+.2f}%"}
-    cols = ["Symbol", "Status", "Qty", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "Day Buy", "Day Sell"]
-    ocols = cols + ["Source"]
-    xcols = ["Symbol", "Status", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "Day Buy", "Day Sell"]
+    fmt = {"Avg ₹": "{:,.2f}", "LTP ₹": "{:,.2f}", "P&L ₹": "{:+,.2f}", "Chg %": "{:+.2f}%",
+           "STT ₹": "{:,.2f}", "Charges ₹": "{:,.2f}", "Net P&L ₹": "{:+,.2f}", "If sold now ₹": "{:,.2f}"}
+    cols = ["Symbol", "Status", "Qty", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "STT ₹", "Charges ₹",
+            "Net P&L ₹", "Day Buy", "Day Sell"]
+    ocols = cols + ["If sold now ₹", "Source"]
+    xcols = ["Symbol", "Status", "Avg ₹", "LTP ₹", "P&L ₹", "Chg %", "STT ₹", "Charges ₹",
+             "Net P&L ₹", "Day Buy", "Day Sell"]
     def _show(df):
         """Styler needs a unique index and unique columns — always reset before styling."""
         df = df.loc[:, ~df.columns.duplicated()].reset_index(drop=True)
-        st.dataframe(df.style.apply(_clr, subset=["P&L ₹", "Chg %"]).format(fmt),
+        st.dataframe(df.style.apply(_clr, subset=["P&L ₹", "Chg %", "Net P&L ₹"]).format(fmt),
                      use_container_width=True, hide_index=True)
     t_open, t_exit, t_all = st.tabs([f"🟢 Open ({len(o)})", f"🔴 Exited ({len(x)})", f"📋 All ({n_all})"])
     with t_open:
@@ -603,12 +679,18 @@ def _render_position_tracking(trk: dict) -> None:
         else:
             _show(x[xcols])
             st.caption("Exited rows are removed from the portfolio and shown exactly as reported in the file "
-                       "(Day Buy / Day Sell = entry / exit qty). Their P&L is included in Net P&L.")
+                       "(Day Buy / Day Sell = entry / exit qty). Their P&L is included in Net P&L; charges are "
+                       "estimated as intraday (value = qty × LTP, since entry/exit values are not in the file).")
     with t_all:
         _show(pd.concat([o, x], ignore_index=True)[cols])
     st.caption("Open positions = Qty and Avg ₹ from the file × live Kite positions LTP (holdings LTP if not in positions). "
                "All non-exit positions are assumed available in the Portfolio. "
                "Today's Gain / Day Chg% use the holdings' previous close when matched.")
+    st.caption("💸 Charges are Zerodha equity estimates (NSE, not the contract note): quantity bought and sold the same day "
+               "is intraday — STT 0.025% on the sell side only, brokerage 0.03%, no DP charge; quantity still held is "
+               "delivery — STT 0.1% on the buy (and 0.1% again when sold), zero brokerage. Also counted: exchange "
+               "0.00322%, SEBI ₹10/crore, stamp duty, 18% GST. STT is not rounded and the ₹20/order brokerage cap "
+               "is not applied.")
 
 
 def render():
