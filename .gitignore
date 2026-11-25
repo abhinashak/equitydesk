@@ -22,3 +22,4 @@ outputs/**
 outputs/excluded_symbols.json
 ui/outputs/live_orders.json
 cache_*
+outputs/excluded_symbols.json
