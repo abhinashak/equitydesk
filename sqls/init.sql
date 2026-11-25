@@ -382,3 +382,16 @@ CREATE OR REPLACE VIEW gate_score AS
         LEFT JOIN sh_latest sh  ON c.ticker = sh.ticker
         LEFT JOIN sh_prev   sp2 ON c.ticker = sp2.ticker
     ) ;
+
+
+-- Portfolio Specific SQLs
+CREATE OR REPLACE VIEW v_ticker_metadata AS
+SELECT
+    UPPER(TRIM(nse_symbol)) AS nse_symbol,
+    COALESCE(NULLIF(TRIM(industry), ''), 'Other') AS industry,
+    COALESCE(NULLIF(TRIM(market_cap), ''), 'Unknown') AS market_cap,
+    COALESCE(market_cap_amt, 0) AS market_cap_amt,
+    p_e,
+    COALESCE(dividend_yield, 0) AS dividend_yield
+FROM tickers
+WHERE nse_symbol IS NOT NULL

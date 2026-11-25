@@ -1,19 +1,6 @@
 """
 portfolio.py
-────────────
-Full-featured portfolio view.
-
-Features:
-  - Portfolio movement across 1D / 7D / 1M / 3M / 6M / 1Y / 2Y / 3Y / 4Y / 5Y / 10Y
-    or a custom Start date → End date range
-  - Portfolio weight % alongside each ticker
-  - Full-width Sector Distribution + Index comparison charts
-  - Today's gain % per holding
-  - Today's winner / loser highlighted rows
-  - Sector orientation based on defined sectors
-  - Historical data via DuckDB (util/connection.py → sqls/all.sql views)
 """
-
 import os
 import json
 import datetime
@@ -24,72 +11,17 @@ import time
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-try:
-    from utils.db_utils import get_connection
-    _HAS_COMMON = True
-except ImportError:
-    _HAS_COMMON = False
-
-# ── Shared UI colours (fallback palette if the common module is unavailable) ──
-try:
-    from ui.pages.one_ticker_common import COLORS, COLORS_PALE
-except ImportError:
-    COLORS      = ["#2563eb", "#dc2626", "#16a34a", "#d97706"]
-    COLORS_PALE = ["#93c5fd", "#fca5a5", "#86efac", "#fde68a"]
-
-
-_DEFAULT_INDUSTRY_META = {"color": "#6b7280", "icon": "📦"}
-@st.cache_data(ttl=3600)
-def load_defined_industry() -> dict[str, dict]:
-    """Load industry color codes and icons from the DuckDB `color_codes` table."""
-    if not _HAS_COMMON:
-        return {"Other": _DEFAULT_INDUSTRY_META.copy()}
-
-    query = """
-        SELECT instrument, color_hexcode, icon
-        FROM color_codes WHERE namespace = 'industry'
-    """
-    try:
-        conn = get_connection()
-        df = conn.execute(query).df()
-        industry_map = {
-            str(row["instrument"]).strip(): {
-                "color": str(row["color_hexcode"]).strip(),
-                "icon":  str(row["icon"]).strip(),
-            }
-            for _, row in df.iterrows()
-        }
-        industry_map.setdefault("Other", _DEFAULT_INDUSTRY_META.copy())
-        return industry_map
-    except Exception as exc:
-        print(f"[Portfolio] Failed to load DEFINED_INDUSTRY from color_codes: {exc}")
-        return {"Other": _DEFAULT_INDUSTRY_META.copy()}
-
-DEFINED_INDUSTRY: dict[str, dict] = load_defined_industry()
-
-def _industry_meta(industry: str) -> dict:
-    """Return color+icon for an industry, falling back to Other."""
-    return DEFINED_INDUSTRY.get(industry, DEFINED_INDUSTRY.get("Other", _DEFAULT_INDUSTRY_META))
-
-
-# Time-period config: (label, days_back, DuckDB_interval)
-PERIODS = [
-    ("3D",  3,    "3 day"),
-    ("7D",  7,    "7 days"),
-    ("30D",  30,   "1 month"),
-    ("45D",  45,   "45 Days"),
-    ("2M",  60,   "2 month"),
-    ("3M",  90,   "3 months"),
-    ("4M",  120,   "4 months"),
-    ("5M",  150,   "5 months"),
-    ("6M",  180,  "6 months"),
-    ("1Y",  365,  "1 year"),
-    ("2Y",  730,  "2 years"),
-    ("3Y",  1095, "3 years"),
-    ("4Y",  1460, "4 years"),
-    ("5Y",  1825, "5 years"),
-    ("10Y",  3650, "10 years"),
-]
+from utils.db_utils import (
+    get_connection,
+    load_defined_industry,
+    get_industry_meta as _industry_meta,
+    fetch_price_history,
+    fetch_ticker_metadata,
+)
+from ui.pages.one_ticker_common import COLORS, COLORS_PALE
+from utils.time_utils import PERIODS, PERIOD_LABELS, get_period_days
+from utils.file_utils import load_json_dict, save_json_atomic
+from utils.debug_utils import init_sql_log, log_sql as _log_sql, render_sql_log as _render_sql_log
 
 # Benchmark index ticker used for comparison (must exist in price_history)
 INDEX_TICKER = "NIFTYBEES"
@@ -101,7 +33,6 @@ TREND_BANNER_TICKERS = {
     "SILVERBEES": "Silver Trend",
 }
 
-
 # ==============================================================================
 # PERSISTENT SETTINGS  (survives app restarts)
 # ==============================================================================
@@ -112,129 +43,37 @@ TREND_BANNER_TICKERS = {
 
 SETTINGS_PATH = "../../outputs/trade_portfolio_settings.json"
 
-
 def _resolve_settings_path(path: str) -> str:
     """Relative paths are resolved against this file's folder (same as PINNED_FILE)."""
     if os.path.isabs(path):
         return path
     return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), path))
 
-
 def load_portfolio_settings(path: str = SETTINGS_PATH) -> dict:
-    """Load saved settings. Returns {} if the file is missing, empty or corrupt."""
-    try:
-        with open(_resolve_settings_path(path), "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
-
+    return load_json_dict(path, base_file=__file__)
 
 def save_portfolio_settings(settings: dict, path: str = SETTINGS_PATH) -> None:
-    """Atomically write settings to disk (temp file + replace, so no half-written JSON)."""
-    full = _resolve_settings_path(path)
     try:
-        os.makedirs(os.path.dirname(full), exist_ok=True)
-        tmp = full + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
-        os.replace(tmp, full)
+        save_json_atomic(settings, path, base_file=__file__)
     except OSError as e:
         st.warning(f"Could not save portfolio settings: {e}")
-
 
 # ==============================================================================
 # HISTORICAL DATA HELPERS
 # ==============================================================================
 
-def _log_sql(label: str, sql: str, df: "pd.DataFrame | None" = None,
-             elapsed_ms: float | None = None, error: str | None = None) -> None:
-    """Record an executed SQL statement (plus result stats) for the debug panel."""
-    entry = {"label": label, "sql": sql.strip(),
-             "elapsed_ms": elapsed_ms, "error": error,
-             "rows": None, "date_min": None, "date_max": None, "per_ticker_last": None}
-    if df is not None:
-        entry["rows"] = len(df)
-        if "date" in df.columns and len(df):
-            entry["date_min"] = str(pd.to_datetime(df["date"]).min().date())
-            entry["date_max"] = str(pd.to_datetime(df["date"]).max().date())
-            if "ticker" in df.columns:
-                last = (df.assign(date=pd.to_datetime(df["date"]))
-                        .groupby("ticker")["date"].max().dt.date.astype(str))
-                entry["per_ticker_last"] = last.reset_index().rename(
-                    columns={"ticker": "ticker", "date": "last_date"})
-    st.session_state.setdefault("_sql_log", []).append(entry)
-
-
-def _render_sql_log(slot) -> None:
-    """Draw every SQL executed during this run into the given placeholder."""
-    log = st.session_state.get("_sql_log", [])
-    with slot.container():
-        with st.expander(f"🧾 Executed SQL ({len(log)})", expanded=False):
-            if not log:
-                st.caption("No SQL executed in this run.")
-            for i, e in enumerate(log, 1):
-                st.markdown(f"**{i}. {e['label']}**")
-                st.code(e["sql"], language="sql")
-                bits = []
-                if e["rows"] is not None:
-                    bits.append(f"rows: **{e['rows']}**")
-                if e["date_min"]:
-                    bits.append(f"dates: **{e['date_min']} → {e['date_max']}**")
-                if e["elapsed_ms"] is not None:
-                    bits.append(f"{e['elapsed_ms']:.0f} ms")
-                if bits:
-                    st.caption("  ·  ".join(bits))
-                if e["error"]:
-                    st.error(e["error"])
-                if e["per_ticker_last"] is not None:
-                    # (no nested expander: Streamlit doesn't allow it)
-                    st.caption("Last date per ticker")
-                    st.dataframe(e["per_ticker_last"], hide_index=True,
-                                 use_container_width=True, height=180)
-
-
 def get_price_history(nse_symbols: list[str], days: int, is_benchmark: bool = False,
                       end_date: "datetime.date | None" = None) -> pd.DataFrame:
-    """
-    Pull close prices from DuckDB `ticker_prices` using nse_symbol column.
-    `days` counts back from today (window start); `end_date` (optional) caps the
-    window on the right, so a custom Start → End range can be queried.
-    Returns DataFrame with columns: date, ticker (=nse_symbol), close.
-    Returns empty DataFrame if DuckDB unavailable or no data found.
-    """
-    if not _HAS_COMMON or not nse_symbols:
+    if not nse_symbols:
         return pd.DataFrame()
-
-    table_name = "benchmark_prices" if is_benchmark else "ticker_prices_extended"
-    query = ""
-    t0 = time.perf_counter()
     try:
-        conn = get_connection()
-
-        sym_list = ", ".join(f"'{s}'" for s in nse_symbols)
-        end_clause = f"AND Date <= DATE '{end_date:%Y-%m-%d}'" if end_date else ""
-        query = f"""
-            SELECT Date       AS date,
-                   nse_symbol AS ticker,
-                   Close      AS close
-            FROM {table_name}
-            WHERE nse_symbol IN ({sym_list})
-              AND Date >= CURRENT_DATE - INTERVAL '{days} days'
-              {end_clause}
-            ORDER BY nse_symbol, Date
-        """
-        df = conn.execute(query).df()
-        df["date"] = pd.to_datetime(df["date"])
-        _log_sql(f"get_price_history → {table_name} ({len(nse_symbols)} symbols, {days} days"
-                 + (f", to {end_date}" if end_date else "") + ")",
-                 query, df, (time.perf_counter() - t0) * 1000)
+        df = fetch_price_history( nse_symbols, days,
+            is_benchmark=is_benchmark, end_date=end_date, log_sql=_log_sql,)
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
         return df
     except Exception as exc:
-        # Keep the dashboard resilient, but log the underlying query/schema issue.
-        print(f"[Portfolio] Price history query failed ({table_name}): {exc}")
-        _log_sql(f"get_price_history → {table_name} (FAILED)", query or "-- query not built",
-                 None, (time.perf_counter() - t0) * 1000, str(exc))
+        print(f"[Portfolio] Price history query failed  {exc}")
         return pd.DataFrame()
 
 
@@ -805,6 +644,7 @@ def render():
 
     # ── SQL debug log: reset each run, drawn into this slot at the end ───────
     st.session_state["_sql_log"] = []
+    init_sql_log()
     _sql_slot = st.empty()
 
     # ── CSS tweaks ────────────────────────────────────────────────────────────
@@ -1030,41 +870,25 @@ def render():
         st.stop()
 
     # ── Load ticker metadata from DuckDB (industry, market_cap, p_e, dividend_yield) ──
-    # Kite tradingsymbol == nse_symbol in tickers table (e.g. "RELIANCE")
-    # Also try matching via nse_symbol derived from Yahoo Symbol (split on '.')
+    meta_symbols = [s for s in ticker_data.keys() if s.upper() != INDEX_TICKER]
     ticker_meta = {}
-    if _HAS_COMMON:
-        try:
-            conn = get_connection()
-            sql_stmt = f"""
-                SELECT nse_symbol AS matched_symbol,
-                    industry, market_cap, market_cap_amt, p_e, dividend_yield
-                FROM tickers
-                WHERE nse_symbol IN ({", ".join(f"'{s.upper()}'" for s in ticker_data.keys())})
-            """
-            print(sql_stmt)
-            _t0 = time.perf_counter()
-            meta_df = conn.execute(sql_stmt).df()
-            _log_sql("ticker metadata → tickers", sql_stmt, meta_df,
-                     (time.perf_counter() - _t0) * 1000)
-            print ( f"Total found : {len(meta_df)}")
-            for _, r in meta_df.iterrows():
-                key = str(r["matched_symbol"]).strip().upper()
-                ticker_meta[key] = {
-                    "industry":      r.get("industry", "Other") or "Other",
-                    "market_cap":    r.get("market_cap", "Unknown") or "Unknown",
-                    "market_cap_amt":r.get("market_cap_amt", 0) or 0,
-                    "p_e":           r.get("p_e", None),
-                    "dividend_yield":r.get("dividend_yield", 0) or 0,
-                }
-        except Exception as e:
-            _log_sql("ticker metadata → tickers (FAILED)", locals().get("sql_stmt", "-- query not built"),
-                     None, None, str(e))
-            st.caption(f"⚠️ Metadata load error: {e}")
+    try:
+        meta_df = fetch_ticker_metadata(meta_symbols, log_sql=_log_sql)
+        for _, r in meta_df.iterrows():
+            key = str(r["matched_symbol"]).strip().upper()
+            ticker_meta[key] = {
+                "industry":       r.get("industry", "Other") or "Other",
+                "market_cap":     r.get("market_cap", "Unknown") or "Unknown",
+                "market_cap_amt": r.get("market_cap_amt", 0) or 0,
+                "p_e":            r.get("p_e", None),
+                "dividend_yield": r.get("dividend_yield", 0) or 0,
+            }
+    except Exception as e:
+        st.caption(f"⚠️ Metadata load error: {e}")
 
     with st.expander("🐛 Metadata Debug", expanded=False):
-        st.write("**Kite symbols (tradingsymbol):**", list(ticker_data.keys()))
-        st.write("**Matched from tickers table:**", list(ticker_meta.keys()))
+        st.write("**Kite symbols (tradingsymbol):**", len(ticker_data.keys()))
+        st.write("**Matched from tickers table:**", len(ticker_meta.keys()))
         unmatched = [s for s in ticker_data if s.upper() not in ticker_meta]
         if unmatched:
             st.warning(f"No metadata match for: {unmatched}")

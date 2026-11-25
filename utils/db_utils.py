@@ -83,3 +83,163 @@ def reset_connection() -> None:
         if _connection is not None:
             _connection.close()
             _connection = None
+
+from functools import lru_cache
+
+DEFAULT_INDUSTRY_META: dict[str, str] = {"color": "#6b7280", "icon": "📦"}
+
+
+@lru_cache(maxsize=8)
+def load_color_codes(namespace: str = "industry") -> dict[str, dict[str, str]]:
+    """Load color codes and icons for a given namespace from DuckDB `color_codes`."""
+    query = """
+        SELECT instrument, color_hexcode, icon
+        FROM color_codes
+        WHERE namespace = ?
+    """
+    try:
+        conn = get_connection()
+        df = conn.execute(query, [namespace]).df()
+        mapping = {
+            str(row["instrument"]).strip(): {
+                "color": str(row["color_hexcode"]).strip(),
+                "icon":  str(row["icon"]).strip(),
+            }
+            for _, row in df.iterrows()
+        }
+        if namespace == "industry":
+            mapping.setdefault("Other", DEFAULT_INDUSTRY_META.copy())
+        return mapping
+    except Exception as exc:
+        print(f"[db_utils] Failed to load color_codes (namespace={namespace!r}): {exc}")
+        return {"Other": DEFAULT_INDUSTRY_META.copy()} if namespace == "industry" else {}
+
+
+def load_defined_industry() -> dict[str, dict[str, str]]:
+    """Return {industry: {'color': ..., 'icon': ...}} from `color_codes`."""
+    return load_color_codes("industry")
+
+
+def get_industry_meta(industry: str) -> dict[str, str]:
+    """Return color + icon metadata for an industry, falling back to 'Other'."""
+    defined = load_defined_industry()
+    return defined.get(industry, defined.get("Other", DEFAULT_INDUSTRY_META))
+
+import datetime
+import pandas as pd
+import datetime
+import time
+from typing import Callable
+import pandas as pd
+
+def _emit_sql_log(
+        log_sql: Callable | None,
+        label: str,
+        sql: str,
+        df: pd.DataFrame | None,
+        elapsed_ms: float | None,
+        error: str | None = None,
+) -> None:
+    if log_sql is not None:
+        log_sql(label, sql, df, elapsed_ms, error)
+
+
+def _price_history_table(is_benchmark: bool) -> str:
+    """Resolve the source table name for benchmark vs. holding price history."""
+    return "benchmark_prices" if is_benchmark else "ticker_prices_extended"
+
+
+def fetch_price_history(
+        nse_symbols: list[str],
+        days: int,
+        is_benchmark: bool = False,
+        end_date: datetime.date | None = None,
+        log_sql: Callable | None = None,
+) -> pd.DataFrame:
+    """Parameterized price-history lookup for holdings or benchmark series."""
+    if not nse_symbols:
+        return pd.DataFrame(columns=["date", "ticker", "close"])
+
+    table_name = _price_history_table(is_benchmark)
+    placeholders = ", ".join(["?"] * len(nse_symbols))
+    params: list = [*nse_symbols, int(days)]
+
+    end_clause = ""
+    if end_date is not None:
+        end_clause = "AND Date <= ?"
+        params.append(end_date)
+
+    sql = f"""
+        SELECT
+            Date       AS date,
+            nse_symbol AS ticker,
+            Close      AS close
+        FROM {table_name}
+        WHERE nse_symbol IN ({placeholders})
+          AND Date >= CURRENT_DATE - (? * INTERVAL '1 day')
+          {end_clause}
+        ORDER BY nse_symbol, Date
+    """
+    label = (
+            f"get_price_history → {table_name} ({len(nse_symbols)} symbols, {days} days"
+            + (f", to {end_date}" if end_date else "")
+            + ")"
+    )
+    t0 = time.perf_counter()
+    try:
+        conn = get_connection()
+        df = conn.execute(sql, params).df()
+        _emit_sql_log(log_sql, label, sql, df, (time.perf_counter() - t0) * 1000)
+        return df
+    except Exception as exc:
+        _emit_sql_log(
+            log_sql,
+            f"{label} (FAILED)",
+            sql,
+            None,
+            (time.perf_counter() - t0) * 1000,
+            str(exc),
+            )
+        raise
+
+
+def fetch_ticker_metadata(
+        symbols: list[str],
+        log_sql: Callable | None = None,
+) -> pd.DataFrame:
+    """Parameterized metadata lookup backed by the initialized view."""
+    cleaned = sorted({str(s).strip().upper() for s in symbols if str(s).strip()})
+    if not cleaned:
+        return pd.DataFrame(
+            columns=["matched_symbol", "industry", "market_cap", "market_cap_amt", "p_e", "dividend_yield"]
+        )
+
+    placeholders = ", ".join(["?"] * len(cleaned))
+    sql = f"""
+        SELECT
+            nse_symbol AS matched_symbol,
+            industry,
+            market_cap,
+            market_cap_amt,
+            p_e,
+            dividend_yield
+        FROM v_ticker_metadata
+        WHERE nse_symbol IN ({placeholders})
+    """
+    label = f"ticker metadata → v_ticker_metadata ({len(cleaned)} symbols)"
+    t0 = time.perf_counter()
+    try:
+        conn = get_connection()
+        df = conn.execute(sql, cleaned).df()
+        _emit_sql_log(log_sql, label, sql, df, (time.perf_counter() - t0) * 1000)
+        return df
+    except Exception as exc:
+        _emit_sql_log(
+            log_sql,
+            f"{label} (FAILED)",
+            sql,
+            None,
+            (time.perf_counter() - t0) * 1000,
+            str(exc),
+            )
+        raise
