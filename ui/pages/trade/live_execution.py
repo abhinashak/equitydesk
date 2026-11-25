@@ -296,15 +296,15 @@ def _positions_df(rows: list) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-def _render_positions(token_map: dict) -> None:
+def _render_positions(token_map: dict, selected_acct: str = "") -> None:
     st.markdown("### 📊 Positions")
     if not token_map:
         st.warning("Connect a Kite account to view positions.")
         return
 
-    h1, h2, h3 = st.columns([2, 2, 1])
-    acct = (h1.selectbox("Account", list(token_map.keys()), key="le_pos_acct")
-            if len(token_map) > 1 else next(iter(token_map)))
+    acct = selected_acct if selected_acct in token_map else next(iter(token_map))
+    h1, h2, h3 = st.columns([3, 2, 1])
+    h1.caption(f"Account: **{acct}**")
     view = h2.radio("View", ["Net", "Day"], horizontal=True, key="le_pos_view")
     refresh = h3.button("🔄 Refresh", key="le_pos_refresh", use_container_width=True)
 
@@ -385,6 +385,21 @@ def render() -> None:
     first_tok  = next(iter(token_map.values()), "")
 
     st.markdown("## ⚡ Live Execution")
+
+    # ── Top-level account / profile selector ──────────────────────────────────
+    if acct_opts:
+        _p_col, _p_info = st.columns([2, 3])
+        selected_acct = _p_col.selectbox(
+            "🏦 Active Account / Profile",
+            acct_opts,
+            key="le_active_acct",
+        )
+        _p_info.caption("Shared across Positions, Order Builder sellable holdings, and Order Staging.")
+    else:
+        selected_acct = ""
+
+    active_tok = token_map.get(selected_acct, first_tok)
+    bulk_acct = selected_acct
 
     # ── Top-level safety controls ───────────────────────────────────────────
     # The Dry-run toggle and Max order amount are rendered next to "Send to Exchange" (Part 3);
@@ -691,7 +706,7 @@ def render() -> None:
         st.caption("Stop trigger is calculated from the completed BUY average price (−2%); no Kite Quote API call is needed. Active GTTs are checked before placement. API rejection is shown and does not mark the order protected.")
 
     st.divider()
-    _render_positions(token_map)
+    _render_positions(token_map, selected_acct)
 
     st.divider()
 
@@ -783,13 +798,10 @@ def render() -> None:
                                "**STAGGER** — 1-qty probe order first, then 4 brackets priced from the Positions LTP.\n\n"
                                "**MARKET** — market order at LTP."
                            ))
-    bulk_acct   = g2.selectbox(
-        "🏦 Target Account",
-        [""] + acct_opts,
-        format_func=lambda x: "— select account —" if x == "" else x,
-        key="le_bulk_acct")
-    if not bulk_acct:
-        g2.warning("⚠️ Select an account — SELL qty depends on its holdings.")
+    if selected_acct:
+        g2.caption(f"🏦 Active account:\n**{selected_acct}**")
+    else:
+        g2.warning("⚠️ Connect an account at the top.")
 
     # LIMIT: single offset % from LTP  (editable per-row later)
     limit_offset_pct = 0.0
@@ -1040,6 +1052,10 @@ def render() -> None:
     removed_builder_keys = set(st.session_state.get("le_builder_removed_keys", []))
     builder_rows = [r for r in builder_rows
                     if f"{r['Ticker']}_{r['Side']}" not in removed_builder_keys]
+    if not builder_rows:
+        st.info("All Order Builder rows were removed for this review pass.")
+        return
+
     builder_df = pd.DataFrame(builder_rows)
 
     st.markdown("##### 📋 Order Builder — Review & Edit")
@@ -1114,7 +1130,7 @@ def render() -> None:
         deleted_keys = [k for k, remove in zip(row_keys, delete_mask.tolist()) if remove]
         removed_keys = set(st.session_state.get("le_builder_removed_keys", []))
         removed_keys.update(deleted_keys)
-        st.session_state["le_builder_removed_keys"] = list(removed_keys)
+        st.session_state["le_builder_removed_keys"] = sorted(removed_keys)
         for k in deleted_keys:
             check_state.pop(k, None)
         st.session_state["le_check_state"] = check_state
