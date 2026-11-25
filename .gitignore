@@ -1,3 +1,6 @@
+*.duckdb
+*.html
+concalls_google.*
 *.class
 *.jar
 target/
@@ -19,7 +22,10 @@ gemini-ui.py
 equitydesk.iml
 data/benchmark/
 outputs/**
-outputs/excluded_symbols.json
-ui/outputs/live_orders.json
+ui/outputs/*.json
 cache_*
-outputs/excluded_symbols.json
+ui/outputs/**
+screener_annual_reports.json
+screener_annual_reports.xml
+utils/confcalls.py
+data/cache/
