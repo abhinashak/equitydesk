@@ -38,84 +38,39 @@ except ImportError:
     COLORS_PALE = ["#93c5fd", "#fca5a5", "#86efac", "#fde68a"]
 
 
-# ==============================================================================
-# INDUSTRY DEFINITIONS  ← mapped to NSE industry values from tickers table
-# ==============================================================================
-DEFINED_INDUSTRY: dict[str, dict] = {
-    # IT
-    "IT - Software":                                  {"color": "#2563eb", "icon": "💻"},
-    "IT - Services":                                  {"color": "#1d4ed8", "icon": "🖥️"},
-    # Finance & Banking
-    "Banks":                                          {"color": "#16a34a", "icon": "🏦"},
-    "Finance":                                        {"color": "#15803d", "icon": "💰"},
-    "Capital Markets":                                {"color": "#166534", "icon": "📈"},
-    "Insurance":                                      {"color": "#14532d", "icon": "🛡️"},
-    "Financial Technology (Fintech)":                 {"color": "#4ade80", "icon": "💳"},
-    # Energy & Oil
-    "Oil":                                            {"color": "#d97706", "icon": "🛢️"},
-    "Gas":                                            {"color": "#b45309", "icon": "🔥"},
-    "Petroleum Products":                             {"color": "#92400e", "icon": "⛽"},
-    "Power":                                          {"color": "#f59e0b", "icon": "⚡"},
-    "Consumable Fuels":                               {"color": "#78350f", "icon": "🪨"},
-    # Automobiles
-    "Automobiles":                                    {"color": "#7c3aed", "icon": "🚗"},
-    "Auto Components":                                {"color": "#6d28d9", "icon": "🔧"},
-    "Agricultural, Commercial & Construction Vehicles":{"color": "#5b21b6", "icon": "🚜"},
-    # Consumer & FMCG
-    "Consumer Durables":                              {"color": "#db2777", "icon": "📺"},
-    "Diversified FMCG":                               {"color": "#be185d", "icon": "🛒"},
-    "Food Products":                                  {"color": "#9d174d", "icon": "🍱"},
-    "Beverages":                                      {"color": "#831843", "icon": "🥤"},
-    "Personal Products":                              {"color": "#ec4899", "icon": "🧴"},
-    "Household Products":                             {"color": "#f472b6", "icon": "🧹"},
-    "Agricultural Food & other Products":             {"color": "#fda4af", "icon": "🌾"},
-    # Pharma & Healthcare
-    "Pharmaceuticals & Biotechnology":                {"color": "#0891b2", "icon": "💊"},
-    "Healthcare Services":                            {"color": "#0e7490", "icon": "🏥"},
-    "Healthcare Equipment & Supplies":                {"color": "#155e75", "icon": "🩺"},
-    # Metals & Mining
-    "Ferrous Metals":                                 {"color": "#92400e", "icon": "⚙️"},
-    "Non - Ferrous Metals":                           {"color": "#78350f", "icon": "🔩"},
-    "Diversified Metals":                             {"color": "#a16207", "icon": "🪙"},
-    "Metals & Minerals Trading":                      {"color": "#854d0e", "icon": "⛏️"},
-    "Minerals & Mining":                              {"color": "#713f12", "icon": "🪨"},
-    # Infrastructure & Construction
-    "Construction":                                   {"color": "#065f46", "icon": "🏗️"},
-    "Cement & Cement Products":                       {"color": "#047857", "icon": "🧱"},
-    "Realty":                                         {"color": "#059669", "icon": "🏢"},
-    "Transport Infrastructure":                       {"color": "#10b981", "icon": "🛤️"},
-    # Industrials
-    "Industrial Manufacturing":                       {"color": "#0369a1", "icon": "🏭"},
-    "Industrial Products":                            {"color": "#0284c7", "icon": "🔨"},
-    "Electrical Equipment":                           {"color": "#0ea5e9", "icon": "🔌"},
-    "Commercial Services & Supplies":                 {"color": "#38bdf8", "icon": "📦"},
-    # Chemicals
-    "Chemicals & Petrochemicals":                     {"color": "#4f46e5", "icon": "🧪"},
-    "Fertilizers & Agrochemicals":                    {"color": "#4338ca", "icon": "🌱"},
-    # Telecom
-    "Telecom - Services":                             {"color": "#1e40af", "icon": "📡"},
-    # Transport
-    "Transport Services":                             {"color": "#1e3a8a", "icon": "🚢"},
-    # Entertainment & Leisure
-    "Entertainment":                                  {"color": "#c026d3", "icon": "🎬"},
-    "Leisure Services":                               {"color": "#a21caf", "icon": "🎭"},
-    # Textiles
-    "Textiles & Apparels":                            {"color": "#7e22ce", "icon": "👗"},
-    # Paper
-    "Paper, Forest & Jute Products":                  {"color": "#6b7280", "icon": "📄"},
-    # Aerospace
-    "Aerospace & Defense":                            {"color": "#374151", "icon": "🚀"},
-    # Diversified
-    "Diversified":                                    {"color": "#4b5563", "icon": "🔀"},
-    # Retailing
-    "Retailing":                                      {"color": "#d97706", "icon": "🏪"},
-    # Fallback
-    "Other":                                          {"color": "#6b7280", "icon": "📦"},
-}
+_DEFAULT_INDUSTRY_META = {"color": "#6b7280", "icon": "📦"}
+@st.cache_data(ttl=3600)
+def load_defined_industry() -> dict[str, dict]:
+    """Load industry color codes and icons from the DuckDB `color_codes` table."""
+    if not _HAS_COMMON:
+        return {"Other": _DEFAULT_INDUSTRY_META.copy()}
+
+    query = """
+        SELECT instrument, color_hexcode, icon
+        FROM color_codes WHERE namespace = 'industry'
+    """
+    try:
+        conn = get_connection()
+        df = conn.execute(query).df()
+        industry_map = {
+            str(row["instrument"]).strip(): {
+                "color": str(row["color_hexcode"]).strip(),
+                "icon":  str(row["icon"]).strip(),
+            }
+            for _, row in df.iterrows()
+        }
+        industry_map.setdefault("Other", _DEFAULT_INDUSTRY_META.copy())
+        return industry_map
+    except Exception as exc:
+        print(f"[Portfolio] Failed to load DEFINED_INDUSTRY from color_codes: {exc}")
+        return {"Other": _DEFAULT_INDUSTRY_META.copy()}
+
+DEFINED_INDUSTRY: dict[str, dict] = load_defined_industry()
 
 def _industry_meta(industry: str) -> dict:
     """Return color+icon for an industry, falling back to Other."""
-    return DEFINED_INDUSTRY.get(industry, DEFINED_INDUSTRY["Other"])
+    return DEFINED_INDUSTRY.get(industry, DEFINED_INDUSTRY.get("Other", _DEFAULT_INDUSTRY_META))
+
 
 # Time-period config: (label, days_back, DuckDB_interval)
 PERIODS = [

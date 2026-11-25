@@ -28,10 +28,7 @@ select * from my_tickers m, nifty_500_sectors ns where m.ticker = ns.ticker limi
 
 
 CREATE OR REPLACE VIEW ticker_midcap150 as select Company as company_name, SYMBOL as ticker, 'midcap150' as market_cap_segment, "Mar Cap Rs.Cr." as market_cap_cr, "FII Hold %" as fii_hold_pct, "Public Hold %" as public_hold_pct  FROM read_csv_auto('midcap150_with_symbols.csv', header = true);
-
 CREATE OR REPLACE VIEW ticker_smallcap250 as select Company as company_name, SYMBOL as ticker, 'smallcap250' as market_cap_segment, "Mar Cap Rs.Cr." as market_cap_cr, "FII Hold %" as fii_hold_pct, "Public Hold %" as public_hold_pct  FROM read_csv_auto('smallcap250_with_symbols.csv', header = true);
-
-
 CREATE OR REPLACE VIEW ticker_nifty50 as select Company as company_name, SYMBOL as ticker, 'nifty50' as market_cap_segment, "Mar Cap Rs.Cr." as market_cap_cr, "FII Hold %" as fii_hold_pct, "Public Hold %" as public_hold_pct  FROM read_csv_auto('nifty50_with_symbols.csv', header = true);
 
 create view ticker_screener as
@@ -40,9 +37,6 @@ Union
 Select * from ticker_nifty50 
 Union
 Select * from ticker_smallcap250;
-
-
-
 
 CREATE OR REPLACE VIEW enriched_tickers AS
 WITH ns_dedup AS (
@@ -178,7 +172,7 @@ COPY (
         ticker,
         sector_group,
         macro_sector,
-        market_cap_segment,
+        market_cap,
         market_cap_cr,
         fii_hold_pct,
         public_hold_pct

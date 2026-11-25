@@ -1,0 +1,36 @@
+instrument,namespace,color_hexcode,icon
+Aerospace & Defense,industry,#374151,🚀
+Banks,industry,#16a34a,🏦
+Power Generation,industry,#f59e0b,⚡
+Pharmaceuticals,industry,#0891b2,💊
+Metal - Non Ferrous,industry,#78350f,🔩
+Engineering - Construction,industry,#065f46,🏗️
+Energy,industry,#d97706,🔋
+EMS,industry,#0ea5e9,🔌
+Tea/Coffee,industry,#854d0e,☕
+Oil Exploration,industry,#b45309,🛢️
+Passenger Vehicle,industry,#7c3aed,🚗
+Finance - Lending,industry,#15803d,💰
+Fertilizers,industry,#4338ca,🌱
+Mining & Minerals,industry,#713f12,⛏️
+Auto Ancillary,industry,#6d28d9,🔧
+Hospital & Healthcare,industry,#0e7490,🏥
+Telecom,industry,#1e40af,📡
+Compressors / Pumps,industry,#0284c7,⚙️
+Finance - NBFC,industry,#166534,💳
+Aviation,industry,#1e3a8a,✈️
+Forgings,industry,#92400e,🔨
+Real Estate,industry,#059669,🏢
+Depository Services,industry,#14532d,🏛️
+IT - Software,industry,#2563eb,💻
+Consumer Food,industry,#9d174d,🍱
+Recycling,industry,#10b981,♻️
+Alcoholic Beverages,industry,#831843,🍷
+Edible Oil,industry,#ca8a04,🌻
+Business Support,industry,#38bdf8,🤝
+Asset Management,industry,#047857,📈
+Tyres,industry,#4b5563,🛞
+Retailing,industry,#d97706,🏪
+Tiles & Sanitaryware,industry,#0369a1,🧱
+Refineries,industry,#78350f,⛽
+Other,industry,#6b7280,📦

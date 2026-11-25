@@ -7,6 +7,11 @@ CREATE OR REPLACE VIEW ticker_raw AS (
      FROM read_csv("config/tickers.csv")  -- ◄── FIX 1: Specify your source table here
  );
 
+CREATE OR REPLACE VIEW color_codes AS ( 
+SELECT * FROM read_csv_auto('config/color_codes.csv', header = true)
+);
+
+
 -- General company info (one row per ticker)
 CREATE OR REPLACE VIEW general_info_raw AS
 SELECT * FROM 'data/fundamental/*/general_info.parquet';
