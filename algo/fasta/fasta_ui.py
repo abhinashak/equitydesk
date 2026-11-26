@@ -246,13 +246,17 @@ def load_daily_stop_data(con, p: Params, log):
             daily_cache.parent.mkdir(parents=True, exist_ok=True)
             daily.to_parquet(daily_cache, index=False)
 
+        # searchsorted() requires ascending date arrays; enforce that here rather
+        # than depending on the SQL query's ordering.
+        daily['date'] = pd.to_datetime(daily['date']).dt.normalize()
         return {
             ticker: (
-                pd.to_datetime(g['date']).values.astype('datetime64[ns]'),
-                g['open'].to_numpy(dtype=float),
-                g['low'].to_numpy(dtype=float),
+                g_sorted['date'].values.astype('datetime64[ns]'),
+                g_sorted['open'].to_numpy(dtype=float),
+                g_sorted['low'].to_numpy(dtype=float),
             )
             for ticker, g in daily.groupby('ticker', sort=False)
+            for g_sorted in [g.sort_values('date', kind='stable').reset_index(drop=True)]
         }
     except Exception as exc:
         log(f"[Gap-aware stop] unavailable ({exc}) - using exact stop fills.")
@@ -262,29 +266,45 @@ def load_daily_stop_data(con, p: Params, log):
 # ==========================================
 # STOP-LOSS LOGIC
 # ==========================================
-def stop_fill_price(daily_stops, ticker, week_start, buy_price, stop_loss_pct, holding_days=7):
-    """Where a stop order really fills during the holding window starting `week_start`.
+def stop_fill_price(
+        daily_stops, ticker, week_start, buy_price, stop_loss_pct,
+        holding_days=7, entry_date=None,
+):
+    """Return (fill_price, gapped, fill_date) for the first stop hit.
 
-    Finds the first trading day whose low reaches the stop price. If that day OPENED at or below the stop
-    (a gap-down) the order fills at that open - a worse price than the stop; otherwise it fills at the stop.
-    On the entry day the position was bought at the open, so there is no gap to suffer there.
-    Returns (fill_price, gapped, fill_date), or None when there is no daily data for that ticker/week."""
+    A gap is determined relative to the actual entry date, not the first
+    array element in the search window. The entry-day open is the purchase
+    fill and therefore cannot be treated as a post-entry gap.
+    """
     rec = daily_stops.get(ticker) if daily_stops else None
     if rec is None:
         return None
     dates, opens, lows = rec
-    lo = np.searchsorted(dates, week_start.to_datetime64(), side='left')
-    hi = np.searchsorted(dates, (week_start + pd.Timedelta(days=holding_days)).to_datetime64(), side='left')
+    if len(dates) == 0:
+        return None
+
+    # Defensive ordering: searchsorted() is valid only on sorted dates.
+    order = np.argsort(dates, kind="stable")
+    dates, opens, lows = dates[order], opens[order], lows[order]
+
+    start = pd.Timestamp(week_start).normalize()
+    entry_day = pd.Timestamp(entry_date).normalize() if entry_date is not None else start
+    end = start + pd.Timedelta(days=holding_days)
+    lo = np.searchsorted(dates, start.to_datetime64(), side="left")
+    hi = np.searchsorted(dates, end.to_datetime64(), side="left")
     if hi <= lo:
         return None
-    stop_px = buy_price * (1.0 + (stop_loss_pct / 100.0))
+
+    stop_px = buy_price * (1.0 + stop_loss_pct / 100.0)
     hit = np.nonzero(lows[lo:hi] <= stop_px)[0]
     if hit.size == 0:
         return None
+
     k = lo + int(hit[0])
-    if k > lo and opens[k] <= stop_px:
-        return float(opens[k]), True, pd.Timestamp(dates[k])
-    return stop_px, False, pd.Timestamp(dates[k])
+    fill_date = pd.Timestamp(dates[k]).normalize()
+    if fill_date > entry_day and np.isfinite(opens[k]) and opens[k] <= stop_px:
+        return float(opens[k]), True, fill_date
+    return stop_px, False, fill_date
 
 
 def stop_check(con, ticker, week_start, buy_price, stop_loss_pct):
@@ -297,13 +317,18 @@ def stop_check(con, ticker, week_start, buy_price, stop_loss_pct):
     if daily.empty:
         return None
     daily.columns = [c.lower() for c in daily.columns]
+    daily['date'] = pd.to_datetime(daily['date']).dt.normalize()
+    daily = daily.sort_values('date', kind='stable').reset_index(drop=True)
     entry = float(buy_price) if buy_price else float(daily['open'].iloc[0])
     stop_px = entry * (1.0 + stop_loss_pct / 100.0)
     daily['low <= stop'] = daily['low'] <= stop_px
     daily['open <= stop'] = daily['open'] <= stop_px
     rec = {ticker: (pd.to_datetime(daily['date']).values.astype('datetime64[ns]'),
                     daily['open'].to_numpy(float), daily['low'].to_numpy(float))}
-    fill = stop_fill_price(rec, ticker, week_start, entry, stop_loss_pct)
+    fill = stop_fill_price(
+        rec, ticker, week_start, entry, stop_loss_pct,
+        entry_date=pd.Timestamp(daily['date'].iloc[0]),
+    )
     return {"daily": daily, "entry": entry, "stop_px": stop_px, "fill": fill, "week_start": week_start}
 
 
@@ -610,7 +635,8 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
                 stock_in_shadow.add(ticker)
                 fill = stop_fill_price(
                     daily_stops, ticker, week_dt, buy_price, p.stop_loss_pct,
-                    holding_days=14 if has_next_week_row else 7
+                    holding_days=14 if has_next_week_row else 7,
+                    entry_date=buy_date,
                 )
                 if fill is not None:
                     sell_date = fill[2]
@@ -1571,7 +1597,6 @@ def _show_weekly(res):
     with week_col:
         chosen = st.selectbox( "Week:",label_visibility="collapsed",
                                options=weeks, key=week_key,)
-
     with next_col:
         current_idx = weeks.index(chosen)
         st.button(
