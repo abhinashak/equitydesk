@@ -1,5 +1,5 @@
 -- =============================================================================
--- dcf_valuation.sql   (DuckDB)         v3 - FCF Corrected & Time-Aligned
+-- dcf_valuation.sql   (DuckDB)         v5 - FCF Corrected, Time-Aligned, Optimizer-Aware, Confidence-Rated
 -- =============================================================================
 
 -- 0. MANUAL OVERRIDES
@@ -47,6 +47,67 @@ SELECT COALESCE(p.rf, 7.0)              AS rf,
        COALESCE(p.benchmark_ticker, '^NSEI') AS benchmark_ticker
 FROM (SELECT 1) AS _one
 LEFT JOIN (SELECT * FROM dcf_policy LIMIT 1) p ON TRUE;
+
+-- 0c. OPTIMIZER OUTPUT
+-- Written by `python -m utils.dcf_optimizer` to config/dcf_optimized.csv (path is relative to
+-- the process working directory = project root, same as sqls/all.sql).  The file must exist
+-- (the seed file is fine).  config/dcf_optimized_schema.csv must exist too.  Loaded as a snapshot: re-run init.sql after re-optimizing.
+-- Values were fitted on the SAME basis this file values (norm_profit x fcf_conversion) when the
+-- optimizer ran with its default `--basis fcf`.
+-- Drop dependants first: replacing a table under a stale view can leave the view's cached
+-- column types (e.g. INTEGER vs BIGINT) out of sync with the new table.
+DROP VIEW  IF EXISTS v_dcf_optimized;
+DROP TABLE IF EXISTS dcf_optimized;
+
+CREATE TABLE dcf_optimized AS
+SELECT UPPER(TRIM(ticker))                   AS ticker,
+       TRY_CAST(g1  AS DOUBLE)               AS g1,
+       TRY_CAST(g2  AS DOUBLE)               AS g2,
+       TRY_CAST(tg  AS DOUBLE)               AS tg,
+       TRY_CAST(dr  AS DOUBLE)               AS dr,
+       TRY_CAST(mos AS DOUBLE)               AS mos,
+       TRY_CAST(rmse_fit   AS DOUBLE)        AS rmse_fit,
+       TRY_CAST(rmse_prior AS DOUBLE)        AS rmse_prior,
+       TRY_CAST(TRY_CAST(n_samples AS DOUBLE) AS BIGINT)       AS n_samples,
+       TRY_CAST(TRY_CAST(horizon_months AS DOUBLE) AS BIGINT)  AS horizon_months,
+       CAST(fitted_on AS VARCHAR)            AS fitted_on,
+       TRIM(CAST(fit_mode AS VARCHAR))       AS fit_mode,
+       LOWER(TRIM(CAST(confidence AS VARCHAR))) AS confidence,
+       CAST(confidence_reason AS VARCHAR)    AS confidence_reason
+-- The schema file carries every column (plus a placeholder row, filtered out below), so
+-- columns missing from an older data file come through as NULL instead of failing the load.
+FROM read_csv(['config/dcf_optimized_schema.csv', 'config/dcf_optimized.csv'],
+              header = true, all_varchar = true, union_by_name = true);
+
+-- Only complete, sane fits are used; newest fit wins if a ticker repeats.
+-- Deliberately NO window function / QUALIFY here: ROW_NUMBER() over this CSV-backed table
+-- triggered a DuckDB "Failed to bind column reference ... inequal types" internal error.
+-- arg_max over a struct picks one whole row per ticker (all fields from the same row).
+CREATE VIEW v_dcf_optimized AS
+SELECT ticker,
+       r.g1 AS g1, r.g2 AS g2, r.tg AS tg, r.dr AS dr, r.mos AS mos,
+       r.rmse_fit AS rmse_fit, r.rmse_prior AS rmse_prior,
+       r.n_samples AS n_samples, r.horizon_months AS horizon_months, r.fitted_on AS fitted_on,
+       r.fit_mode AS fit_mode,
+       CASE WHEN r.confidence IN ('high', 'medium', 'low') THEN r.confidence ELSE 'unrated' END AS confidence,
+       r.confidence_reason AS confidence_reason
+FROM (
+    SELECT o.ticker,
+           arg_max(
+               {'g1': o.g1, 'g2': o.g2, 'tg': o.tg, 'dr': o.dr, 'mos': o.mos,
+                'rmse_fit': o.rmse_fit, 'rmse_prior': o.rmse_prior,
+                'n_samples': o.n_samples, 'horizon_months': o.horizon_months,
+                'fitted_on': o.fitted_on, 'fit_mode': o.fit_mode,
+                'confidence': o.confidence, 'confidence_reason': o.confidence_reason},
+               COALESCE(o.fitted_on, '')
+           ) AS r
+    FROM dcf_optimized o
+    WHERE o.ticker <> ''
+      AND o.g1 IS NOT NULL AND o.g2 IS NOT NULL AND o.tg IS NOT NULL
+      AND o.dr IS NOT NULL AND o.mos IS NOT NULL
+      AND o.dr > o.tg AND o.g2 <= o.g1
+    GROUP BY o.ticker
+) t;
 
 -- 1. DECAY RATE per ticker
 CREATE OR REPLACE VIEW v_dcf_lambda AS
@@ -234,25 +295,39 @@ SELECT ticker,
 FROM c2;
 
 -- 2d. RESOLVED ASSUMPTIONS
+-- Precedence per field (highest first):
+--   manual ticker row (dcf_assumptions)  >  optimizer fit (v_dcf_optimized)
+--   >  automatic (v_dcf_assumptions_auto)  >  global row (blank ticker)  >  hard default.
+-- The optimizer fits g1/g2/tg/dr/mos jointly, so they are taken together from the fit unless
+-- the manual row overrides an individual field.
 CREATE OR REPLACE VIEW v_dcf_cfg AS
 WITH cg AS (SELECT * FROM dcf_assumptions WHERE COALESCE(TRIM(ticker), '') = '' LIMIT 1),
      ct AS (SELECT * FROM dcf_assumptions WHERE COALESCE(TRIM(ticker), '') <> ''
             QUALIFY ROW_NUMBER() OVER (PARTITION BY UPPER(TRIM(ticker))) = 1)
 SELECT g.ticker,
-       COALESCE(ct.g1,  au.g1,  cg.g1,  12.0)                          AS g1,
-       COALESCE(ct.g2,  au.g2,  cg.g2,  10.0)                          AS g2,
-       COALESCE(ct.tg,  au.tg,  cg.tg,   5.0)                          AS tg,
-       COALESCE(ct.dr,  au.dr,  cg.dr,  12.0)                          AS dr,
-       COALESCE(ct.mos, au.mos, cg.mos, 25.0)                          AS mos,
+       COALESCE(ct.g1,  op.g1,  au.g1,  cg.g1,  12.0)                  AS g1,
+       COALESCE(ct.g2,  op.g2,  au.g2,  cg.g2,  10.0)                  AS g2,
+       COALESCE(ct.tg,  op.tg,  au.tg,  cg.tg,   5.0)                  AS tg,
+       COALESCE(ct.dr,  op.dr,  au.dr,  cg.dr,  12.0)                  AS dr,
+       COALESCE(ct.mos, op.mos, au.mos, cg.mos, 25.0)                  AS mos,
        COALESCE(ct.zscore_thresh, cg.zscore_thresh, pol.zscore_thresh) AS z_thresh,
        COALESCE(ct.oi_structural, cg.oi_structural, FALSE)             AS oi_structural,
        lm.lam,
-       CASE WHEN ct.ticker IS NOT NULL THEN 'manual override (ticker row) + auto'
-            ELSE 'auto' END                                            AS assump_source
+       CASE WHEN ct.ticker IS NOT NULL AND op.ticker IS NOT NULL THEN 'manual override + optimized'
+            WHEN ct.ticker IS NOT NULL                          THEN 'manual override + auto'
+            WHEN op.ticker IS NOT NULL                          THEN 'optimized'
+            ELSE 'auto' END                                            AS assump_source,
+       -- confidence in the assumptions: manual row = the user's call; optimizer fit = its rating
+       -- (high / medium / low / unrated); auto-only = never fitted to prices.
+       CASE WHEN ct.ticker IS NOT NULL THEN 'manual'
+            WHEN op.ticker IS NOT NULL THEN op.confidence
+            ELSE 'unrated' END                                         AS assump_confidence,
+       CASE WHEN ct.ticker IS NULL AND op.ticker IS NOT NULL THEN op.confidence_reason END AS assump_confidence_reason
 FROM general_info g
 CROSS JOIN v_dcf_policy pol
 JOIN v_dcf_lambda lm ON lm.ticker = g.ticker
 LEFT JOIN v_dcf_assumptions_auto au ON au.ticker = g.ticker
+LEFT JOIN v_dcf_optimized        op ON UPPER(TRIM(op.ticker)) = UPPER(TRIM(g.ticker))
 LEFT JOIN ct ON UPPER(TRIM(ct.ticker)) = UPPER(TRIM(g.ticker))
 LEFT JOIN cg ON TRUE;
 
@@ -299,7 +374,7 @@ px AS (
     QUALIFY ROW_NUMBER() OVER (PARTITION BY REPLACE(Ticker,'.NS','') ORDER BY Date DESC) = 1
 ),
 n AS (
-    SELECT c.ticker, c.tg, c.dr, c.mos, c.z_thresh, c.oi_structural, c.lam,
+    SELECT c.ticker, c.tg, c.dr, c.mos, c.z_thresh, c.oi_structural, c.lam, c.assump_source, c.assump_confidence, c.assump_confidence_reason,
            GREATEST(COALESCE(c.g1, h.wgrowth_3y, h.cagr_3y_simple, 12.0), 0)  AS g1,
            COALESCE(c.g2, h.wgrowth_5y, h.cagr_5y_simple, 10.0)               AS g2_raw,
            gi.current_price, gi.face_value, gi.sector,
@@ -309,7 +384,7 @@ n AS (
            COALESCE(ey.exc, 0)                                  AS exc_latest,
            COALESCE(h.wtax, 0.25)                               AS tax_rate,
            CASE WHEN gi.sector = 'Financial Services' THEN 1.0
-                ELSE COALESCE(cfr.raw_fcf_conversion, 0.7) 
+                ELSE COALESCE(cfr.raw_fcf_conversion, 0.7)
            END AS fcf_conversion
     FROM v_dcf_cfg c
     JOIN general_info gi      ON gi.ticker = c.ticker
@@ -351,7 +426,7 @@ SELECT
     COALESCE(eq.equity_cr / COALESCE(NULLIF(n4.face_value, 0), 10.0),
              ABS(n4.reported_profit) / NULLIF(ABS(el.eps), 0))                           AS shares_cr,
     COALESCE(px.last_close, n4.current_price)                                            AS price,
-    n4.g1, LEAST(n4.g2_raw, n4.g1) AS g2, n4.tg, n4.dr, n4.mos, n4.lam
+    n4.g1, LEAST(n4.g2_raw, n4.g1) AS g2, n4.tg, n4.dr, n4.mos, n4.lam, n4.assump_source, n4.assump_confidence, n4.assump_confidence_reason
 FROM n4
 LEFT JOIN eq            ON eq.ticker = n4.ticker
 LEFT JOIN eps_latest el ON el.ticker = n4.ticker
@@ -384,7 +459,7 @@ lam AS (SELECT ticker, lam FROM v_dcf_lambda),
 px AS (
     SELECT REPLACE(Ticker, '.NS', '') AS ticker, Date, Close FROM ticker_prices
 ),
-px_month AS ( 
+px_month AS (
     SELECT ticker, DATE_TRUNC('month', Date) AS ym, Close AS close_price FROM px
     QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker, DATE_TRUNC('month', Date) ORDER BY Date DESC) = 1
 ),
@@ -442,7 +517,7 @@ agg AS (
            COUNT(*) FILTER (WHERE src = 'quarterly')    AS n_quarterly
     FROM combined GROUP BY ticker
 ),
-eps_now AS ( 
+eps_now AS (
     SELECT ticker, eps AS latest_eps
     FROM (SELECT ticker, YEAR(dt) AS yr, AVG(val) AS eps FROM profit_loss
           WHERE metric = 'EPS in Rs' GROUP BY ticker, YEAR(dt))
@@ -478,18 +553,19 @@ ps AS (
     FROM tot t JOIN v_dcf_inputs i USING (ticker) GROUP BY t.ticker
 )
 SELECT i.ticker,
-       ROUND(i.price, 2) AS price,  
-       ROUND(i.norm_profit, 0) AS norm_profit_cr,  
+       ROUND(i.price, 2) AS price,
+       ROUND(i.norm_profit, 0) AS norm_profit_cr,
        ROUND(i.norm_fcf, 0) AS norm_fcf_cr,
        ROUND(i.shares_cr, 2) AS shares_cr,
-       i.g1, i.g2, i.tg, i.dr, i.mos, i.lam AS decay_lambda,
+       i.g1, i.g2, i.tg, i.dr, i.mos, i.lam AS decay_lambda, i.assump_source,
+       i.assump_confidence, i.assump_confidence_reason,
        ROUND(ps.iv_bear, 0) AS iv_bear,  ROUND(ps.iv_base, 0) AS iv_base,  ROUND(ps.iv_bull, 0) AS iv_bull,
        ROUND(ps.iv_base * (1 - i.mos/100), 0)                AS mos_price,
        ROUND(pe.wmedian_pe, 1)                               AS pe_wmedian,
        pe.latest_eps                                         AS latest_eps,
        ROUND(pe.wmedian_pe * pe.latest_eps, 0)               AS pe_fair_value,
        ROUND((i.price - pe.wmedian_pe * pe.latest_eps)
-             / NULLIF(pe.wmedian_pe * pe.latest_eps, 0) * 100, 1) AS pe_premium_pct, 
+             / NULLIF(pe.wmedian_pe * pe.latest_eps, 0) * 100, 1) AS pe_premium_pct,
        CASE WHEN pe.wmedian_pe * pe.latest_eps IS NULL THEN NULL
             WHEN i.price <= pe.wmedian_pe * pe.latest_eps THEN 'CHEAP vs own P/E history'
             ELSE 'RICH vs own P/E history' END               AS pe_verdict,
@@ -499,7 +575,13 @@ SELECT i.ticker,
        CASE WHEN i.price <= ps.iv_base * (1 - i.mos/100) THEN 'BUY (inside MoS)'
             WHEN i.price <= ps.iv_base                   THEN 'UNDERVALUED'
             WHEN i.price <= ps.iv_bull                   THEN 'OVERVALUED vs base'
-            ELSE 'OVERVALUED even vs bull' END             AS verdict
+            ELSE 'OVERVALUED even vs bull' END             AS verdict,
+       -- same verdict, prefixed when the assumptions behind it are low confidence
+       CASE WHEN i.assump_confidence = 'low' THEN '[LOW CONFIDENCE] ' ELSE '' END ||
+       CASE WHEN i.price <= ps.iv_base * (1 - i.mos/100) THEN 'BUY (inside MoS)'
+            WHEN i.price <= ps.iv_base                   THEN 'UNDERVALUED'
+            WHEN i.price <= ps.iv_bull                   THEN 'OVERVALUED vs base'
+            ELSE 'OVERVALUED even vs bull' END             AS verdict_conf
 FROM v_dcf_inputs i JOIN ps USING (ticker)
 LEFT JOIN v_dcf_pe_history pe ON pe.ticker = i.ticker
 WHERE i.shares_cr > 0 AND i.price IS NOT NULL;

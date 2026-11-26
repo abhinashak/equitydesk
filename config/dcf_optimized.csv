@@ -1,0 +1,504 @@
+ticker,g1,g2,tg,dr,mos,rmse_fit,rmse_prior,n_samples,horizon_months,fitted_on,fit_mode,basis,fcf_conv,price_latest,iv_latest,gap_pct,confidence,confidence_reason
+360ONE,20.0,20.0,2.0,13.0,40,0.6754,1.8271,22,12,2026-11-26,growth,fcf,1.0,1165.2,350.45,232.5,low,price +232% vs DCF; weak fit (rmse 0.68)
+3MINDIA,25.0,22.5,5.0,11.5,35,0.4412,0.9747,38,12,2026-11-26,growth,fcf,0.868,27800.0,28237.7,-1.6,high,
+AARTIIND,32.5,30.0,5.0,13.5,40,1.435,3.1354,36,12,2026-11-26,growth,fcf,0.1,435.15,112.76,285.9,low,poor fit (rmse 1.44); price +286% vs DCF; FCF conversion clipped
+AAVAS,24.0,5.0,5.0,11.5,40,0.56,0.5824,29,12,2026-11-26,growth,fcf,1.0,1081.2,2960.16,-63.5,medium,price -64% vs DCF; fit barely beats prior
+ABB,32.0,21.0,5.0,12.5,40,0.5388,1.5286,37,12,2026-11-26,growth,fcf,0.666,7028.5,4066.01,72.9,medium,price +73% vs DCF
+ABBOTINDIA,23.0,7.0,5.0,10.0,15,0.1744,0.4575,37,12,2026-11-26,growth,fcf,0.839,26125.0,32798.04,-20.3,high,
+ABCAPITAL,40.0,5.5,5.0,14.5,40,0.6765,1.1288,10,12,2026-11-26,growth,fcf,1.0,422.0,519.44,-18.8,low,growth at cap (g1 40); weak fit (rmse 0.68); limited samples (10)
+ABFRL,39.5,30.0,5.0,14.5,40,1.5045,2.0046,34,12,2026-11-26,growth,fcf,0.1,39.88,37.56,6.2,low,poor fit (rmse 1.50); growth at cap (g1 39.5); FCF conversion clipped
+ABREL,31.0,16.5,5.0,14.0,40,0.7097,1.6093,30,12,2026-11-26,growth,fcf,0.862,1257.0,2692.17,-53.3,medium,weak fit (rmse 0.71); price -53% vs DCF
+ABSLAMC,22.0,2.0,5.0,12.5,20,0.247,0.49,17,12,2026-11-26,growth,fcf,1.0,928.85,858.58,8.2,high,
+ACC,24.5,24.5,5.0,13.5,40,1.1382,1.7872,38,12,2026-11-26,growth,fcf,0.1,1255.8,507.84,147.3,low,poor fit (rmse 1.14); price +147% vs DCF; FCF conversion clipped
+ACCELYA,9.5,2.0,2.0,11.5,35,0.394,0.5925,37,12,2026-11-26,growth,fcf,1.022,973.85,1115.05,-12.7,high,
+ACE,39.5,4.5,5.0,13.0,40,0.7744,0.784,36,12,2026-11-26,growth,fcf,0.782,1190.35,1594.18,-25.3,low,growth at cap (g1 39.5); weak fit (rmse 0.77); fit barely beats prior
+ACUTAAS,40.0,30.0,5.0,12.0,40,2.2163,3.3077,17,12,2026-11-26,growth,fcf,0.1,3993.0,675.98,490.7,low,poor fit (rmse 2.22); outlier fit vs universe (z 3.0); growth at cap (g1 40); price +491% vs DCF; FCF conversion clipped
+ADANIENSOL,39.5,30.0,3.0,14.0,40,2.3738,4.5244,9,12,2026-11-26,growth,fcf,0.1,1408.0,83.57,1584.9,low,poor fit (rmse 2.37); outlier fit vs universe (z 3.4); few samples (9); growth at cap (g1 39.5); price +1585% vs DCF; FCF conversion clipped
+ADANIENT,39.0,20.0,5.0,14.5,40,0.6838,2.045,34,12,2026-11-26,growth,fcf,0.101,2668.5,601.04,344.0,low,growth at cap (g1 39); price +344% vs DCF; weak fit (rmse 0.68)
+ADANIGREEN,38.5,30.0,5.0,14.5,40,1.4242,3.0534,13,12,2026-11-26,growth,fcf,1.5,1364.5,645.05,111.5,low,poor fit (rmse 1.42); growth at cap (g1 38.5); price +112% vs DCF; limited samples (13); FCF conversion clipped
+ADANIPORTS,39.5,13.5,2.0,14.0,40,0.5174,1.9683,38,12,2026-11-26,growth,fcf,1.5,1926.3,1158.55,66.3,medium,growth at cap (g1 39.5); price +66% vs DCF; FCF conversion clipped
+ADANIPOWER,27.5,1.5,5.0,13.0,40,0.8658,0.9208,34,12,2026-11-26,growth,fcf,0.674,206.0,176.63,16.6,medium,weak fit (rmse 0.87); fit barely beats prior
+AEGISLOG,40.0,30.0,5.0,11.5,40,1.0808,2.1576,36,12,2026-11-26,growth,fcf,0.186,1188.4,1220.88,-2.7,low,poor fit (rmse 1.08); growth at cap (g1 40)
+AETHER,38.5,30.0,5.0,11.0,40,1.8227,3.8121,14,12,2026-11-26,growth,fcf,0.1,1596.9,225.26,608.9,low,poor fit (rmse 1.82); outlier fit vs universe (z 2.2); growth at cap (g1 38.5); price +609% vs DCF; limited samples (14); FCF conversion clipped
+AFFLE,38.5,30.0,5.0,12.0,40,1.0853,3.1194,20,12,2026-11-26,growth,fcf,0.526,1616.6,870.07,85.8,low,poor fit (rmse 1.09); growth at cap (g1 38.5); price +86% vs DCF
+AIAENG,24.0,23.5,5.0,11.0,40,0.5342,1.11,37,12,2026-11-26,growth,fcf,0.497,3388.2,6101.02,-44.5,high,
+AJANTPHARM,22.5,21.0,5.0,10.5,40,0.5598,0.9684,36,12,2026-11-26,growth,fcf,0.721,3373.0,4583.78,-26.4,high,
+ALKEM,22.0,14.5,5.0,11.0,40,0.5529,0.8302,37,12,2026-11-26,growth,fcf,0.901,5067.0,9424.83,-46.2,high,
+AMBER,38.5,30.0,5.0,13.0,40,2.189,4.0153,31,12,2026-11-26,growth,fcf,0.1,6940.0,501.42,1284.1,low,poor fit (rmse 2.19); outlier fit vs universe (z 3.0); growth at cap (g1 38.5); price +1284% vs DCF; FCF conversion clipped
+AMBUJACEM,24.0,24.0,5.0,14.0,40,0.9262,1.8922,38,12,2026-11-26,growth,fcf,0.1,392.0,74.05,429.4,low,price +429% vs DCF; weak fit (rmse 0.93); FCF conversion clipped
+ANANDRATHI,40.0,10.0,5.0,10.5,30,0.3376,0.4472,16,12,2026-11-26,growth,fcf,1.0,2380.0,2235.61,6.5,medium,growth at cap (g1 40)
+ANANTRAJ,37.5,13.5,5.0,14.5,40,0.792,1.7135,36,12,2026-11-26,growth,fcf,0.1,444.35,48.62,813.9,low,growth at cap (g1 37.5); price +814% vs DCF; weak fit (rmse 0.79); FCF conversion clipped
+ANGELONE,35.5,0.0,5.0,14.5,40,0.5012,0.565,21,12,2026-11-26,growth,fcf,1.0,349.15,375.82,-7.1,medium,growth at cap (g1 35.5)
+ANURAS,36.0,30.0,5.0,10.5,40,1.6092,3.6866,19,12,2026-11-26,growth,fcf,0.1,1313.6,241.13,444.8,low,poor fit (rmse 1.61); growth at cap (g1 36); price +445% vs DCF; FCF conversion clipped
+APARINDS,38.0,14.0,5.0,12.0,40,1.4051,1.6699,37,12,2026-11-26,growth,fcf,0.233,14250.0,4967.04,186.9,low,poor fit (rmse 1.41); growth at cap (g1 38); price +187% vs DCF
+APLAPOLLO,29.5,23.0,5.0,12.5,40,0.7237,1.57,36,12,2026-11-26,growth,fcf,1.42,1476.0,2320.09,-36.4,medium,weak fit (rmse 0.72)
+APOLLOHOSP,29.5,25.0,5.0,11.0,40,0.8206,1.6587,34,12,2026-11-26,growth,fcf,0.68,9257.0,7607.69,21.7,medium,weak fit (rmse 0.82)
+APOLLOTYRE,28.5,23.0,5.0,12.5,40,1.3323,1.8039,38,12,2026-11-26,growth,fcf,1.145,420.7,2257.81,-81.4,low,poor fit (rmse 1.33); price -81% vs DCF
+APTUS,27.5,2.0,5.0,12.0,30,0.3391,0.4243,17,12,2026-11-26,growth,fcf,1.0,191.33,484.11,-60.5,medium,price -60% vs DCF
+ARE&M,20.0,20.0,5.0,12.5,40,0.7357,1.3572,36,12,2026-11-26,growth,fcf,0.724,736.85,1664.23,-55.7,medium,weak fit (rmse 0.74); price -56% vs DCF
+ARMANFIN,35.5,7.0,5.0,12.5,40,0.5292,1.2548,36,12,2026-11-26,growth,fcf,1.0,1534.5,2182.88,-29.7,medium,growth at cap (g1 35.5)
+ARVINDFASN,11.5,11.5,5.0,12.5,40,2.1057,1.8835,14,12,2026-11-26,growth,fcf,,353.45,,,low,poor fit (rmse 2.11); outlier fit vs universe (z 2.8); limited samples (14); fit barely beats prior
+ASAHIINDIA,23.0,23.0,5.0,12.0,40,0.9316,1.6172,36,12,2026-11-26,growth,fcf,0.1,1178.45,105.26,1019.6,low,price +1020% vs DCF; weak fit (rmse 0.93); FCF conversion clipped
+ASHOKLEY,39.0,7.5,5.0,14.5,40,1.3689,1.5802,36,12,2026-11-26,growth,fcf,1.329,158.0,358.3,-55.9,low,poor fit (rmse 1.37); growth at cap (g1 39); price -56% vs DCF
+ASIANPAINT,24.5,24.5,5.0,12.0,35,0.4651,1.4933,36,12,2026-11-26,growth,fcf,0.858,2621.2,2745.0,-4.5,high,
+ASTERDM,39.5,26.0,2.0,10.5,40,1.2297,2.9433,31,12,2026-11-26,growth,fcf,0.11,774.7,230.96,235.4,low,poor fit (rmse 1.23); growth at cap (g1 39.5); price +235% vs DCF
+ASTRAL,31.5,29.5,5.0,11.5,40,0.4796,1.7888,36,12,2026-11-26,growth,fcf,0.599,1246.2,1534.2,-18.8,high,
+ASTRAMICRO,39.0,30.0,5.0,12.5,40,1.5475,2.942,37,12,2026-11-26,growth,fcf,0.1,1600.7,242.37,560.4,low,poor fit (rmse 1.55); growth at cap (g1 39); price +560% vs DCF; FCF conversion clipped
+ATGL,39.0,30.0,5.0,13.0,40,2.1814,3.6822,22,12,2026-11-26,growth,fcf,0.124,546.8,78.39,597.5,low,poor fit (rmse 2.18); outlier fit vs universe (z 3.0); growth at cap (g1 39); price +598% vs DCF
+ATUL,19.0,19.0,5.0,11.5,35,0.4338,1.1663,36,12,2026-11-26,growth,fcf,0.7,5034.5,8064.66,-37.6,high,
+AUBANK,24.5,0.0,5.0,12.0,30,0.3402,0.2891,34,12,2026-11-26,growth,fcf,1.0,1006.05,1630.33,-38.3,medium,fit barely beats prior
+AUROPHARMA,14.5,11.0,5.0,11.0,40,0.5786,0.6905,36,12,2026-11-26,growth,fcf,0.913,1796.5,1494.47,20.2,high,
+AVANTIFEED,22.0,19.5,5.0,13.5,40,0.5934,1.0228,36,12,2026-11-26,growth,fcf,0.671,700.35,978.73,-28.4,high,
+AWL,31.0,30.0,5.0,12.0,40,1.0124,2.1821,15,12,2026-11-26,growth,fcf,1.028,165.85,1020.5,-83.7,low,poor fit (rmse 1.01); limited samples (15); price -84% vs DCF
+AXISBANK,28.5,0.0,5.0,13.0,40,0.9324,0.6284,38,12,2026-11-26,growth,fcf,1.0,1418.1,3922.44,-63.8,medium,weak fit (rmse 0.93); price -64% vs DCF; fit barely beats prior
+BAJAJFINSV,30.0,30.0,5.0,13.0,40,1.1442,2.3961,11,12,2026-11-26,growth,fcf,1.0,1925.0,967.34,99.0,low,poor fit (rmse 1.14); limited samples (11); price +99% vs DCF
+BAJAJHLDNG,31.5,14.0,3.0,12.5,40,0.6918,1.7133,37,12,2026-11-26,growth,fcf,1.0,11541.0,15101.23,-23.6,medium,weak fit (rmse 0.69)
+BAJFINANCE,33.5,13.5,5.0,13.5,30,0.3305,0.9672,38,12,2026-11-26,growth,fcf,1.0,1131.35,1447.86,-21.9,high,
+BALKRISIND,29.0,29.0,5.0,13.0,40,1.1816,2.3784,36,12,2026-11-26,growth,fcf,0.1,2357.0,604.22,290.1,low,poor fit (rmse 1.18); price +290% vs DCF; FCF conversion clipped
+BALRAMCHIN,15.0,15.0,5.0,11.5,40,1.0309,1.3164,36,12,2026-11-26,growth,fcf,0.1,611.8,68.47,793.5,low,poor fit (rmse 1.03); price +794% vs DCF; FCF conversion clipped
+BANDHANBNK,17.5,0.0,4.0,14.0,40,0.7636,0.5896,31,12,2026-11-26,growth,fcf,1.0,171.69,389.79,-56.0,medium,weak fit (rmse 0.76); price -56% vs DCF; fit barely beats prior
+BANKBARODA,27.5,0.0,5.0,13.5,40,1.7411,1.3767,36,12,2026-11-26,growth,fcf,1.0,276.43,1421.61,-80.6,low,poor fit (rmse 1.74); outlier fit vs universe (z 2.0); price -81% vs DCF; fit barely beats prior
+BANKINDIA,19.0,0.0,5.0,13.5,40,1.5064,1.3899,13,12,2026-11-26,growth,fcf,1.0,159.89,715.5,-77.7,low,poor fit (rmse 1.51); limited samples (13); price -78% vs DCF; fit barely beats prior
+BASF,31.0,0.0,5.0,12.0,40,0.6375,0.7615,37,12,2026-11-26,growth,fcf,0.587,2895.3,2672.39,8.3,medium,weak fit (rmse 0.64)
+BATAINDIA,15.5,15.5,2.0,12.0,40,0.7287,1.5263,37,12,2026-11-26,growth,fcf,1.5,631.5,578.83,9.1,medium,weak fit (rmse 0.73); FCF conversion clipped
+BAYERCROP,15.0,13.0,2.5,10.5,25,0.3165,1.052,36,12,2026-11-26,growth,fcf,0.975,3339.3,5229.57,-36.1,high,
+BBOX,39.5,30.0,2.0,12.5,40,1.7197,3.7892,22,12,2026-11-26,growth,fcf,0.1,854.05,10.95,7699.2,low,poor fit (rmse 1.72); growth at cap (g1 39.5); price +7699% vs DCF; FCF conversion clipped
+BDL,21.0,21.0,5.0,13.5,40,0.4842,1.4216,31,12,2026-11-26,growth,fcf,1.35,1027.65,938.31,9.5,high,
+BEL,29.0,18.5,5.0,13.0,40,0.6187,0.8727,37,12,2026-11-26,growth,fcf,0.245,404.3,113.5,256.2,low,price +256% vs DCF; weak fit (rmse 0.62)
+BEML,23.5,12.5,2.0,14.0,40,0.5302,1.47,37,12,2026-11-26,growth,fcf,0.635,2041.2,337.18,505.4,low,price +505% vs DCF
+BERGEPAINT,26.0,26.0,5.0,11.0,35,0.4681,1.585,36,12,2026-11-26,growth,fcf,0.812,462.25,697.63,-33.7,high,
+BHARATFORG,23.0,23.0,5.0,13.0,40,0.574,1.5855,38,12,2026-11-26,growth,fcf,0.954,1722.0,792.94,117.2,low,price +117% vs DCF
+BHARTIARTL,38.0,30.0,3.0,12.0,40,2.343,3.7548,13,12,2026-11-26,growth,fcf,1.5,2128.5,4508.1,-52.8,low,poor fit (rmse 2.34); outlier fit vs universe (z 3.3); growth at cap (g1 38); limited samples (13); price -53% vs DCF; FCF conversion clipped
+BHEL,27.5,27.5,5.0,14.0,40,1.2615,2.4109,38,12,2026-11-26,growth,fcf,0.775,413.5,343.65,20.3,low,poor fit (rmse 1.26)
+BIOCON,32.5,30.0,2.0,12.0,40,1.5767,3.6046,36,12,2026-11-26,growth,fcf,0.1,365.35,68.51,433.3,low,poor fit (rmse 1.58); price +433% vs DCF; FCF conversion clipped
+BIRET,37.5,11.0,2.0,10.0,40,1.2491,2.2797,18,12,2026-11-26,growth,fcf,0.1,319.93,73.72,334.0,low,poor fit (rmse 1.25); growth at cap (g1 37.5); price +334% vs DCF; FCF conversion clipped
+BIRLACORPN,18.0,7.0,3.0,13.0,40,0.6063,0.9926,37,12,2026-11-26,growth,fcf,1.164,821.25,802.1,2.4,medium,weak fit (rmse 0.61)
+BLS,39.5,30.0,5.0,14.5,40,2.8025,4.1218,29,12,2026-11-26,growth,fcf,0.1,220.44,38.81,468.0,low,poor fit (rmse 2.80); outlier fit vs universe (z 4.2); growth at cap (g1 39.5); price +468% vs DCF; FCF conversion clipped
+BLUEDART,19.5,13.0,5.0,11.5,40,0.5779,0.7692,38,12,2026-11-26,growth,fcf,1.089,4445.9,5372.98,-17.3,high,
+BLUEJET,39.0,22.0,5.0,13.5,25,0.289,1.2825,8,12,2026-11-26,growth,fcf,0.265,513.85,334.65,53.6,low,few samples (8); growth at cap (g1 39); price +54% vs DCF
+BLUESTARCO,30.5,21.5,5.0,12.5,40,0.4828,1.7307,38,12,2026-11-26,growth,fcf,0.292,1821.5,362.22,402.9,low,price +403% vs DCF
+BOSCHLTD,27.0,21.5,5.0,12.0,40,0.483,1.3545,37,12,2026-11-26,growth,fcf,0.624,48800.0,42911.85,13.7,high,
+BPCL,26.0,0.0,5.0,13.5,40,1.2165,1.1255,36,12,2026-11-26,growth,fcf,1.102,305.35,1105.6,-72.4,low,poor fit (rmse 1.22); price -72% vs DCF; fit barely beats prior
+BRIGADE,17.5,17.0,4.0,13.0,40,0.5466,1.2641,37,12,2026-11-26,growth,fcf,0.1,589.7,50.92,1058.1,low,price +1058% vs DCF; FCF conversion clipped
+BRITANNIA,20.0,20.0,5.0,11.0,25,0.2715,0.9959,37,12,2026-11-26,growth,fcf,0.896,5076.2,5712.39,-11.1,high,
+BSE,40.0,12.5,5.0,13.5,40,1.1592,1.2347,35,12,2026-11-26,growth,fcf,1.0,3775.2,3828.7,-1.4,low,poor fit (rmse 1.16); growth at cap (g1 40); fit barely beats prior
+BSOFT,18.5,11.5,5.0,13.5,40,0.614,0.7518,36,12,2026-11-26,growth,fcf,0.722,299.25,289.48,3.4,medium,weak fit (rmse 0.61)
+BUTTERFLY,27.0,15.5,5.0,10.5,40,1.4495,1.7253,36,12,2026-11-26,growth,fcf,1.5,563.8,2880.93,-80.4,low,poor fit (rmse 1.45); price -80% vs DCF; FCF conversion clipped
+CAMS,26.0,15.5,5.0,13.5,25,0.2586,0.8626,21,12,2026-11-26,growth,fcf,1.0,717.5,743.22,-3.5,high,
+CANBK,17.5,0.0,5.0,13.5,40,1.5986,1.7738,15,12,2026-11-26,growth,fcf,1.0,133.46,681.79,-80.4,low,poor fit (rmse 1.60); limited samples (15); price -80% vs DCF; fit barely beats prior
+CANFINHOME,17.5,0.0,5.0,12.0,35,0.424,0.6864,38,12,2026-11-26,growth,fcf,1.0,770.6,1781.85,-56.8,medium,price -57% vs DCF
+CAPLIPOINT,27.0,18.0,5.0,12.0,30,0.3508,0.751,36,12,2026-11-26,growth,fcf,0.386,2033.3,1444.19,40.8,high,
+CARBORUNIV,23.5,23.5,5.0,12.0,35,0.4145,1.2459,36,12,2026-11-26,growth,fcf,0.383,977.3,507.27,92.7,medium,price +93% vs DCF
+CARTRADE,35.0,30.0,5.0,12.5,40,1.1779,2.7495,17,12,2026-11-26,growth,fcf,0.568,2513.5,1832.1,37.2,low,poor fit (rmse 1.18); growth at cap (g1 35)
+CASTROLIND,5.0,4.5,5.0,11.5,20,0.2244,0.2822,37,12,2026-11-26,growth,fcf,0.988,190.26,158.62,19.9,high,
+CCL,32.0,30.0,5.0,10.5,40,1.3118,2.5889,37,12,2026-11-26,growth,fcf,0.575,937.55,1631.26,-42.5,low,poor fit (rmse 1.31)
+CDSL,32.5,16.5,5.0,14.0,40,0.4857,1.0813,34,12,2026-11-26,growth,fcf,1.0,1413.0,1274.97,10.8,high,
+CEATLTD,36.5,15.0,5.0,13.0,40,1.4116,1.7367,37,12,2026-11-26,growth,fcf,0.968,3579.4,11118.54,-67.8,low,poor fit (rmse 1.41); growth at cap (g1 36.5); price -68% vs DCF
+CEMPRO,40.0,3.5,5.0,13.0,40,0.6676,0.6439,36,12,2026-11-26,growth,fcf,0.523,1414.7,914.47,54.7,low,growth at cap (g1 40); weak fit (rmse 0.67); price +55% vs DCF; fit barely beats prior
+CENTRALBK,25.5,0.0,5.0,13.5,40,1.4722,1.0931,24,12,2026-11-26,growth,fcf,1.0,33.31,211.3,-84.2,low,poor fit (rmse 1.47); price -84% vs DCF; fit barely beats prior
+CENTURYPLY,21.0,21.0,5.0,11.5,40,0.8596,1.4439,37,12,2026-11-26,growth,fcf,0.103,655.75,79.72,722.6,low,price +723% vs DCF; weak fit (rmse 0.86)
+CESC,5.5,4.0,2.0,12.5,40,0.4947,0.5867,37,12,2026-11-26,growth,fcf,1.5,125.88,228.36,-44.9,medium,FCF conversion clipped
+CGCL,30.5,26.5,5.0,12.0,40,0.763,1.5627,30,12,2026-11-26,growth,fcf,1.0,237.17,844.81,-71.9,medium,weak fit (rmse 0.76); price -72% vs DCF
+CGPOWER,40.0,29.5,5.0,12.0,40,1.1352,1.9925,38,12,2026-11-26,growth,fcf,0.676,778.9,886.05,-12.1,low,poor fit (rmse 1.14); growth at cap (g1 40)
+CHAMBLFERT,17.0,0.0,5.0,13.0,40,1.0293,1.1452,36,12,2026-11-26,growth,fcf,0.972,366.2,968.18,-62.2,low,poor fit (rmse 1.03); price -62% vs DCF
+CHEMPLASTS,14.0,10.0,2.0,12.5,40,0.5437,1.0908,17,12,2026-11-26,growth,fcf,1.127,244.35,202.2,20.8,high,
+CHENNPETRO,25.0,0.0,5.0,11.0,40,2.0158,1.8391,19,12,2026-11-26,growth,fcf,1.069,1366.6,10353.12,-86.8,low,poor fit (rmse 2.02); outlier fit vs universe (z 2.6); price -87% vs DCF; fit barely beats prior
+CHOLAFIN,30.0,8.5,5.0,14.0,25,0.2689,0.3722,38,12,2026-11-26,growth,fcf,1.0,1868.0,2322.78,-19.6,high,
+CHOLAHLDNG,28.0,28.0,3.5,13.0,40,1.1711,2.7294,23,12,2026-11-26,growth,fcf,1.0,1357.1,226.11,500.2,low,poor fit (rmse 1.17); price +500% vs DCF
+CIEINDIA,27.0,10.5,5.0,12.0,40,0.6358,1.198,38,12,2026-11-26,growth,fcf,0.76,366.85,617.54,-40.6,medium,weak fit (rmse 0.64)
+CIPLA,17.5,6.5,5.0,11.0,20,0.2353,0.5346,38,12,2026-11-26,growth,fcf,0.574,1433.2,826.41,73.4,medium,price +73% vs DCF
+CLEAN,21.5,21.5,5.0,11.5,40,0.5972,1.2669,18,12,2026-11-26,growth,fcf,0.901,689.35,1251.09,-44.9,high,
+CLSEL,29.0,29.0,5.0,13.5,40,0.5128,1.716,18,12,2026-11-26,growth,fcf,0.1,285.75,168.69,69.4,medium,price +69% vs DCF; FCF conversion clipped
+CMSINFO,21.0,8.0,5.0,11.0,40,0.557,0.7575,16,12,2026-11-26,growth,fcf,0.572,205.9,427.14,-51.8,medium,price -52% vs DCF
+COALINDIA,22.5,18.5,5.0,11.5,40,0.5696,0.9716,24,12,2026-11-26,growth,fcf,0.1,385.0,288.47,33.5,medium,FCF conversion clipped
+COCHINSHIP,20.0,18.5,5.0,13.5,40,0.6854,1.319,33,12,2026-11-26,growth,fcf,0.1,1082.0,103.66,943.8,low,price +944% vs DCF; weak fit (rmse 0.69); FCF conversion clipped
+COFORGE,29.0,21.0,5.0,12.5,40,0.6644,1.4784,37,12,2026-11-26,growth,fcf,0.266,2060.0,776.1,165.4,low,price +165% vs DCF; weak fit (rmse 0.66)
+COHANCE,16.0,16.0,2.0,11.0,40,0.6858,1.6784,22,12,2026-11-26,growth,fcf,0.894,489.55,142.48,243.6,low,price +244% vs DCF; weak fit (rmse 0.69)
+COLPAL,17.0,15.0,5.0,11.5,25,0.2805,1.0206,36,12,2026-11-26,growth,fcf,1.029,1755.5,1937.56,-9.4,high,
+CONCOR,24.0,24.0,4.5,13.5,40,0.9321,1.977,36,12,2026-11-26,growth,fcf,0.522,427.25,455.51,-6.2,medium,weak fit (rmse 0.93)
+CONCORDBIO,33.0,30.0,5.0,11.5,40,0.7995,2.1464,9,12,2026-11-26,growth,fcf,0.495,547.0,820.36,-33.3,low,few samples (9); weak fit (rmse 0.80)
+CONFIPET,33.5,30.0,5.0,11.5,40,0.7496,2.5235,21,12,2026-11-26,growth,fcf,0.195,64.48,103.98,-38.0,medium,weak fit (rmse 0.75)
+COROMANDEL,17.5,8.5,5.0,12.5,40,0.6391,0.6446,38,12,2026-11-26,growth,fcf,0.381,1971.7,658.92,199.2,low,price +199% vs DCF; weak fit (rmse 0.64); fit barely beats prior
+CRAFTSMAN,24.0,24.0,5.0,11.5,40,1.4994,2.1848,19,12,2026-11-26,growth,fcf,0.1,11649.0,788.48,1377.4,low,poor fit (rmse 1.50); price +1377% vs DCF; FCF conversion clipped
+CREDITACC,29.0,0.0,5.0,12.0,40,0.6904,0.7352,29,12,2026-11-26,growth,fcf,1.0,983.8,2459.68,-60.0,medium,weak fit (rmse 0.69); price -60% vs DCF; fit barely beats prior
+CRISIL,14.5,14.5,3.0,10.5,30,0.3827,1.1148,36,12,2026-11-26,growth,fcf,1.0,4034.8,4306.09,-6.3,high,
+CROMPTON,14.0,14.0,5.0,12.5,35,0.4132,0.9145,37,12,2026-11-26,growth,fcf,1.085,219.5,252.71,-13.1,high,
+CUB,9.0,0.0,5.0,12.5,40,0.5055,0.8266,37,12,2026-11-26,growth,fcf,1.0,247.0,304.68,-18.9,high,
+CUMMINSIND,25.5,17.0,5.0,12.0,35,0.4154,1.4225,38,12,2026-11-26,growth,fcf,0.656,4067.0,3103.26,31.1,high,
+CUPID,35.5,21.0,5.0,11.5,40,1.8867,2.0,36,12,2026-11-26,growth,fcf,0.1,366.35,10.28,3464.1,low,poor fit (rmse 1.89); outlier fit vs universe (z 2.3); growth at cap (g1 35.5); price +3464% vs DCF; fit barely beats prior; FCF conversion clipped
+CYIENT,11.5,11.5,2.0,12.5,40,0.482,1.0442,36,12,2026-11-26,growth,fcf,0.841,1160.5,405.75,186.0,low,price +186% vs DCF
+DABUR,20.0,20.0,2.0,11.5,40,0.5018,1.7615,36,12,2026-11-26,growth,fcf,0.916,430.0,362.35,18.7,high,
+DALBHARAT,39.0,30.0,2.0,12.5,40,2.5514,4.8654,23,12,2026-11-26,growth,fcf,0.124,1564.4,167.25,835.4,low,poor fit (rmse 2.55); outlier fit vs universe (z 3.7); growth at cap (g1 39); price +835% vs DCF
+DATAPATTNS,39.5,30.0,5.0,12.5,40,1.6305,3.2866,16,12,2026-11-26,growth,fcf,0.1,4135.0,576.67,617.0,low,poor fit (rmse 1.63); growth at cap (g1 39.5); price +617% vs DCF; FCF conversion clipped
+DEEPAKFERT,34.0,9.5,3.0,13.5,40,0.843,1.6533,37,12,2026-11-26,growth,fcf,0.1,1416.5,111.88,1166.0,low,price +1166% vs DCF; weak fit (rmse 0.84); FCF conversion clipped
+DEEPAKNTR,21.5,21.5,4.0,12.0,40,0.6757,1.7817,36,12,2026-11-26,growth,fcf,0.53,1494.4,610.79,144.7,low,price +145% vs DCF; weak fit (rmse 0.68)
+DEVYANI,20.5,20.5,5.0,12.5,40,2.1537,2.1573,15,12,2026-11-26,growth,fcf,1.5,125.57,19.06,558.7,low,poor fit (rmse 2.15); outlier fit vs universe (z 2.9); price +559% vs DCF; limited samples (15); fit barely beats prior; FCF conversion clipped
+DIVISLAB,26.0,26.0,5.0,11.0,40,0.592,1.5469,37,12,2026-11-26,growth,fcf,0.323,11716.5,3322.41,252.7,low,price +253% vs DCF
+DIXON,39.0,30.0,5.0,14.0,40,1.7227,3.6425,29,12,2026-11-26,growth,fcf,0.1,12978.0,1605.32,708.4,low,poor fit (rmse 1.72); growth at cap (g1 39); price +708% vs DCF; FCF conversion clipped
+DLF,25.0,25.0,5.0,14.5,40,0.6676,1.7794,37,12,2026-11-26,growth,fcf,1.497,794.1,1224.29,-35.1,medium,weak fit (rmse 0.67)
+DMART,39.0,30.0,5.0,10.5,40,1.9258,3.6083,35,12,2026-11-26,growth,fcf,0.1,3592.0,905.82,296.5,low,poor fit (rmse 1.93); outlier fit vs universe (z 2.4); growth at cap (g1 39); price +296% vs DCF; FCF conversion clipped
+DOMS,40.0,30.0,5.0,12.0,40,1.296,2.6848,8,12,2026-11-26,growth,fcf,0.1,2131.0,454.76,368.6,low,poor fit (rmse 1.30); few samples (8); growth at cap (g1 40); price +369% vs DCF; FCF conversion clipped
+DRREDDY,20.0,8.0,3.0,10.5,30,0.3572,0.9735,38,12,2026-11-26,growth,fcf,0.585,1398.0,570.3,145.1,low,price +145% vs DCF
+ECLERX,17.5,11.0,5.0,12.0,40,0.5946,0.7701,36,12,2026-11-26,growth,fcf,0.894,1465.8,1536.39,-4.6,high,
+EICHERMOT,27.5,16.5,5.0,13.0,25,0.3047,0.8479,37,12,2026-11-26,growth,fcf,0.73,8336.0,7280.32,14.5,high,
+EIDPARRY,39.5,21.5,2.0,12.5,40,1.3904,2.7585,38,12,2026-11-26,growth,fcf,0.1,649.85,48.25,1246.8,low,poor fit (rmse 1.39); growth at cap (g1 39.5); price +1247% vs DCF; FCF conversion clipped
+EIHOTEL,36.5,28.5,5.0,12.5,40,1.4391,2.3378,37,12,2026-11-26,growth,fcf,0.727,340.25,759.53,-55.2,low,poor fit (rmse 1.44); growth at cap (g1 36.5); price -55% vs DCF
+ELECON,39.5,0.0,5.0,14.0,40,0.728,0.6817,36,12,2026-11-26,growth,fcf,0.661,438.5,447.01,-1.9,low,growth at cap (g1 39.5); weak fit (rmse 0.73); fit barely beats prior
+ELGIEQUIP,31.0,21.0,5.0,12.5,40,0.527,1.2604,34,12,2026-11-26,growth,fcf,0.565,543.3,487.29,11.5,high,
+EMAMILTD,17.5,5.5,5.0,11.0,30,0.3274,0.3241,36,12,2026-11-26,growth,fcf,1.013,427.55,633.81,-32.5,medium,fit barely beats prior
+EMBASSY,30.0,30.0,5.0,10.0,40,0.7349,2.5455,22,12,2026-11-26,growth,fcf,0.1,419.97,277.93,51.1,medium,weak fit (rmse 0.73); price +51% vs DCF; FCF conversion clipped
+ENDURANCE,27.0,26.5,5.0,11.5,30,0.3265,1.4669,36,12,2026-11-26,growth,fcf,0.349,2642.2,1554.14,70.0,medium,price +70% vs DCF
+ENGINERSIN,20.0,20.0,5.0,14.0,40,1.3592,1.5377,36,12,2026-11-26,growth,fcf,0.174,288.45,85.56,237.1,low,poor fit (rmse 1.36); price +237% vs DCF
+EQUITASBNK,3.5,0.0,2.0,12.0,40,0.488,0.4805,20,12,2026-11-26,growth,fcf,1.0,57.8,253.74,-77.2,medium,price -77% vs DCF; fit barely beats prior
+ERIS,14.5,14.5,5.0,10.5,40,0.8535,1.4098,34,12,2026-11-26,growth,fcf,1.184,1304.3,774.66,68.4,medium,weak fit (rmse 0.85); price +68% vs DCF
+ESCORTS,32.0,14.5,5.0,12.5,40,0.4906,1.0353,38,12,2026-11-26,growth,fcf,0.509,2450.0,5577.25,-56.1,medium,price -56% vs DCF
+ETERNAL,40.0,30.0,5.0,13.0,40,1.752,3.5709,10,12,2026-11-26,growth,fcf,0.536,371.7,218.46,70.1,low,poor fit (rmse 1.75); outlier fit vs universe (z 2.1); growth at cap (g1 40); limited samples (10); price +70% vs DCF
+ETHOSLTD,39.0,30.0,5.0,12.0,40,1.5472,3.3369,14,12,2026-11-26,growth,fcf,0.1,2669.8,558.78,377.8,low,poor fit (rmse 1.55); growth at cap (g1 39); price +378% vs DCF; limited samples (14); FCF conversion clipped
+EXIDEIND,24.5,18.0,5.0,13.0,35,0.449,1.3433,32,12,2026-11-26,growth,fcf,1.133,395.9,1189.28,-66.7,medium,price -67% vs DCF
+FACT,12.5,12.5,2.0,13.5,40,1.388,2.0043,21,12,2026-11-26,growth,fcf,0.671,743.85,25.12,2861.5,low,poor fit (rmse 1.39); price +2862% vs DCF
+FEDERALBNK,10.5,0.0,5.0,12.0,40,0.7179,0.9593,36,12,2026-11-26,growth,fcf,1.0,359.8,464.5,-22.5,medium,weak fit (rmse 0.72)
+FINCABLES,17.0,11.0,5.0,12.0,35,0.4229,0.5895,37,12,2026-11-26,growth,fcf,0.245,1174.2,426.72,175.2,low,price +175% vs DCF
+FINPIPE,15.0,2.5,5.0,12.0,40,0.5701,0.5889,37,12,2026-11-26,growth,fcf,0.394,141.56,111.15,27.4,medium,fit barely beats prior
+FIVESTAR,31.0,0.0,5.0,12.5,40,0.6307,0.4853,12,12,2026-11-26,growth,fcf,1.0,429.35,1225.09,-65.0,medium,weak fit (rmse 0.63); limited samples (12); price -65% vs DCF; fit barely beats prior
+FLUOROCHEM,38.0,30.0,5.0,11.5,40,1.0551,2.7382,22,12,2026-11-26,growth,fcf,0.463,4895.0,4855.18,0.8,low,poor fit (rmse 1.06); growth at cap (g1 38)
+FORCEMOT,40.0,29.5,5.0,14.5,40,1.2148,1.7361,25,12,2026-11-26,growth,fcf,1.178,20392.0,103642.79,-80.3,low,poor fit (rmse 1.21); growth at cap (g1 40); price -80% vs DCF
+FORTIS,40.0,30.0,2.0,11.5,40,1.3203,3.3939,25,12,2026-11-26,growth,fcf,0.1,809.0,49.75,1526.2,low,poor fit (rmse 1.32); growth at cap (g1 40); price +1526% vs DCF; FCF conversion clipped
+FSL,20.5,14.5,5.0,12.5,40,0.4833,0.9291,36,12,2026-11-26,growth,fcf,1.041,283.6,282.42,0.4,high,
+GABRIEL,27.5,17.5,5.0,13.0,40,0.7825,1.2215,36,12,2026-11-26,growth,fcf,0.315,1501.8,270.29,455.6,low,price +456% vs DCF; weak fit (rmse 0.78)
+GAEL,14.5,11.5,5.0,11.5,40,0.6397,0.7551,37,12,2026-11-26,growth,fcf,0.11,140.3,35.2,298.6,low,price +299% vs DCF; weak fit (rmse 0.64)
+GAIL,18.5,10.5,5.0,13.5,40,0.9359,1.1533,37,12,2026-11-26,growth,fcf,0.359,185.6,168.46,10.2,medium,weak fit (rmse 0.94)
+GALAXYSURF,20.0,20.0,5.0,11.5,40,0.5052,1.3846,31,12,2026-11-26,growth,fcf,0.554,2126.5,1585.87,34.1,high,
+GALLANTT,39.0,25.5,5.0,13.0,40,1.6505,2.3632,32,12,2026-11-26,growth,fcf,0.576,543.35,1018.44,-46.6,low,poor fit (rmse 1.65); growth at cap (g1 39)
+GANESHBE,16.5,4.5,5.0,12.5,40,0.584,0.6121,17,12,2026-11-26,growth,fcf,0.1,81.36,18.87,331.2,low,price +331% vs DCF; fit barely beats prior; FCF conversion clipped
+GESHIP,11.5,0.0,5.0,11.0,40,1.3594,1.6632,35,12,2026-11-26,growth,fcf,0.797,1548.0,3984.47,-61.1,low,poor fit (rmse 1.36); price -61% vs DCF
+GICRE,10.0,0.0,5.0,12.5,40,0.6808,0.8717,33,12,2026-11-26,growth,fcf,1.0,333.6,745.78,-55.3,medium,weak fit (rmse 0.68); price -55% vs DCF
+GILLETTE,24.5,15.0,5.0,10.5,20,0.2132,1.0081,37,12,2026-11-26,growth,fcf,0.741,7116.5,9374.1,-24.1,high,
+GLAND,20.5,18.5,5.0,11.0,30,0.3224,0.9949,20,12,2026-11-26,growth,fcf,0.694,3297.4,3477.51,-5.2,high,
+GLAXO,22.0,11.0,5.0,11.0,40,0.9273,1.2521,38,12,2026-11-26,growth,fcf,0.998,2701.2,3416.97,-20.9,medium,weak fit (rmse 0.93)
+GLENMARK,8.0,8.0,2.0,12.0,40,0.8939,1.1035,37,12,2026-11-26,growth,fcf,0.222,2719.0,360.41,654.4,low,price +654% vs DCF; weak fit (rmse 0.89)
+GMDCLTD,30.5,2.0,5.0,14.0,40,0.8524,1.1861,36,12,2026-11-26,growth,fcf,0.199,466.55,194.3,140.1,low,price +140% vs DCF; weak fit (rmse 0.85)
+GNFC,0.0,0.0,5.0,12.5,40,0.95,1.2415,33,12,2026-11-26,growth,fcf,0.374,445.35,317.51,40.3,medium,weak fit (rmse 0.95)
+GODFRYPHLP,29.0,2.5,5.0,13.0,40,0.6944,0.8621,36,12,2026-11-26,growth,fcf,0.271,1746.9,815.1,114.3,low,price +114% vs DCF; weak fit (rmse 0.69)
+GODREJCP,21.5,21.5,2.0,11.0,40,0.723,2.1111,36,12,2026-11-26,growth,fcf,1.285,912.3,847.81,7.6,medium,weak fit (rmse 0.72)
+GODREJIND,39.0,27.5,2.0,12.5,40,0.7975,2.7644,36,12,2026-11-26,growth,fcf,1.5,1075.95,3801.73,-71.7,low,growth at cap (g1 39); weak fit (rmse 0.80); price -72% vs DCF; FCF conversion clipped
+GODREJPROP,38.5,30.0,2.0,15.0,40,1.9033,4.0662,37,12,2026-11-26,growth,fcf,0.1,1923.0,335.38,473.4,low,poor fit (rmse 1.90); outlier fit vs universe (z 2.4); growth at cap (g1 38.5); price +473% vs DCF; FCF conversion clipped
+GOODLUCK,37.0,24.0,5.0,13.0,40,0.9334,1.9087,31,12,2026-11-26,growth,fcf,0.1,508.2,159.8,218.0,low,growth at cap (g1 37); price +218% vs DCF; weak fit (rmse 0.93); FCF conversion clipped
+GPIL,24.5,0.0,5.0,12.5,40,0.6506,0.6471,37,12,2026-11-26,growth,fcf,0.613,211.42,218.69,-3.3,medium,weak fit (rmse 0.65); fit barely beats prior
+GPPL,13.5,0.0,2.0,12.0,25,0.3106,0.3863,36,12,2026-11-26,growth,fcf,0.838,174.24,147.23,18.3,high,
+GRANULES,21.0,21.0,5.0,12.0,40,0.6686,1.3874,36,12,2026-11-26,growth,fcf,1.01,837.75,808.15,3.7,medium,weak fit (rmse 0.67)
+GRAPHITE,27.5,5.0,3.0,13.0,40,0.9675,1.4228,34,12,2026-11-26,growth,fcf,0.722,789.9,685.64,15.2,medium,weak fit (rmse 0.97)
+GRASIM,30.0,30.0,2.0,12.5,40,2.0588,3.7484,37,12,2026-11-26,growth,fcf,0.1,3162.0,415.48,661.0,low,poor fit (rmse 2.06); outlier fit vs universe (z 2.7); price +661% vs DCF; FCF conversion clipped
+GRAVITA,39.5,30.0,5.0,14.0,40,1.3049,2.8665,36,12,2026-11-26,growth,fcf,0.123,1470.3,481.54,205.3,low,poor fit (rmse 1.30); growth at cap (g1 39.5); price +205% vs DCF
+GRSE,38.5,12.0,5.0,14.0,40,0.953,1.0531,29,12,2026-11-26,growth,fcf,0.126,2013.8,542.24,271.4,low,growth at cap (g1 38.5); price +271% vs DCF; weak fit (rmse 0.95); fit barely beats prior
+GRWRHITECH,38.0,7.5,5.0,14.0,40,0.5875,1.0324,15,12,2026-11-26,growth,fcf,0.629,7895.0,4950.69,59.5,medium,limited samples (15); growth at cap (g1 38); price +60% vs DCF
+GSFC,12.0,5.0,3.5,13.0,40,0.9972,1.0836,36,12,2026-11-26,growth,fcf,0.1,137.35,30.99,343.2,low,price +343% vs DCF; weak fit (rmse 1.00); fit barely beats prior; FCF conversion clipped
+GSPL,3.5,3.5,2.0,11.5,15,0.1883,0.3199,36,12,2026-11-26,growth,fcf,0.799,268.35,165.39,62.3,medium,price +62% vs DCF
+GULFOILLUB,17.5,4.0,5.0,12.5,30,0.3449,0.3644,37,12,2026-11-26,growth,fcf,1.029,1159.2,2024.03,-42.7,medium,fit barely beats prior
+GVT&D,35.0,8.5,5.0,11.5,40,1.4346,1.4329,36,12,2026-11-26,growth,fcf,1.372,4070.0,4273.07,-4.8,low,poor fit (rmse 1.43); growth at cap (g1 35); fit barely beats prior
+HAL,26.5,10.0,5.0,13.0,40,0.5713,0.6683,31,12,2026-11-26,growth,fcf,1.1,4936.0,6372.54,-22.5,high,
+HAVELLS,29.5,29.5,5.0,12.5,40,0.8141,1.9222,36,12,2026-11-26,growth,fcf,0.392,1184.0,958.26,23.6,medium,weak fit (rmse 0.81)
+HBLENGINE,40.0,9.0,5.0,13.5,40,0.871,0.8974,36,12,2026-11-26,growth,fcf,0.678,757.15,863.28,-12.3,low,growth at cap (g1 40); weak fit (rmse 0.87); fit barely beats prior
+HCLTECH,12.5,10.0,5.0,12.0,15,0.1701,0.2547,37,12,2026-11-26,growth,fcf,1.274,1364.3,1175.67,16.0,high,
+HDFCAMC,25.5,16.0,5.0,14.0,25,0.311,1.1714,29,12,2026-11-26,growth,fcf,1.0,2682.0,2445.76,9.7,high,
+HDFCBANK,18.0,0.0,5.0,13.0,30,0.3262,0.2734,38,12,2026-11-26,growth,fcf,1.0,846.2,1346.0,-37.1,medium,fit barely beats prior
+HDFCLIFE,20.5,20.5,5.0,12.0,25,0.2873,1.1643,32,12,2026-11-26,growth,fcf,1.0,601.3,588.58,2.2,high,
+HEG,38.0,24.5,3.0,13.5,40,1.3416,2.6309,34,12,2026-11-26,growth,fcf,0.325,258.66,314.81,-17.8,low,poor fit (rmse 1.34); growth at cap (g1 38)
+HEGAM,38.0,26.0,2.0,13.5,40,1.4172,2.8644,32,12,2026-11-26,growth,fcf,0.325,258.66,271.02,-4.6,low,poor fit (rmse 1.42); growth at cap (g1 38)
+HEROMOTOCO,14.5,4.5,5.0,12.5,25,0.2736,0.2909,37,12,2026-11-26,growth,fcf,1.009,5751.5,6183.21,-7.0,medium,fit barely beats prior
+HFCL,36.0,30.0,5.0,14.0,40,1.4904,3.2362,37,12,2026-11-26,growth,fcf,0.1,169.95,29.77,470.9,low,poor fit (rmse 1.49); growth at cap (g1 36); price +471% vs DCF; FCF conversion clipped
+HINDALCO,33.5,0.0,5.0,12.5,40,0.5695,0.5677,38,12,2026-11-26,growth,fcf,0.454,889.9,977.85,-9.0,medium,fit barely beats prior
+HINDCOPPER,39.5,29.5,5.0,15.0,40,1.1153,1.6628,37,12,2026-11-26,growth,fcf,0.774,398.9,779.71,-48.8,low,poor fit (rmse 1.12); growth at cap (g1 39.5)
+HINDPETRO,9.5,9.5,2.0,14.0,40,1.238,1.4591,33,12,2026-11-26,growth,fcf,1.196,391.0,777.54,-49.7,low,poor fit (rmse 1.24)
+HINDUNILVR,19.5,19.0,4.0,11.0,25,0.2954,1.3577,36,12,2026-11-26,growth,fcf,0.912,2141.8,2988.97,-28.3,high,
+HINDZINC,12.0,2.0,5.0,12.5,35,0.4128,1.1854,38,12,2026-11-26,growth,fcf,1.015,519.7,743.89,-30.1,high,
+HOMEFIRST,36.5,0.0,5.0,12.0,30,0.3642,0.4107,19,12,2026-11-26,growth,fcf,1.0,1023.8,2335.67,-56.2,medium,growth at cap (g1 36.5); price -56% vs DCF
+HONAUT,23.0,23.0,5.0,11.5,35,0.4017,1.322,36,12,2026-11-26,growth,fcf,0.832,29255.0,37441.93,-21.9,high,
+HSCL,39.5,10.5,5.0,12.5,40,1.1033,1.3474,34,12,2026-11-26,growth,fcf,0.351,543.2,358.17,51.7,low,poor fit (rmse 1.10); growth at cap (g1 39.5); price +52% vs DCF
+HUDCO,16.5,0.0,5.0,14.5,40,0.8527,0.9741,32,12,2026-11-26,growth,fcf,1.0,155.36,322.71,-51.9,medium,weak fit (rmse 0.85); price -52% vs DCF
+ICICIBANK,23.5,0.0,5.0,12.5,40,0.5276,0.4357,37,12,2026-11-26,growth,fcf,1.0,1640.0,2466.81,-33.5,medium,fit barely beats prior
+ICICIGI,20.5,9.0,5.0,11.5,15,0.1805,0.4,33,12,2026-11-26,growth,fcf,1.0,1742.6,2041.43,-14.6,high,
+ICICILIFE,14.5,14.0,5.0,12.0,20,0.2338,0.6054,36,12,2026-11-26,growth,fcf,1.0,465.0,632.65,-26.5,high,
+ICICIPRULI,14.0,14.0,5.0,12.0,25,0.2651,0.608,37,12,2026-11-26,growth,fcf,1.0,465.0,619.93,-25.0,high,
+ICRA,17.5,5.0,5.0,10.5,30,0.3274,0.3733,38,12,2026-11-26,growth,fcf,1.0,4395.0,7623.72,-42.4,high,
+IDBI,27.5,0.0,5.0,13.5,40,1.0892,0.933,21,12,2026-11-26,growth,fcf,1.0,78.03,287.1,-72.8,low,poor fit (rmse 1.09); price -73% vs DCF; fit barely beats prior
+IDFCFIRSTB,19.5,0.0,3.5,13.0,40,0.7176,0.4591,36,12,2026-11-26,growth,fcf,1.0,87.47,193.16,-54.7,medium,weak fit (rmse 0.72); price -55% vs DCF; fit barely beats prior
+IEX,22.5,11.5,5.0,13.0,30,0.3861,0.5405,33,12,2026-11-26,growth,fcf,1.0,111.0,201.15,-44.8,high,
+IFCI,13.0,9.0,2.0,14.5,40,1.5736,1.7475,30,12,2026-11-26,growth,fcf,1.0,57.67,3.44,1577.2,low,poor fit (rmse 1.57); price +1577% vs DCF; fit barely beats prior
+IGL,15.0,13.5,3.0,12.0,25,0.2914,0.9923,37,12,2026-11-26,growth,fcf,0.52,149.67,124.65,20.1,high,
+IIFL,28.5,3.0,5.0,14.0,40,0.5617,0.8927,38,12,2026-11-26,growth,fcf,1.0,610.5,850.21,-28.2,high,
+INDHOTEL,35.5,14.0,5.0,13.5,30,0.3756,1.2762,38,12,2026-11-26,growth,fcf,0.863,903.85,720.75,25.4,medium,growth at cap (g1 35.5)
+INDIACEM,15.5,15.5,2.0,12.5,40,0.9544,1.7918,38,12,2026-11-26,growth,fcf,0.1,320.65,18.31,1651.6,low,price +1652% vs DCF; weak fit (rmse 0.95); FCF conversion clipped
+INDIAMART,35.0,0.0,5.0,11.0,40,1.5395,1.5088,26,12,2026-11-26,growth,fcf,1.279,1520.4,6765.16,-77.5,low,poor fit (rmse 1.54); growth at cap (g1 35); price -78% vs DCF; fit barely beats prior
+INDIANB,16.5,0.0,5.0,13.0,40,1.3288,1.4733,26,12,2026-11-26,growth,fcf,1.0,933.0,2495.62,-62.6,low,poor fit (rmse 1.33); price -63% vs DCF; fit barely beats prior
+INDIGO,6.5,6.5,2.0,14.0,40,1.7297,2.0492,38,12,2026-11-26,growth,fcf,1.5,5720.0,4006.45,42.8,low,poor fit (rmse 1.73); outlier fit vs universe (z 2.0); FCF conversion clipped
+INDIGOPNTS,38.0,30.0,5.0,12.0,40,1.2016,2.8835,19,12,2026-11-26,growth,fcf,0.212,991.3,849.86,16.6,low,poor fit (rmse 1.20); growth at cap (g1 38)
+INDUSINDBK,0.5,0.0,2.0,13.5,40,0.5089,0.5311,38,12,2026-11-26,growth,fcf,1.0,963.0,1416.33,-32.0,medium,fit barely beats prior
+INDUSTOWER,19.0,0.0,5.0,12.5,40,0.671,0.5808,37,12,2026-11-26,growth,fcf,1.155,381.8,702.02,-45.6,medium,weak fit (rmse 0.67); fit barely beats prior
+INFY,15.5,7.5,5.0,12.0,25,0.2613,0.2599,36,12,2026-11-26,growth,fcf,0.853,1130.0,1757.12,-35.7,medium,fit barely beats prior
+INOXINDIA,39.0,16.5,5.0,11.5,40,0.6573,0.9479,8,12,2026-11-26,growth,fcf,0.21,2088.0,563.5,270.5,low,few samples (8); growth at cap (g1 39); price +270% vs DCF; weak fit (rmse 0.66)
+INOXWIND,21.0,21.0,5.0,15.0,40,2.9108,3.6864,36,12,2026-11-26,growth,fcf,0.1,52.36,9.07,477.1,low,poor fit (rmse 2.91); outlier fit vs universe (z 4.5); price +477% vs DCF; FCF conversion clipped
+INTELLECT,26.0,21.0,5.0,13.0,40,0.8215,1.5786,37,12,2026-11-26,growth,fcf,0.807,601.4,693.48,-13.3,medium,weak fit (rmse 0.82)
+IOB,26.5,0.0,5.0,13.5,40,0.893,0.773,18,12,2026-11-26,growth,fcf,1.0,31.06,130.35,-76.2,medium,weak fit (rmse 0.89); price -76% vs DCF; fit barely beats prior
+IOC,28.5,3.5,5.0,13.5,40,1.4789,1.5017,37,12,2026-11-26,growth,fcf,0.723,147.79,655.99,-77.5,low,poor fit (rmse 1.48); price -78% vs DCF; fit barely beats prior
+IPCALAB,22.5,13.0,5.0,10.0,40,0.4918,0.7287,37,12,2026-11-26,growth,fcf,0.826,1815.9,2295.38,-20.9,high,
+IRB,38.0,0.0,3.0,13.0,40,0.8503,1.2094,36,12,2026-11-26,growth,fcf,0.21,17.4,15.19,14.5,low,growth at cap (g1 38); weak fit (rmse 0.85)
+IRCON,15.5,13.0,5.0,15.0,40,0.6237,0.9369,29,12,2026-11-26,growth,fcf,0.1,107.36,18.94,466.8,low,price +467% vs DCF; weak fit (rmse 0.62); FCF conversion clipped
+IRCTC,36.5,17.5,5.0,13.0,40,0.5348,1.1734,25,12,2026-11-26,growth,fcf,0.7,441.85,837.8,-47.3,medium,growth at cap (g1 36.5)
+IREDA,39.0,0.0,5.0,14.0,35,0.4562,0.498,8,12,2026-11-26,growth,fcf,1.0,124.75,239.51,-47.9,low,few samples (8); growth at cap (g1 39); fit barely beats prior
+IRFC,14.0,3.5,5.0,13.5,40,0.5625,0.5666,20,12,2026-11-26,growth,fcf,1.0,81.05,93.44,-13.3,medium,fit barely beats prior
+ITC,15.0,4.5,2.0,11.5,30,0.3356,0.8379,38,12,2026-11-26,growth,fcf,0.633,309.25,233.67,32.3,high,
+ITI,30.0,30.0,5.0,12.0,40,1.7767,2.8727,34,12,2026-11-26,growth,fcf,0.1,257.6,50.45,410.6,low,poor fit (rmse 1.78); outlier fit vs universe (z 2.1); price +411% vs DCF; FCF conversion clipped
+J&KBANK,12.0,0.0,5.0,14.0,40,1.1783,1.5628,25,12,2026-11-26,growth,fcf,1.0,146.73,368.52,-60.2,low,poor fit (rmse 1.18); price -60% vs DCF
+JASH,34.0,21.5,5.0,12.5,40,0.6335,1.5119,33,12,2026-11-26,growth,fcf,0.466,511.95,420.23,21.8,medium,weak fit (rmse 0.63)
+JBCHEPHARM,29.0,29.0,5.0,10.5,40,1.1412,2.2744,36,12,2026-11-26,growth,fcf,0.772,2416.1,3864.68,-37.5,low,poor fit (rmse 1.14)
+JBMA,32.5,30.0,5.0,13.5,40,1.2902,2.6191,35,12,2026-11-26,growth,fcf,0.72,469.6,428.08,9.7,low,poor fit (rmse 1.29)
+JINDALSAW,12.5,0.0,4.5,14.0,40,1.0308,0.9103,35,12,2026-11-26,growth,fcf,0.847,240.52,144.34,66.6,low,poor fit (rmse 1.03); price +67% vs DCF; fit barely beats prior
+JINDALSTEL,12.0,9.0,5.0,13.0,40,1.4966,1.5261,22,12,2026-11-26,growth,fcf,1.267,1105.0,483.72,128.4,low,poor fit (rmse 1.50); price +128% vs DCF; fit barely beats prior
+JKCEMENT,24.5,13.5,5.0,12.0,40,0.5855,0.8346,36,12,2026-11-26,growth,fcf,0.216,5439.0,1312.85,314.3,low,price +314% vs DCF
+JKLAKSHMI,16.0,0.0,5.0,11.5,40,0.6951,0.6845,38,12,2026-11-26,growth,fcf,0.486,524.45,349.67,50.0,medium,weak fit (rmse 0.70); fit barely beats prior
+JKPAPER,7.0,2.0,3.5,12.0,40,0.8141,0.8163,34,12,2026-11-26,growth,fcf,1.015,345.55,255.68,35.1,medium,weak fit (rmse 0.81); fit barely beats prior
+JKTYRE,24.0,0.0,5.0,14.0,40,0.7519,0.7088,37,12,2026-11-26,growth,fcf,0.679,366.55,309.86,18.3,medium,weak fit (rmse 0.75); fit barely beats prior
+JMFINANCIL,26.0,9.0,5.0,14.0,30,0.3584,0.9356,36,12,2026-11-26,growth,fcf,1.0,109.67,193.48,-43.3,high,
+JPPOWER,39.5,13.0,3.5,13.0,40,2.3309,2.9328,29,12,2026-11-26,growth,fcf,1.5,13.05,63.05,-79.3,low,poor fit (rmse 2.33); outlier fit vs universe (z 3.3); growth at cap (g1 39.5); price -79% vs DCF; FCF conversion clipped
+JSL,39.0,0.0,5.0,12.5,40,1.0085,0.7773,31,12,2026-11-26,growth,fcf,0.796,709.3,1340.32,-47.1,low,poor fit (rmse 1.01); growth at cap (g1 39); fit barely beats prior
+JSLL,40.0,30.0,5.0,13.0,40,2.9179,3.893,11,12,2026-11-26,growth,fcf,0.706,303.2,1382.6,-78.1,low,poor fit (rmse 2.92); outlier fit vs universe (z 4.5); growth at cap (g1 40); limited samples (11); price -78% vs DCF
+JSWENERGY,28.0,12.0,2.5,13.0,40,0.7635,1.6119,38,12,2026-11-26,growth,fcf,1.128,485.8,305.74,58.9,medium,weak fit (rmse 0.76); price +59% vs DCF
+JSWINFRA,39.5,30.0,2.0,13.0,40,1.2838,3.2199,9,12,2026-11-26,growth,fcf,0.1,353.55,29.71,1090.2,low,poor fit (rmse 1.28); few samples (9); growth at cap (g1 39.5); price +1090% vs DCF; FCF conversion clipped
+JSWSTEEL,12.5,8.0,5.0,13.0,40,0.5377,0.611,38,12,2026-11-26,growth,fcf,1.307,1302.5,1105.23,17.8,high,
+JUBLFOOD,25.0,25.0,5.0,12.5,40,1.0189,2.0797,38,12,2026-11-26,growth,fcf,1.484,421.0,299.12,40.7,low,poor fit (rmse 1.02)
+JUBLINGREA,24.5,19.0,5.0,12.5,40,0.7009,1.3859,18,12,2026-11-26,growth,fcf,0.668,552.3,716.25,-22.9,medium,weak fit (rmse 0.70)
+JWL,39.5,30.0,5.0,14.0,40,1.2725,3.195,17,12,2026-11-26,growth,fcf,0.1,185.39,43.16,329.5,low,poor fit (rmse 1.27); growth at cap (g1 39.5); price +330% vs DCF; FCF conversion clipped
+JYOTHYLAB,17.5,5.5,5.0,12.0,40,0.4985,0.5865,38,12,2026-11-26,growth,fcf,1.036,192.8,212.92,-9.5,high,
+KAJARIACER,19.5,19.5,5.0,11.5,35,0.4286,1.0914,36,12,2026-11-26,growth,fcf,0.882,1200.9,1396.19,-14.0,high,
+KALYANKJIL,40.0,15.0,5.0,13.5,35,0.4407,0.9557,19,12,2026-11-26,growth,fcf,1.12,636.35,997.92,-36.2,medium,growth at cap (g1 40)
+KANSAINER,22.5,22.5,5.0,12.0,40,0.9984,1.7434,38,12,2026-11-26,growth,fcf,0.585,202.49,331.2,-38.9,medium,weak fit (rmse 1.00)
+KARURVYSYA,15.5,0.0,5.0,12.5,40,1.1221,1.5276,34,12,2026-11-26,growth,fcf,1.0,378.75,752.55,-49.7,low,poor fit (rmse 1.12)
+KAYNES,39.5,30.0,5.0,14.0,40,3.0112,4.9744,12,12,2026-11-26,growth,fcf,0.1,2698.0,471.15,472.6,low,poor fit (rmse 3.01); outlier fit vs universe (z 4.7); growth at cap (g1 39.5); price +473% vs DCF; limited samples (12); FCF conversion clipped
+KEC,19.5,19.5,3.0,13.0,40,1.1605,1.9049,37,12,2026-11-26,growth,fcf,0.1,295.25,50.52,484.4,low,poor fit (rmse 1.16); price +484% vs DCF; FCF conversion clipped
+KEI,33.0,21.5,5.0,12.5,40,1.0536,1.6613,36,12,2026-11-26,growth,fcf,0.1,3652.0,767.55,375.8,low,poor fit (rmse 1.05); price +376% vs DCF; FCF conversion clipped
+KFINTECH,37.0,13.0,5.0,13.5,25,0.3194,1.284,12,12,2026-11-26,growth,fcf,1.0,929.75,1137.67,-18.3,medium,limited samples (12); growth at cap (g1 37)
+KIMS,24.0,24.0,5.0,11.0,40,0.8526,1.5796,18,12,2026-11-26,growth,fcf,0.1,794.15,54.9,1346.7,low,price +1347% vs DCF; weak fit (rmse 0.85); FCF conversion clipped
+KIRLOSBROS,29.5,8.0,5.0,13.5,40,0.7654,0.9888,36,12,2026-11-26,growth,fcf,0.76,1570.6,892.02,76.1,medium,weak fit (rmse 0.77); price +76% vs DCF
+KIRLOSENG,20.5,8.0,5.0,12.0,40,0.7,0.7865,37,12,2026-11-26,growth,fcf,0.5,1718.9,501.39,242.8,low,price +243% vs DCF; weak fit (rmse 0.70)
+KOTAKBANK,22.0,4.0,5.0,12.5,25,0.3212,0.3935,38,12,2026-11-26,growth,fcf,1.0,509.0,612.31,-16.9,high,
+KPIL,22.5,22.0,5.0,12.5,40,1.1462,1.5754,36,12,2026-11-26,growth,fcf,0.246,1312.6,664.34,97.6,low,poor fit (rmse 1.15); price +98% vs DCF
+KPITTECH,33.5,13.5,5.0,12.5,40,0.58,1.0099,26,12,2026-11-26,growth,fcf,0.967,525.5,1044.32,-49.7,high,
+KPRMILL,19.5,16.5,5.0,11.0,40,0.5443,0.8919,36,12,2026-11-26,growth,fcf,0.576,1173.0,693.77,69.1,medium,price +69% vs DCF
+KRBL,12.5,12.5,5.0,13.0,40,0.6005,0.6822,37,12,2026-11-26,growth,fcf,0.6,427.85,472.98,-9.5,medium,weak fit (rmse 0.60)
+KRISHNADEF,40.0,30.0,5.0,12.5,40,1.8805,2.9413,15,12,2026-11-26,growth,fcf,0.36,1206.1,1300.48,-7.3,low,poor fit (rmse 1.88); outlier fit vs universe (z 2.3); growth at cap (g1 40); limited samples (15)
+KSB,28.0,28.0,5.0,11.5,40,0.8311,2.3066,38,12,2026-11-26,growth,fcf,0.1,645.4,147.24,338.3,low,price +338% vs DCF; weak fit (rmse 0.83); FCF conversion clipped
+LALPATHLAB,21.5,12.0,5.0,10.0,25,0.2996,0.5217,36,12,2026-11-26,growth,fcf,1.06,2040.5,2033.45,0.3,high,
+LAURUSLABS,37.0,30.0,5.0,12.0,40,1.2859,2.7021,36,12,2026-11-26,growth,fcf,0.651,2460.0,1334.56,84.3,low,poor fit (rmse 1.29); growth at cap (g1 37); price +84% vs DCF
+LEMONTREE,33.0,18.0,5.0,13.0,40,0.5435,1.5101,30,12,2026-11-26,growth,fcf,1.5,127.63,128.72,-0.8,medium,FCF conversion clipped
+LICHSGFIN,9.5,0.0,5.0,13.5,40,0.6983,1.07,37,12,2026-11-26,growth,fcf,1.0,606.0,1345.13,-54.9,medium,weak fit (rmse 0.70); price -55% vs DCF
+LICI,40.0,0.0,5.0,12.5,40,1.2869,1.2607,14,12,2026-11-26,growth,fcf,1.0,408.35,2293.47,-82.2,low,poor fit (rmse 1.29); growth at cap (g1 40); limited samples (14); price -82% vs DCF; fit barely beats prior
+LINDEINDIA,39.0,19.5,5.0,11.5,40,1.0947,1.8594,36,12,2026-11-26,growth,fcf,0.1,6961.5,650.32,970.5,low,poor fit (rmse 1.09); growth at cap (g1 39); price +970% vs DCF; FCF conversion clipped
+LLOYDSME,40.0,30.0,5.0,13.0,40,2.4418,3.426,10,12,2026-11-26,growth,fcf,0.1,1606.0,730.93,119.7,low,poor fit (rmse 2.44); outlier fit vs universe (z 3.5); growth at cap (g1 40); price +120% vs DCF; limited samples (10); FCF conversion clipped
+LODHA,31.0,22.5,5.0,14.5,40,0.5895,1.4531,16,12,2026-11-26,growth,fcf,0.847,1202.0,1429.96,-15.9,high,
+LT,21.0,21.0,5.0,13.5,35,0.4455,1.2054,38,12,2026-11-26,growth,fcf,1.199,4156.0,4817.67,-13.7,high,
+LTF,39.5,5.5,5.0,14.5,40,0.7608,1.2599,36,12,2026-11-26,growth,fcf,1.0,283.95,555.76,-48.9,low,growth at cap (g1 39.5); weak fit (rmse 0.76)
+LTFOODS,25.0,7.5,5.0,13.5,40,0.8045,1.0797,37,12,2026-11-26,growth,fcf,0.596,423.1,147.74,186.4,low,price +186% vs DCF; weak fit (rmse 0.80)
+LTTS,18.0,11.0,5.0,12.0,25,0.2789,0.4845,36,12,2026-11-26,growth,fcf,0.965,4222.6,4179.46,1.0,high,
+LUPIN,39.5,0.0,5.0,11.0,40,0.5731,0.5453,38,12,2026-11-26,growth,fcf,0.71,1975.6,5338.02,-63.0,medium,growth at cap (g1 39.5); price -63% vs DCF; fit barely beats prior
+M&M,39.5,30.0,5.0,14.0,40,0.8313,2.0597,38,12,2026-11-26,growth,fcf,0.1,3509.5,1352.78,159.4,low,growth at cap (g1 39.5); price +159% vs DCF; weak fit (rmse 0.83); FCF conversion clipped
+M&MFIN,24.0,1.0,5.0,13.5,40,0.5693,0.6322,36,12,2026-11-26,growth,fcf,1.0,292.45,510.61,-42.7,medium,fit barely beats prior
+MACPOWER,39.5,30.0,5.0,12.0,40,1.3739,2.3232,30,12,2026-11-26,growth,fcf,0.1,2032.4,499.27,307.1,low,poor fit (rmse 1.37); growth at cap (g1 39.5); price +307% vs DCF; FCF conversion clipped
+MAHABANK,33.5,0.0,5.0,13.5,40,1.6444,1.439,22,12,2026-11-26,growth,fcf,1.0,98.71,424.42,-76.7,low,poor fit (rmse 1.64); price -77% vs DCF; fit barely beats prior
+MAHSCOOTER,32.5,11.0,2.0,12.5,40,0.6553,1.7846,34,12,2026-11-26,growth,fcf,1.0,12502.0,11049.0,13.2,medium,weak fit (rmse 0.66)
+MANAPPURAM,10.0,0.0,5.0,13.5,35,0.4682,0.6188,36,12,2026-11-26,growth,fcf,1.0,267.5,249.83,7.1,high,
+MANKIND,38.5,20.0,5.0,11.0,30,0.3765,1.5021,10,12,2026-11-26,growth,fcf,1.006,2615.1,6396.97,-59.1,medium,limited samples (10); growth at cap (g1 38.5); price -59% vs DCF
+MANORAMA,40.0,30.0,5.0,13.5,40,2.498,3.5078,14,12,2026-11-26,growth,fcf,0.1,1859.9,461.69,302.8,low,poor fit (rmse 2.50); outlier fit vs universe (z 3.6); growth at cap (g1 40); price +303% vs DCF; limited samples (14); FCF conversion clipped
+MANYAVAR,17.5,12.0,5.0,11.5,40,0.6075,0.8116,15,12,2026-11-26,growth,fcf,1.128,453.45,680.05,-33.3,medium,weak fit (rmse 0.61); limited samples (15)
+MARICO,20.5,19.0,5.0,10.5,15,0.1811,0.1729,37,12,2026-11-26,growth,fcf,0.758,935.2,801.3,16.7,medium,fit barely beats prior
+MARUTI,26.5,16.5,5.0,12.5,40,0.5817,1.2394,37,12,2026-11-26,growth,fcf,0.509,14010.0,12414.26,12.9,high,
+MASTEK,37.0,20.5,5.0,13.0,40,0.7207,1.4842,37,12,2026-11-26,growth,fcf,0.525,1443.4,3080.25,-53.1,low,growth at cap (g1 37); weak fit (rmse 0.72); price -53% vs DCF
+MAXHEALTH,31.0,30.0,5.0,11.5,40,0.5303,2.2529,14,12,2026-11-26,growth,fcf,0.44,1076.3,421.47,155.4,low,price +155% vs DCF; limited samples (14)
+MAZDOCK,39.5,29.0,5.0,14.0,40,0.7068,1.6195,21,12,2026-11-26,growth,fcf,0.1,1799.0,649.26,177.1,low,growth at cap (g1 39.5); price +177% vs DCF; weak fit (rmse 0.71); FCF conversion clipped
+MCX,39.5,18.0,5.0,13.0,40,1.082,1.2626,37,12,2026-11-26,growth,fcf,1.0,3565.0,3762.09,-5.2,low,poor fit (rmse 1.08); growth at cap (g1 39.5)
+MEDANTA,37.5,9.5,5.0,11.0,20,0.2233,0.9696,12,12,2026-11-26,growth,fcf,0.381,1528.5,567.09,169.5,low,price +170% vs DCF; limited samples (12); growth at cap (g1 37.5)
+METROPOLIS,17.0,17.0,5.0,11.0,40,0.4722,0.9711,27,12,2026-11-26,growth,fcf,1.5,562.8,597.78,-5.9,medium,FCF conversion clipped
+MFSL,24.5,24.5,2.0,12.0,40,1.282,2.8399,22,12,2026-11-26,growth,fcf,1.0,1431.9,13.88,10217.1,low,poor fit (rmse 1.28); price +10217% vs DCF
+MGL,14.0,3.5,5.0,12.5,25,0.2667,0.2975,37,12,2026-11-26,growth,fcf,0.349,1071.9,574.58,86.6,medium,price +87% vs DCF
+MHRIL,13.0,7.5,2.0,12.0,30,0.3626,0.8117,38,12,2026-11-26,growth,fcf,,196.16,,,high,
+MIDHANI,31.5,30.0,5.0,14.0,40,1.5053,3.0893,31,12,2026-11-26,growth,fcf,0.578,371.85,353.26,5.3,low,poor fit (rmse 1.51)
+MINDACORP,26.5,26.5,5.0,13.0,40,0.9087,1.8618,36,12,2026-11-26,growth,fcf,0.74,727.2,557.83,30.4,medium,weak fit (rmse 0.91)
+MMTC,23.0,23.0,2.0,13.5,40,1.9991,3.156,34,12,2026-11-26,growth,fcf,0.1,50.81,10.27,394.9,low,poor fit (rmse 2.00); outlier fit vs universe (z 2.6); price +395% vs DCF; FCF conversion clipped
+MOTHERSON,31.0,30.0,3.0,14.0,40,1.2692,2.8311,38,12,2026-11-26,growth,fcf,0.225,166.26,29.4,465.5,low,poor fit (rmse 1.27); price +466% vs DCF
+MOTILALOFS,33.5,18.0,5.0,15.0,40,0.6254,1.5281,30,12,2026-11-26,growth,fcf,1.0,1235.0,929.64,32.8,medium,weak fit (rmse 0.63)
+MPHASIS,15.5,12.0,5.0,12.5,20,0.2063,0.6565,38,12,2026-11-26,growth,fcf,0.936,2532.9,2171.51,16.6,high,
+MRF,29.0,28.5,5.0,11.5,40,1.1026,1.9752,36,12,2026-11-26,growth,fcf,0.683,129605.0,376216.04,-65.6,low,poor fit (rmse 1.10); price -66% vs DCF
+MRPL,27.0,0.0,5.0,12.0,40,1.4585,1.3937,36,12,2026-11-26,growth,fcf,1.5,164.68,834.21,-80.3,low,poor fit (rmse 1.46); price -80% vs DCF; fit barely beats prior; FCF conversion clipped
+MSUMI,29.0,25.0,5.0,12.0,40,0.4708,1.3678,14,12,2026-11-26,growth,fcf,0.62,42.12,45.88,-8.2,medium,limited samples (14)
+MTARTECH,38.5,30.0,5.0,12.0,40,2.0133,3.5811,19,12,2026-11-26,growth,fcf,0.1,5659.0,631.15,796.6,low,poor fit (rmse 2.01); outlier fit vs universe (z 2.6); growth at cap (g1 38.5); price +797% vs DCF; FCF conversion clipped
+MUTHOOTFIN,23.0,0.0,5.0,12.5,40,0.5183,0.9981,38,12,2026-11-26,growth,fcf,1.0,2549.6,6491.4,-60.7,medium,price -61% vs DCF
+NATCOPHARM,36.5,11.5,5.0,12.0,40,1.2004,1.552,36,12,2026-11-26,growth,fcf,0.822,806.55,2870.8,-71.9,low,poor fit (rmse 1.20); growth at cap (g1 36.5); price -72% vs DCF
+NATIONALUM,34.0,0.0,5.0,13.0,40,0.9123,0.8727,32,12,2026-11-26,growth,fcf,0.646,287.8,807.98,-64.4,medium,weak fit (rmse 0.91); price -64% vs DCF; fit barely beats prior
+NAUKRI,38.5,26.0,2.0,12.5,40,0.6967,2.5106,36,12,2026-11-26,growth,fcf,0.469,1187.5,2639.95,-55.0,low,growth at cap (g1 38.5); weak fit (rmse 0.70); price -55% vs DCF
+NAVA,23.0,0.5,5.0,13.5,40,1.0161,1.0326,36,12,2026-11-26,growth,fcf,0.423,550.15,369.51,48.9,low,poor fit (rmse 1.02); fit barely beats prior
+NAVINFLUOR,28.0,28.0,5.0,11.5,40,0.5335,1.6504,36,12,2026-11-26,growth,fcf,0.658,9956.0,6934.8,43.6,high,
+NBCC,31.5,23.5,5.0,14.5,40,0.8443,1.5046,36,12,2026-11-26,growth,fcf,0.359,75.94,59.24,28.2,medium,weak fit (rmse 0.84)
+NCC,12.0,0.0,5.0,14.0,40,0.4915,0.4718,36,12,2026-11-26,growth,fcf,0.895,129.17,139.87,-7.7,medium,fit barely beats prior
+NESCO,23.0,20.5,5.0,12.5,40,0.628,1.1189,38,12,2026-11-26,growth,fcf,0.13,1060.2,407.85,159.9,low,price +160% vs DCF; weak fit (rmse 0.63)
+NESTLEIND,23.0,23.0,5.0,11.0,25,0.2978,0.4442,36,12,2026-11-26,growth,fcf,0.69,1358.5,954.21,42.4,high,
+NETWEB,40.0,30.0,5.0,12.5,40,2.8046,3.8387,10,12,2026-11-26,growth,fcf,0.314,4010.6,1924.21,108.4,low,poor fit (rmse 2.80); outlier fit vs universe (z 4.2); growth at cap (g1 40); price +108% vs DCF; limited samples (10)
+NEULANDLAB,39.5,28.5,5.0,11.5,40,0.8746,1.7705,36,12,2026-11-26,growth,fcf,0.327,20550.0,14793.03,38.9,low,growth at cap (g1 39.5); weak fit (rmse 0.87)
+NH,38.5,16.5,5.0,11.0,40,0.6218,1.1289,38,12,2026-11-26,growth,fcf,0.23,1974.2,688.92,186.6,low,growth at cap (g1 38.5); price +187% vs DCF; weak fit (rmse 0.62)
+NHPC,9.5,7.0,5.0,12.5,40,1.0604,1.0644,36,12,2026-11-26,growth,fcf,0.1,75.65,9.39,705.4,low,poor fit (rmse 1.06); price +705% vs DCF; fit barely beats prior; FCF conversion clipped
+NIACL,7.0,2.5,2.0,14.0,40,0.8026,0.8732,32,12,2026-11-26,growth,fcf,1.0,149.36,29.9,399.6,low,price +400% vs DCF; weak fit (rmse 0.80); fit barely beats prior
+NLCINDIA,15.0,0.0,5.0,12.5,40,0.8432,0.8277,35,12,2026-11-26,growth,fcf,1.161,227.16,604.28,-62.4,medium,weak fit (rmse 0.84); price -62% vs DCF; fit barely beats prior
+NMDC,15.0,3.5,5.0,13.0,40,0.4829,0.5226,31,12,2026-11-26,growth,fcf,0.265,66.69,47.55,40.3,medium,fit barely beats prior
+NTPC,15.0,6.0,5.0,12.0,40,0.7087,0.7385,36,12,2026-11-26,growth,fcf,1.043,318.0,674.06,-52.8,medium,weak fit (rmse 0.71); price -53% vs DCF; fit barely beats prior
+NUVOCO,37.0,11.5,3.0,12.0,30,0.3643,1.7186,17,12,2026-11-26,growth,fcf,1.5,356.15,695.26,-48.8,medium,growth at cap (g1 37); FCF conversion clipped
+OBEROIRLTY,38.5,30.0,5.0,13.0,40,1.1952,2.832,37,12,2026-11-26,growth,fcf,0.1,1868.5,704.31,165.3,low,poor fit (rmse 1.20); growth at cap (g1 38.5); price +165% vs DCF; FCF conversion clipped
+OFSS,18.5,6.0,2.5,12.0,35,0.4154,0.8927,38,12,2026-11-26,growth,fcf,0.714,9275.0,7027.6,32.0,high,
+OIL,0.5,0.0,5.0,11.0,40,0.8704,1.2937,32,12,2026-11-26,growth,fcf,1.209,425.0,708.49,-40.0,medium,weak fit (rmse 0.87)
+OLECTRA,39.5,30.0,5.0,13.5,40,2.1507,3.5735,35,12,2026-11-26,growth,fcf,0.1,976.6,218.07,347.8,low,poor fit (rmse 2.15); outlier fit vs universe (z 2.9); growth at cap (g1 39.5); price +348% vs DCF; FCF conversion clipped
+ONGC,0.0,0.0,5.0,11.5,40,0.9606,1.3983,34,12,2026-11-26,growth,fcf,1.242,222.0,520.91,-57.4,medium,weak fit (rmse 0.96); price -57% vs DCF
+PAGEIND,23.0,23.0,5.0,11.5,30,0.3739,1.2127,36,12,2026-11-26,growth,fcf,1.0,30100.0,43032.86,-30.1,high,
+PARADEEP,39.0,30.0,5.0,12.5,40,1.6514,2.5665,14,12,2026-11-26,growth,fcf,0.1,141.11,107.8,30.9,low,poor fit (rmse 1.65); growth at cap (g1 39); limited samples (14); FCF conversion clipped
+PATANJALI,37.0,21.0,5.0,12.5,40,1.2081,1.9511,28,12,2026-11-26,growth,fcf,0.1,407.0,146.67,177.5,low,poor fit (rmse 1.21); growth at cap (g1 37); price +178% vs DCF; FCF conversion clipped
+PCBL,14.5,7.5,2.0,14.0,40,0.7139,1.0724,36,12,2026-11-26,growth,fcf,1.362,263.05,152.86,72.1,medium,weak fit (rmse 0.71); price +72% vs DCF
+PERSISTENT,30.0,21.5,5.0,12.5,40,0.7838,1.2763,37,12,2026-11-26,growth,fcf,0.615,6282.5,4317.76,45.5,medium,weak fit (rmse 0.78)
+PETRONET,7.5,0.0,5.0,12.5,35,0.4276,0.8557,36,12,2026-11-26,growth,fcf,0.734,326.05,309.26,5.4,high,
+PFC,16.5,0.0,5.0,14.5,40,0.8661,1.0504,22,12,2026-11-26,growth,fcf,1.0,333.8,935.36,-64.3,medium,weak fit (rmse 0.87); price -64% vs DCF
+PFIZER,14.5,9.5,5.0,10.5,25,0.2666,0.3802,38,12,2026-11-26,growth,fcf,0.867,3837.4,5864.84,-34.6,high,
+PFOCUS,14.0,14.0,5.0,12.0,40,1.4256,1.5569,33,12,2026-11-26,growth,fcf,0.135,236.65,50.05,372.8,low,poor fit (rmse 1.43); price +373% vs DCF; fit barely beats prior
+PGEL,39.5,30.0,4.5,14.5,40,1.9877,3.8767,36,12,2026-11-26,growth,fcf,0.511,584.0,192.88,202.8,low,poor fit (rmse 1.99); outlier fit vs universe (z 2.5); growth at cap (g1 39.5); price +203% vs DCF
+PGHH,18.5,16.0,4.5,10.0,25,0.2875,1.1751,37,12,2026-11-26,growth,fcf,0.759,7206.0,10075.05,-28.5,high,
+PGHL,20.0,13.5,5.0,10.0,40,0.6061,0.6492,37,12,2026-11-26,growth,fcf,0.904,5725.0,10433.29,-45.1,medium,weak fit (rmse 0.61); fit barely beats prior
+PHOENIXLTD,25.5,25.5,3.5,13.0,40,0.7474,2.1197,36,12,2026-11-26,growth,fcf,0.1,2285.5,59.76,3724.6,low,price +3725% vs DCF; weak fit (rmse 0.75); FCF conversion clipped
+PIDILITIND,27.0,27.0,5.0,12.0,35,0.4241,1.4749,38,12,2026-11-26,growth,fcf,0.926,1594.2,1771.19,-10.0,high,
+PIIND,28.0,24.0,5.0,11.5,40,0.958,1.6903,37,12,2026-11-26,growth,fcf,0.533,1576.0,3648.2,-56.8,medium,weak fit (rmse 0.96); price -57% vs DCF
+PNB,35.5,0.0,5.0,13.5,40,1.7845,1.136,27,12,2026-11-26,growth,fcf,1.0,148.61,852.44,-82.6,low,poor fit (rmse 1.78); outlier fit vs universe (z 2.1); growth at cap (g1 35.5); price -83% vs DCF; fit barely beats prior
+PNBHOUSING,16.5,0.0,5.0,13.5,40,0.586,0.6266,36,12,2026-11-26,growth,fcf,1.0,1180.2,1526.94,-22.7,medium,fit barely beats prior
+POLYCAB,35.0,21.5,5.0,12.5,40,0.4851,1.1985,27,12,2026-11-26,growth,fcf,0.612,7379.0,9292.75,-20.6,medium,growth at cap (g1 35)
+POLYMED,38.0,30.0,5.0,12.0,40,1.257,2.9464,37,12,2026-11-26,growth,fcf,0.1,1628.4,467.66,248.2,low,poor fit (rmse 1.26); growth at cap (g1 38); price +248% vs DCF; FCF conversion clipped
+POONAWALLA,15.5,8.0,5.0,13.0,40,0.9037,1.0316,37,12,2026-11-26,growth,fcf,1.0,513.45,89.55,473.4,low,price +473% vs DCF; weak fit (rmse 0.90)
+POWERGRID,3.0,0.0,5.0,12.0,40,0.5803,0.873,36,12,2026-11-26,growth,fcf,1.5,264.85,396.24,-33.2,medium,FCF conversion clipped
+PPLPHARMA,40.0,30.0,5.0,12.0,40,1.3561,3.1957,10,12,2026-11-26,growth,fcf,0.631,232.54,572.92,-59.4,low,poor fit (rmse 1.36); growth at cap (g1 40); limited samples (10); price -59% vs DCF
+PRAJIND,23.0,12.0,4.5,12.0,40,0.5632,1.2462,37,12,2026-11-26,growth,fcf,0.551,227.3,199.38,14.0,high,
+PRESTIGE,22.0,22.0,2.0,14.5,40,1.1909,2.3447,37,12,2026-11-26,growth,fcf,1.138,1685.1,458.71,267.4,low,poor fit (rmse 1.19); price +267% vs DCF
+PRICOLLTD,35.0,29.5,5.0,12.0,40,1.6624,2.2628,36,12,2026-11-26,growth,fcf,0.238,622.65,492.56,26.4,low,poor fit (rmse 1.66); growth at cap (g1 35)
+PRIVISCL,40.0,30.0,5.0,11.0,40,1.219,2.122,36,12,2026-11-26,growth,fcf,0.877,3617.1,14089.67,-74.3,low,poor fit (rmse 1.22); growth at cap (g1 40); price -74% vs DCF
+PVRINOX,8.5,8.5,2.0,12.0,40,1.1912,1.5264,36,12,2026-11-26,growth,fcf,0.1,1699.7,110.35,1440.3,low,poor fit (rmse 1.19); price +1440% vs DCF; FCF conversion clipped
+RADICO,37.5,30.0,5.0,11.5,40,1.8399,2.6237,36,12,2026-11-26,growth,fcf,0.123,4636.5,849.57,445.7,low,poor fit (rmse 1.84); outlier fit vs universe (z 2.2); growth at cap (g1 37.5); price +446% vs DCF
+RAILTEL,28.0,16.0,5.0,15.0,35,0.4075,0.9999,19,12,2026-11-26,growth,fcf,0.396,242.37,159.38,52.1,medium,price +52% vs DCF
+RAINBOW,25.0,13.5,5.0,10.0,25,0.2744,0.7908,14,12,2026-11-26,growth,fcf,0.609,1263.9,1074.01,17.7,medium,limited samples (14)
+RAMCOCEM,30.0,30.0,2.0,12.5,40,1.6268,3.2621,37,12,2026-11-26,growth,fcf,0.698,832.5,1584.98,-47.5,low,poor fit (rmse 1.63)
+RATEGAIN,40.0,30.0,3.5,12.5,40,2.0389,4.2013,13,12,2026-11-26,growth,fcf,0.1,677.0,52.27,1195.3,low,poor fit (rmse 2.04); outlier fit vs universe (z 2.7); growth at cap (g1 40); price +1195% vs DCF; limited samples (13); FCF conversion clipped
+RAYMOND,39.5,0.0,3.0,13.0,40,1.5849,1.818,36,12,2026-11-26,growth,fcf,0.1,1205.2,2200.85,-45.2,low,poor fit (rmse 1.58); growth at cap (g1 39.5); FCF conversion clipped
+RBLBANK,4.0,0.0,4.5,13.0,40,0.8532,0.9667,34,12,2026-11-26,growth,fcf,1.0,390.45,607.38,-35.7,medium,weak fit (rmse 0.85)
+RECLTD,12.5,0.0,5.0,14.5,40,0.9223,1.2042,13,12,2026-11-26,growth,fcf,1.0,299.0,772.16,-61.3,medium,weak fit (rmse 0.92); limited samples (13); price -61% vs DCF
+REDINGTON,31.0,11.0,5.0,12.5,40,0.9762,1.0739,38,12,2026-11-26,growth,fcf,0.1,331.3,116.7,183.9,low,price +184% vs DCF; weak fit (rmse 0.98); fit barely beats prior; FCF conversion clipped
+REDTAPE,39.5,30.0,5.0,11.0,40,1.4044,2.8541,9,12,2026-11-26,growth,fcf,0.1,102.34,85.4,19.8,low,poor fit (rmse 1.40); few samples (9); growth at cap (g1 39.5); FCF conversion clipped
+RELAXO,26.0,26.0,4.5,12.5,40,0.8562,2.2506,37,12,2026-11-26,growth,fcf,1.009,271.45,497.8,-45.5,medium,weak fit (rmse 0.86)
+RELIANCE,16.0,16.0,5.0,13.0,30,0.3455,0.977,38,12,2026-11-26,growth,fcf,0.925,1373.9,1117.54,22.9,high,
+RENUKA,20.5,11.0,5.0,12.0,40,1.1426,1.2002,18,12,2026-11-26,growth,fcf,1.051,16.85,48.91,-65.5,low,poor fit (rmse 1.14); price -66% vs DCF; fit barely beats prior
+RHIM,26.0,26.0,2.5,12.0,40,1.1201,2.5546,36,12,2026-11-26,growth,fcf,1.5,354.5,895.26,-60.4,low,poor fit (rmse 1.12); price -60% vs DCF; FCF conversion clipped
+RITES,12.5,12.5,2.0,13.5,40,0.6379,1.228,30,12,2026-11-26,growth,fcf,0.637,185.55,115.87,60.1,medium,weak fit (rmse 0.64); price +60% vs DCF
+RKFORGE,39.0,30.0,2.0,12.5,40,1.2902,3.4041,36,12,2026-11-26,growth,fcf,0.1,749.35,97.9,665.4,low,poor fit (rmse 1.29); growth at cap (g1 39); price +665% vs DCF; FCF conversion clipped
+RPOWER,25.5,25.5,2.0,14.0,40,1.6462,2.7525,30,12,2026-11-26,growth,fcf,0.101,17.13,3.26,425.8,low,poor fit (rmse 1.65); price +426% vs DCF
+RRKABEL,40.0,14.0,5.0,11.0,20,0.195,0.9712,9,12,2026-11-26,growth,fcf,0.494,1801.1,2468.25,-27.0,low,few samples (9); growth at cap (g1 40)
+RVNL,23.0,23.0,5.0,14.5,40,1.2063,2.0157,27,12,2026-11-26,growth,fcf,0.1,185.09,28.43,550.9,low,poor fit (rmse 1.21); price +551% vs DCF; FCF conversion clipped
+SAIL,24.5,0.0,5.0,14.0,40,1.0315,1.1188,32,12,2026-11-26,growth,fcf,0.421,161.1,111.25,44.8,low,poor fit (rmse 1.03); fit barely beats prior
+SAMMAANCAP,0.0,0.0,5.0,13.5,40,0.6294,1.0061,35,12,2026-11-26,growth,fcf,1.0,123.67,100.16,23.5,medium,weak fit (rmse 0.63)
+SANOFI,5.5,5.5,2.0,10.5,30,0.3568,0.6492,36,12,2026-11-26,growth,fcf,0.749,3177.1,2332.13,36.2,high,
+SANSERA,39.0,30.0,5.0,13.0,40,1.2829,3.012,17,12,2026-11-26,growth,fcf,0.1,4708.5,587.55,701.4,low,poor fit (rmse 1.28); growth at cap (g1 39); price +701% vs DCF; FCF conversion clipped
+SARDAEN,17.5,0.0,5.0,12.0,40,0.8717,0.9134,32,12,2026-11-26,growth,fcf,0.939,455.75,553.26,-17.6,medium,weak fit (rmse 0.87); fit barely beats prior
+SBICARD,20.5,10.0,5.0,12.5,30,0.3852,0.5009,23,12,2026-11-26,growth,fcf,1.0,589.0,924.44,-36.3,high,
+SBILIFE,21.5,21.5,5.0,12.0,20,0.2474,1.0053,33,12,2026-11-26,growth,fcf,1.0,1804.9,1693.18,6.6,high,
+SBIN,20.5,0.0,5.0,13.0,40,1.0643,1.0456,38,12,2026-11-26,growth,fcf,1.0,1138.15,2774.1,-59.0,low,poor fit (rmse 1.06); price -59% vs DCF; fit barely beats prior
+SCHAEFFLER,26.0,26.0,5.0,11.5,40,0.5957,1.5315,38,12,2026-11-26,growth,fcf,0.425,3607.9,2633.77,37.0,high,
+SCHNEIDER,40.0,30.0,5.0,13.0,40,1.3619,2.0375,14,12,2026-11-26,growth,fcf,0.704,1008.8,640.14,57.6,low,poor fit (rmse 1.36); growth at cap (g1 40); limited samples (14); price +58% vs DCF
+SCI,9.0,0.0,5.0,14.0,40,0.8934,1.2573,32,12,2026-11-26,growth,fcf,0.546,253.77,278.88,-9.0,medium,weak fit (rmse 0.89)
+SENCO,40.0,30.0,5.0,12.5,40,0.8038,1.8451,10,12,2026-11-26,growth,fcf,0.1,312.7,468.53,-33.3,low,growth at cap (g1 40); weak fit (rmse 0.80); limited samples (10); FCF conversion clipped
+SHAILY,40.0,30.0,5.0,11.5,40,2.2748,3.2977,15,12,2026-11-26,growth,fcf,0.124,2905.1,740.98,292.1,low,poor fit (rmse 2.27); outlier fit vs universe (z 3.1); growth at cap (g1 40); price +292% vs DCF; limited samples (15)
+SHREECEM,20.0,20.0,5.0,12.0,40,0.6801,1.614,38,12,2026-11-26,growth,fcf,0.61,25245.0,15037.97,67.9,medium,weak fit (rmse 0.68); price +68% vs DCF
+SHRIPISTON,27.0,0.0,5.0,12.5,40,0.5338,0.557,36,12,2026-11-26,growth,fcf,0.875,4262.4,3023.79,41.0,medium,fit barely beats prior
+SHRIRAMFIN,24.5,0.0,5.0,15.0,40,0.5033,0.4051,36,12,2026-11-26,growth,fcf,1.0,989.95,1077.91,-8.2,medium,fit barely beats prior
+SHYAMMETL,25.0,25.0,5.0,12.5,40,0.951,1.9519,18,12,2026-11-26,growth,fcf,0.1,1292.1,136.24,848.4,low,price +848% vs DCF; weak fit (rmse 0.95); FCF conversion clipped
+SIEMENS,22.0,18.5,5.0,12.5,35,0.4484,1.0493,37,12,2026-11-26,growth,fcf,0.1,3578.1,460.19,677.5,low,price +678% vs DCF; FCF conversion clipped
+SIGNATURE,38.5,29.5,5.0,13.0,40,1.4503,1.8606,9,12,2026-11-26,growth,fcf,,859.85,,,low,poor fit (rmse 1.45); few samples (9); growth at cap (g1 38.5)
+SJS,36.5,11.0,5.0,13.0,25,0.2647,0.7382,16,12,2026-11-26,growth,fcf,0.943,2157.1,2473.53,-12.8,medium,growth at cap (g1 36.5)
+SJVN,8.0,8.0,4.0,14.0,40,1.0458,1.1317,37,12,2026-11-26,growth,fcf,0.695,54.96,34.42,59.7,low,poor fit (rmse 1.05); price +60% vs DCF; fit barely beats prior
+SKFINDIA,15.5,15.5,2.0,11.0,40,0.6851,1.5188,38,12,2026-11-26,growth,fcf,0.674,1443.8,1195.44,20.8,medium,weak fit (rmse 0.69)
+SKYGOLD,40.0,30.0,5.0,13.0,40,2.1854,3.2631,12,12,2026-11-26,growth,fcf,0.1,802.3,180.48,344.5,low,poor fit (rmse 2.19); outlier fit vs universe (z 3.0); growth at cap (g1 40); price +344% vs DCF; limited samples (12); FCF conversion clipped
+SOBHA,18.5,18.5,4.5,13.0,40,0.8146,1.5048,38,12,2026-11-26,growth,fcf,1.5,1244.4,1632.01,-23.8,medium,weak fit (rmse 0.81); FCF conversion clipped
+SOLARINDS,40.0,30.0,5.0,12.0,40,0.9885,1.8801,37,12,2026-11-26,growth,fcf,0.589,18088.0,11726.67,54.2,low,growth at cap (g1 40); weak fit (rmse 0.99); price +54% vs DCF
+SONACOMS,38.5,30.0,5.0,12.5,40,1.4718,3.1837,18,12,2026-11-26,growth,fcf,0.518,883.15,735.62,20.1,low,poor fit (rmse 1.47); growth at cap (g1 38.5)
+SONATSOFTW,24.0,24.0,5.0,13.5,40,0.8771,1.3967,36,12,2026-11-26,growth,fcf,0.1,229.26,84.71,170.6,low,price +171% vs DCF; weak fit (rmse 0.88); FCF conversion clipped
+SRF,33.0,30.0,5.0,12.0,40,1.0019,2.3275,37,12,2026-11-26,growth,fcf,0.36,2514.8,2409.46,4.4,low,poor fit (rmse 1.00)
+STARHEALTH,27.0,6.0,5.0,10.5,40,0.5206,0.9266,16,12,2026-11-26,growth,fcf,1.0,568.95,659.89,-13.8,high,
+STLTECH,39.0,30.0,2.0,12.5,40,1.6066,3.4058,36,12,2026-11-26,growth,fcf,0.1,579.9,1710.31,-66.1,low,poor fit (rmse 1.61); growth at cap (g1 39); price -66% vs DCF; FCF conversion clipped
+STOVEKRAFT,30.5,30.0,5.0,11.5,40,1.4549,3.0468,18,12,2026-11-26,growth,fcf,1.232,741.55,1868.44,-60.3,low,poor fit (rmse 1.45); price -60% vs DCF
+SULA,6.0,6.0,2.0,12.5,40,1.0713,1.3927,12,12,2026-11-26,growth,fcf,0.626,138.64,12.27,1029.5,low,poor fit (rmse 1.07); price +1030% vs DCF; limited samples (12)
+SUMICHEM,24.0,24.0,5.0,12.0,40,0.8742,1.3541,22,12,2026-11-26,growth,fcf,0.938,330.5,691.49,-52.2,medium,weak fit (rmse 0.87); price -52% vs DCF
+SUNDARMFIN,20.5,6.5,5.0,12.0,25,0.2784,0.3435,36,12,2026-11-26,growth,fcf,1.0,4317.5,5145.42,-16.1,high,
+SUNPHARMA,39.0,30.0,2.0,10.5,40,1.6644,3.7875,30,12,2026-11-26,growth,fcf,0.619,1901.0,873.8,117.6,low,poor fit (rmse 1.66); growth at cap (g1 39); price +118% vs DCF
+SUNTV,6.0,0.0,5.0,11.0,25,0.2829,0.5348,36,12,2026-11-26,growth,fcf,0.809,678.8,564.95,20.2,high,
+SUPREMEIND,22.0,22.0,5.0,12.0,35,0.4648,1.3097,36,12,2026-11-26,growth,fcf,0.521,3156.0,2223.36,41.9,high,
+SUZLON,40.0,30.0,5.0,13.5,40,0.957,1.6406,38,12,2026-11-26,growth,fcf,0.128,36.13,44.07,-18.0,low,growth at cap (g1 40); weak fit (rmse 0.96)
+SWANCORP,28.5,28.5,2.0,13.5,40,1.2047,2.755,20,12,2026-11-26,growth,fcf,0.1,228.37,6.17,3598.6,low,poor fit (rmse 1.20); price +3599% vs DCF; FCF conversion clipped
+SWARAJENG,18.5,6.0,5.0,11.5,30,0.3493,0.3722,38,12,2026-11-26,growth,fcf,0.659,3439.1,3364.11,2.2,medium,fit barely beats prior
+SYNGENE,24.0,24.0,5.0,11.5,40,1.0035,2.0757,38,12,2026-11-26,growth,fcf,1.258,443.65,608.04,-27.0,low,poor fit (rmse 1.00)
+SYRMA,40.0,30.0,5.0,13.0,40,2.8065,4.5475,13,12,2026-11-26,growth,fcf,0.1,1434.0,209.19,585.5,low,poor fit (rmse 2.81); outlier fit vs universe (z 4.3); growth at cap (g1 40); price +586% vs DCF; limited samples (13); FCF conversion clipped
+TARIL,40.0,19.0,5.0,13.5,40,1.2328,1.767,34,12,2026-11-26,growth,fcf,0.1,287.95,63.97,350.1,low,poor fit (rmse 1.23); growth at cap (g1 40); price +350% vs DCF; FCF conversion clipped
+TATACHEM,20.0,20.0,2.0,11.5,40,1.2894,2.0991,33,12,2026-11-26,growth,fcf,0.1,663.1,133.88,395.3,low,poor fit (rmse 1.29); price +395% vs DCF; FCF conversion clipped
+TATACOMM,19.5,19.0,2.5,12.0,40,0.7646,1.6065,36,12,2026-11-26,growth,fcf,0.839,1723.6,1137.67,51.5,medium,weak fit (rmse 0.76); price +52% vs DCF
+TATACONSUM,24.0,23.0,4.0,11.5,35,0.4199,1.7222,38,12,2026-11-26,growth,fcf,0.966,1185.8,1039.23,14.1,high,
+TATAELXSI,23.0,19.5,5.0,12.5,40,0.5609,1.3025,36,12,2026-11-26,growth,fcf,0.842,3819.4,4487.36,-14.9,high,
+TATAINVEST,24.0,24.0,2.0,11.5,40,0.7313,2.0812,36,12,2026-11-26,growth,fcf,1.0,582.2,355.41,63.8,medium,weak fit (rmse 0.73); price +64% vs DCF
+TATAPOWER,29.5,16.0,2.0,12.5,40,1.9399,2.6446,38,12,2026-11-26,growth,fcf,0.793,323.0,429.82,-24.9,low,poor fit (rmse 1.94); outlier fit vs universe (z 2.4)
+TATASTEEL,11.0,0.0,5.0,13.5,40,0.8757,0.9594,36,12,2026-11-26,growth,fcf,0.971,159.3,189.79,-16.1,medium,weak fit (rmse 0.88); fit barely beats prior
+TATATECH,39.5,20.0,5.0,12.5,40,0.7557,1.4506,8,12,2026-11-26,growth,fcf,0.548,692.35,860.78,-19.6,low,few samples (8); growth at cap (g1 39.5); weak fit (rmse 0.76)
+TCS,16.5,8.5,5.0,11.5,25,0.2564,0.6892,37,12,2026-11-26,growth,fcf,0.841,2517.3,3797.85,-33.7,high,
+TDPOWERSYS,39.5,17.5,5.0,12.0,40,1.538,1.7785,36,12,2026-11-26,growth,fcf,0.1,587.05,78.41,648.7,low,poor fit (rmse 1.54); growth at cap (g1 39.5); price +649% vs DCF; FCF conversion clipped
+TEAMLEASE,21.5,14.5,5.0,11.0,40,1.001,1.2317,38,12,2026-11-26,growth,fcf,1.121,1037.9,4124.61,-74.8,low,poor fit (rmse 1.00); price -75% vs DCF
+TECHM,10.5,10.5,2.0,11.5,35,0.4358,1.0134,37,12,2026-11-26,growth,fcf,1.259,1801.2,1219.85,47.7,high,
+TECHNOE,26.0,15.5,5.0,13.5,40,1.2957,1.6057,31,12,2026-11-26,growth,fcf,0.1,910.45,227.52,300.2,low,poor fit (rmse 1.30); price +300% vs DCF; FCF conversion clipped
+TEGA,23.0,23.0,5.0,12.0,40,0.5419,1.6085,16,12,2026-11-26,growth,fcf,0.86,1539.6,1038.21,48.3,high,
+TEJASNET,38.0,30.0,5.0,14.0,40,2.0544,2.5868,28,12,2026-11-26,growth,fcf,0.1,403.45,246.95,63.4,low,poor fit (rmse 2.05); outlier fit vs universe (z 2.7); growth at cap (g1 38); price +63% vs DCF; FCF conversion clipped
+THANGAMAYL,39.5,29.0,5.0,11.5,40,1.5122,1.959,36,12,2026-11-26,growth,fcf,0.1,3842.6,1660.55,131.4,low,poor fit (rmse 1.51); growth at cap (g1 39.5); price +131% vs DCF; FCF conversion clipped
+THERMAX,28.5,22.5,5.0,11.0,40,0.6465,1.6651,38,12,2026-11-26,growth,fcf,0.408,2663.4,2270.18,17.3,medium,weak fit (rmse 0.65)
+TIINDIA,31.5,20.5,5.0,12.0,30,0.3515,1.253,30,12,2026-11-26,growth,fcf,0.468,2217.7,1788.5,24.0,high,
+TIMKEN,29.5,29.5,5.0,11.5,40,0.5232,1.7263,37,12,2026-11-26,growth,fcf,0.316,3073.6,1827.31,68.2,medium,price +68% vs DCF
+TITAGARH,39.5,30.0,5.0,14.0,40,2.0989,3.7628,34,12,2026-11-26,growth,fcf,0.1,717.6,106.99,570.7,low,poor fit (rmse 2.10); outlier fit vs universe (z 2.8); growth at cap (g1 39.5); price +571% vs DCF; FCF conversion clipped
+TITAN,38.0,30.0,5.0,12.0,40,0.8626,1.9333,38,12,2026-11-26,growth,fcf,0.465,4686.6,3567.09,31.4,low,growth at cap (g1 38); weak fit (rmse 0.86)
+TMPV,40.0,25.5,2.0,13.5,40,1.943,3.2123,26,12,2026-11-26,growth,fcf,0.169,262.1,1746.6,-85.0,low,poor fit (rmse 1.94); outlier fit vs universe (z 2.5); growth at cap (g1 40); price -85% vs DCF
+TORNTPHARM,19.0,7.5,5.0,10.0,30,0.3893,0.689,38,12,2026-11-26,growth,fcf,1.362,4895.5,3387.17,44.5,high,
+TORNTPOWER,22.5,0.0,5.0,12.0,40,0.7596,0.7779,36,12,2026-11-26,growth,fcf,0.935,1162.8,1273.22,-8.7,medium,weak fit (rmse 0.76); fit barely beats prior
+TRENT,40.0,30.0,5.0,13.5,40,1.8504,2.8136,38,12,2026-11-26,growth,fcf,0.615,3319.6,2801.05,18.5,low,poor fit (rmse 1.85); outlier fit vs universe (z 2.3); growth at cap (g1 40)
+TRIDENT,12.0,12.0,3.5,12.5,40,0.7183,1.0366,36,12,2026-11-26,growth,fcf,0.948,22.9,18.1,26.5,medium,weak fit (rmse 0.72)
+TRITURBINE,26.0,13.0,5.0,12.0,25,0.3115,0.6056,36,12,2026-11-26,growth,fcf,0.472,447.8,247.44,81.0,medium,price +81% vs DCF
+TVSMOTOR,36.5,15.0,5.0,13.0,35,0.4292,0.5989,38,12,2026-11-26,growth,fcf,1.005,4528.2,5134.47,-11.8,medium,growth at cap (g1 36.5)
+TVSSCS,36.5,29.5,2.0,13.0,40,1.4277,3.0388,9,12,2026-11-26,growth,fcf,1.5,127.18,523.33,-75.7,low,poor fit (rmse 1.43); few samples (9); growth at cap (g1 36.5); price -76% vs DCF; FCF conversion clipped
+UBL,27.5,27.5,3.5,10.5,40,0.7901,2.3664,37,12,2026-11-26,growth,fcf,0.1,1274.5,157.46,709.4,low,price +709% vs DCF; weak fit (rmse 0.79); FCF conversion clipped
+UCOBANK,29.0,0.0,5.0,14.0,40,0.9909,0.4548,18,12,2026-11-26,growth,fcf,1.0,24.65,101.32,-75.7,medium,weak fit (rmse 0.99); price -76% vs DCF; fit barely beats prior
+ULTRACEMCO,20.0,19.0,2.0,13.0,40,0.6067,1.5884,37,12,2026-11-26,growth,fcf,0.448,12800.0,3683.06,247.5,low,price +248% vs DCF; weak fit (rmse 0.61)
+UNIONBANK,20.5,0.0,5.0,13.5,40,1.4646,1.4297,14,12,2026-11-26,growth,fcf,1.0,213.5,857.37,-75.1,low,poor fit (rmse 1.46); limited samples (14); price -75% vs DCF; fit barely beats prior
+UNITDSPR,32.0,20.0,5.0,11.5,40,1.094,1.8821,37,12,2026-11-26,growth,fcf,0.747,1478.0,1666.94,-11.3,low,poor fit (rmse 1.09)
+UNOMINDA,39.5,30.0,5.0,13.0,40,2.0677,3.4574,36,12,2026-11-26,growth,fcf,0.1,1375.0,208.3,560.1,low,poor fit (rmse 2.07); outlier fit vs universe (z 2.7); growth at cap (g1 39.5); price +560% vs DCF; FCF conversion clipped
+UPL,29.5,25.5,2.0,12.5,40,1.1074,2.4884,38,12,2026-11-26,growth,fcf,0.1,554.45,115.02,382.1,low,poor fit (rmse 1.11); price +382% vs DCF; FCF conversion clipped
+USHAMART,32.5,7.0,5.0,12.5,40,0.7122,0.8691,22,12,2026-11-26,growth,fcf,0.518,449.1,301.98,48.7,medium,weak fit (rmse 0.71)
+UTIAMC,18.0,3.0,2.5,12.0,20,0.2211,0.6908,21,12,2026-11-26,growth,fcf,1.0,834.75,810.65,3.0,high,
+V2RETAIL,30.0,30.0,5.0,12.5,40,2.0483,2.6651,38,12,2026-11-26,growth,fcf,0.1,150.12,41.02,266.0,low,poor fit (rmse 2.05); outlier fit vs universe (z 2.7); price +266% vs DCF; FCF conversion clipped
+VBL,38.5,30.0,5.0,12.0,40,1.2095,2.579,36,12,2026-11-26,growth,fcf,0.154,427.15,159.91,167.1,low,poor fit (rmse 1.21); growth at cap (g1 38.5); price +167% vs DCF
+VEDL,4.5,0.0,2.0,13.5,40,0.7098,0.6988,19,12,2026-11-26,growth,fcf,0.486,232.8,342.79,-32.1,medium,weak fit (rmse 0.71); fit barely beats prior
+VENUSREM,36.0,0.0,5.0,12.0,40,1.9376,1.8943,28,12,2026-11-26,growth,fcf,1.052,1489.3,3951.12,-62.3,low,poor fit (rmse 1.94); outlier fit vs universe (z 2.4); growth at cap (g1 36); price -62% vs DCF; fit barely beats prior
+VIJAYA,32.0,18.0,5.0,10.5,30,0.3885,0.9401,17,12,2026-11-26,growth,fcf,0.699,1572.6,1243.89,26.4,high,
+VIMTALABS,33.0,23.0,5.0,12.5,40,0.7423,1.3851,36,12,2026-11-26,growth,fcf,0.373,470.3,500.03,-5.9,medium,weak fit (rmse 0.74)
+VIPIND,28.0,28.0,2.0,12.0,40,1.3726,2.8587,38,12,2026-11-26,growth,fcf,0.1,243.5,40.3,504.2,low,poor fit (rmse 1.37); price +504% vs DCF; FCF conversion clipped
+VOLTAS,25.0,25.0,2.0,12.5,40,0.9462,2.3829,38,12,2026-11-26,growth,fcf,0.1,1232.4,110.92,1011.1,low,price +1011% vs DCF; weak fit (rmse 0.95); FCF conversion clipped
+VTL,12.0,12.0,5.0,11.0,40,0.958,1.105,36,12,2026-11-26,growth,fcf,0.1,523.9,118.07,343.7,low,price +344% vs DCF; weak fit (rmse 0.96); FCF conversion clipped
+WELCORP,37.0,9.0,5.0,12.5,40,1.6662,1.894,32,12,2026-11-26,growth,fcf,0.427,2152.8,970.34,121.9,low,poor fit (rmse 1.67); growth at cap (g1 37); price +122% vs DCF
+WELSPUNLIV,17.5,11.5,5.0,13.0,40,0.7284,1.0271,36,12,2026-11-26,growth,fcf,0.6,276.57,65.24,323.9,low,price +324% vs DCF; weak fit (rmse 0.73)
+WHIRLPOOL,19.0,19.0,5.0,11.5,40,0.7644,1.6176,37,12,2026-11-26,growth,fcf,0.961,791.1,1009.48,-21.6,medium,weak fit (rmse 0.76)
+WOCKPHARMA,39.5,27.0,2.0,13.0,40,0.9307,2.7926,34,12,2026-11-26,growth,fcf,0.636,2078.0,1179.02,76.2,low,growth at cap (g1 39.5); weak fit (rmse 0.93); price +76% vs DCF
+YESBANK,24.5,0.0,5.0,12.5,40,1.4092,1.0246,27,12,2026-11-26,growth,fcf,1.0,17.71,64.8,-72.7,low,poor fit (rmse 1.41); price -73% vs DCF; fit barely beats prior
+ZAGGLE,40.0,30.0,5.0,13.5,40,2.0335,3.7949,9,12,2026-11-26,growth,fcf,0.1,149.09,101.41,47.0,low,poor fit (rmse 2.03); outlier fit vs universe (z 2.6); few samples (9); growth at cap (g1 40); FCF conversion clipped
+ZEEL,15.5,15.5,2.0,12.5,40,1.0858,1.9046,37,12,2026-11-26,growth,fcf,1.367,67.21,10.46,542.3,low,poor fit (rmse 1.09); price +542% vs DCF
+ZENSARTECH,21.5,4.5,5.0,13.0,35,0.4111,0.4682,38,12,2026-11-26,growth,fcf,0.897,529.6,854.82,-38.0,high,
+ZENTEC,39.5,30.0,5.0,12.5,40,1.0107,2.7306,33,12,2026-11-26,growth,fcf,0.462,1694.6,1113.65,52.2,low,poor fit (rmse 1.01); growth at cap (g1 39.5); price +52% vs DCF
+ZFCVINDIA,32.5,30.0,5.0,11.0,40,0.7091,1.944,36,12,2026-11-26,growth,fcf,0.577,2159.6,3579.14,-39.7,medium,weak fit (rmse 0.71)
+ZYDUSLIFE,33.5,12.5,5.0,11.5,40,0.5635,0.9389,37,12,2026-11-26,growth,fcf,0.382,1236.0,917.83,34.7,high,
+ZYDUSWELL,25.5,25.5,2.0,10.5,40,1.6165,3.1113,34,12,2026-11-26,growth,fcf,0.601,465.85,60.03,676.1,low,poor fit (rmse 1.62); price +676% vs DCF

@@ -1,0 +1,2 @@
+ticker,g1,g2,tg,dr,mos,rmse_fit,rmse_prior,n_samples,horizon_months,fitted_on,fit_mode,basis,fcf_conv,price_latest,iv_latest,gap_pct,confidence,confidence_reason
+__SCHEMA__,,,,,,,,,,,,,,,,,,

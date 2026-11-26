@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 def render_trend_banner(ticker: str, last: float, sma50: float,
-                         label: str = "Market Trend", panic: bool = False) -> None:
+                        label: str = "Market Trend", panic: bool = False) -> None:
     """Compact SMA50 trend banner (sized to sit in one of three columns).
     green = above SMA50, red = below. panic=True uses 'EXIT PANIC' wording."""
     gap = (last - sma50) / sma50 * 100
@@ -44,7 +44,6 @@ def render_trend_banner(ticker: str, last: float, sma50: float,
     )
     st.markdown(html, unsafe_allow_html=True)
 
-
 def inject_portfolio_css() -> None:
     """Install the portfolio-specific CSS classes once per Streamlit rerun."""
     st.markdown("""
@@ -82,3 +81,87 @@ def render_dataframe_cards(df: pd.DataFrame, title_column: str, value_columns: l
             f'<div style="display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px">{values}</div></div>',
             unsafe_allow_html=True,
         )
+
+_CONFIDENCE_STYLE = {
+    # level: (icon, kicker, headline, sub-line, background, border, accent, meter segments lit)
+    "low": (
+        "🚨",
+        "DCF confidence",
+        "LOW CONFIDENCE",
+        "The fitted DCF explains this stock's price history poorly — treat the verdict below with caution.",
+        "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)",
+        "#3b82f6",
+        "#93c5fd",
+        1,
+    ),
+    "medium": (
+        "⚠️",
+        "DCF confidence",
+        "MODERATE CONFIDENCE",
+        "Reasonable but imperfect fit — use the verdict as a rough guide, not a signal.",
+        "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+        "#60a5fa",
+        "#bfdbfe",
+        2,
+    ),
+    "high": (
+        "🛡️",
+        "DCF confidence",
+        "HIGH CONFIDENCE",
+        "The fitted DCF tracks this stock's price history well.",
+        "linear-gradient(135deg, #172554 0%, #1d4ed8 100%)",
+        "#3b82f6",
+        "#93c5fd",
+        3,
+    ),
+}
+
+
+def render_confidence_banner(level: str, reason: str = "", subject: str = "") -> None:
+    """Full-width blue banner for the optimizer's confidence rating (high / medium / low).
+
+    `reason` is the optimizer's semicolon-separated confidence_reason; each part becomes a chip.
+    Low confidence gets a gentle pulsing glow (disabled for prefers-reduced-motion).
+    Unknown levels render nothing.
+    """
+    style = _CONFIDENCE_STYLE.get(str(level).strip().lower())
+    if style is None:
+        return
+    icon, kicker, headline, sub, bg, border, accent, lit = style
+    lvl = str(level).strip().lower()
+
+    meter = "".join(
+        f'<span style="display:inline-block;width:34px;height:8px;border-radius:4px;margin-right:5px;'
+        f'background:{accent if i < lit else "rgba(255,255,255,0.22)"};"></span>'
+        for i in range(3)
+    )
+    chips = "".join(
+        f'<span style="display:inline-block;background:rgba(0,0,0,0.28);border:1px solid {accent}66;'
+        f'color:#ffffff;border-radius:9999px;padding:2px 10px;font-size:0.76rem;font-weight:600;'
+        f'white-space:nowrap;">{escape(part.strip())}</span>'
+        for part in str(reason or "").split(";") if part.strip() and part.strip().lower() != "nan"
+    )
+    chips_html = (
+        f'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">{chips}</div>'
+        if chips else ""
+    )
+    who = f" · {escape(subject)}" if subject else ""
+
+    html = (
+        f"<style>@keyframes cfPulse{{0%,100%{{box-shadow:0 0 0 0 {border}00;}}"
+        f"50%{{box-shadow:0 0 18px 2px {border}88;}}}}"
+        f".cf-banner-low{{animation:cfPulse 2.4s ease-in-out infinite;}}"
+        f"@media (prefers-reduced-motion: reduce){{.cf-banner-low{{animation:none;}}}}</style>"
+        f'<div class="cf-banner-{lvl}" style="background:{bg};border:2px solid {border};'
+        f'border-radius:12px;padding:16px 20px;margin:10px 0 16px;display:flex;align-items:center;gap:18px;">'
+        f'<span style="font-size:2.4rem;line-height:1;color:#ffffff;">{icon}</span>'
+        f'<div style="flex:1;min-width:0;">'
+        f'<div style="color:#ffffff;font-size:0.74rem;font-weight:700;letter-spacing:0.12em;'
+        f'text-transform:uppercase;opacity:0.9;">{kicker}{who}</div>'
+        f'<div style="color:#ffffff;font-size:1.3rem;font-weight:800;margin:2px 0 4px;">{headline}</div>'
+        f'<div style="color:#ffffff;opacity:0.95;font-size:0.9rem;">{sub}</div>'
+        f"{chips_html}</div>"
+        f'<div style="text-align:right;white-space:nowrap;">{meter}</div>'
+        f"</div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
