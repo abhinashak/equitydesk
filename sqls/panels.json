@@ -262,5 +262,17 @@
       "flag_tax_anomaly",
       "flag_other_income"
     ]
+  },
+  {
+    "name": "DCF Recommendations.",
+    "sql": "select ticker, pe_verdict, verdict_conf from  v_dcf_valuation where assump_confidence = 'high'  \nand pe_verdict  like 'CHEAP%' AND ( verdict_conf like 'BUY%' or verdict_conf like 'UNDERVALUED%'  )",
+    "viz": "Table",
+    "published_at": "2026-11-26 16:25",
+    "row_count": 41,
+    "columns": [
+      "ticker",
+      "pe_verdict",
+      "verdict_conf"
+    ]
   }
 ]
