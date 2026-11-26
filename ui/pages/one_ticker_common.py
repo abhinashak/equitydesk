@@ -3,22 +3,22 @@ one_ticker_common.py
 ────────────────────
 Shared bootstrap for one_ticker_gates.py and one_ticker_charts.py.
 
+All database access goes through `utils.db_utils`, whose shared connection is built
+from `sqls/all.sql` (so the `gate_score` view and the rest are always available).
+
 Provides:
   - COLORS / COLORS_PALE          palette constants
   - FUNDAMENTAL_VIEWS             list of (view_name, label) tuples
-  - get_duckdb_connection()       cached DuckDB connection
-  - initialize_views_or_mock()    loads init.sql or falls back to mock
-  - run_pipeline()                core SQL analytics query
+  - run_pipeline()                reads the `gate_score` view
   - get_pipeline_data()           cached wrapper around run_pipeline
   - compute_scores()              scores every ticker across 4 gates
-  - load_matrix()                 one-stop call: connect → init → pipeline → scores
+  - load_matrix()                 one-stop call: pipeline → scores
 """
 
-import os
-import duckdb
 import pandas as pd
-import numpy as np
 import streamlit as st
+
+from utils.db_utils import get_connection, run_readonly_query
 
 # ==============================================================================
 # CONSTANTS
@@ -35,56 +35,20 @@ FUNDAMENTAL_VIEWS = [
     ("balance_sheet",          "Balance Sheet"),
 ]
 
-# ==============================================================================
-# DATABASE CONNECTION
-# ==============================================================================
-@st.cache_resource
-def get_duckdb_connection():
-    return duckdb.connect(database=':memory:')
-
-
-def initialize_views_or_mock(conn) -> str:
-    """
-    Execute sqls/init.sql against *conn*, or fall back to a mock dataset.
-    Returns 'REAL', 'MOCK', or 'ERROR'.
-    """
-    sql_path = "sqls/init.sql"
-    if not os.path.exists(sql_path):
-        st.sidebar.warning("⚠️ init.sql not found — running Simulation Sandbox.")
-        _build_mock_data(conn)
-        return "MOCK"
-    st.sidebar.success("📊 Connected to Local Parquet Data Lake")
-    try:
-        with open(sql_path, "r") as f:
-            sql = f.read()
-        for stmt in sql.split(";"):
-            stmt = stmt.strip()
-            if stmt:
-                conn.execute(stmt)
-        return "REAL"
-    except Exception as e:
-        st.sidebar.error(f"Error executing init.sql: {str(e)}")
-        return "ERROR"
-
-
-def _build_mock_data(conn):
-    assert True, "general_info table should exist"
+# Backward-compatible alias for callers that still import the old name.
+get_duckdb_connection = get_connection
 
 
 # ==============================================================================
 # ANALYTICS PIPELINE
 # ==============================================================================
-def run_pipeline(conn) -> pd.DataFrame:
-    query = f"""
-        SELECT * FROM gate_score ORDER BY ticker
-    """
-    return conn.execute(query).df()
+def run_pipeline() -> pd.DataFrame:
+    return run_readonly_query("SELECT * FROM gate_score ORDER BY ticker")
 
 
 @st.cache_data(ttl=120)
 def get_pipeline_data() -> pd.DataFrame:
-    conn = get_duckdb_connection()
-    return run_pipeline(conn)
+    return run_pipeline()
 
 
 # ==============================================================================
@@ -212,17 +176,17 @@ def compute_scores(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 
 # ==============================================================================
-# ONE-STOP LOADER  (connect → init → pipeline → scores)
+# ONE-STOP LOADER  (pipeline → scores)
 # ==============================================================================
 def load_matrix() -> tuple[pd.DataFrame, object, str]:
     """
     Returns (df_matrix, conn, env_status).
-    Idempotent: safe to call from both pages; DuckDB connection is cached.
+
+    `conn` is a cursor on the shared all.sql database and `env_status` is always
+    "REAL"; both are kept only so existing callers' 3-tuple unpacking keeps working.
     """
-    conn = get_duckdb_connection()
-    env_status = initialize_views_or_mock(conn)
+    conn = get_connection()
     df_raw = get_pipeline_data()
     if df_raw.empty:
-        return pd.DataFrame(), conn, env_status
-    df_matrix = compute_scores(df_raw)
-    return df_matrix, conn, env_status
+        return pd.DataFrame(), conn, "REAL"
+    return compute_scores(df_raw), conn, "REAL"
