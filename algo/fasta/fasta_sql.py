@@ -123,3 +123,74 @@ def build_weekly_momentum_sql(start_date: str | date, cutoff_date: str | date) -
       AND prior_week_ret IS NOT NULL
     ORDER BY ticker, w_date ASC;
     """
+
+
+def build_daily_stop_max_date_sql(with_cutoff: bool = True) -> str:
+    """Latest available daily price date, optionally bounded by a cutoff."""
+    if with_cutoff:
+        return "SELECT max(date) FROM ticker_prices WHERE CAST(date AS DATE) <= ?"
+    return "SELECT max(date) FROM ticker_prices"
+
+
+def build_daily_stop_data_sql() -> str:
+    """Daily OHLC fields needed by the gap-aware stop-fill model."""
+    return """
+        SELECT ticker, CAST(date AS DATE) AS date, open, low
+        FROM ticker_prices
+        WHERE open IS NOT NULL AND low IS NOT NULL
+          AND CAST(date AS DATE) <= ?
+        ORDER BY ticker, date
+    """
+
+
+def build_stop_check_sql() -> str:
+    """Daily prices for the interactive single-ticker stop-loss explanation."""
+    return """
+        SELECT CAST(date AS DATE) AS date, open, low, close
+        FROM ticker_prices
+        WHERE ticker = ?
+          AND CAST(date AS DATE) >= ?
+          AND CAST(date AS DATE) < ?
+        ORDER BY date
+    """
+
+
+def build_market_cap_options_sql() -> str:
+    return """
+        SELECT DISTINCT market_cap
+        FROM tickers
+        WHERE market_cap IS NOT NULL
+        ORDER BY market_cap
+    """
+
+
+def build_universe_symbols_sql(
+    market_caps=(),
+    min_market_cap_amt=None,
+    min_fii_hold_pct=None,
+    min_public_hold_pct=None,
+):
+    """Return parameterized SQL and parameters for the configured ticker universe."""
+    where = []
+    params = []
+    if market_caps:
+        where.append(f"market_cap IN ({', '.join('?' for _ in market_caps)})")
+        params.extend(market_caps)
+    for column, value in (
+        ("market_cap_amt", min_market_cap_amt),
+        ("fii_hold_pct", min_fii_hold_pct),
+        ("public_hold_pct", min_public_hold_pct),
+    ):
+        if value is not None:
+            where.append(f"{column} > ?")
+            params.append(float(value))
+
+    sql = "SELECT DISTINCT upper(nse_symbol) FROM tickers WHERE nse_symbol IS NOT NULL"
+    if where:
+        sql += " AND " + " AND ".join(where)
+    return sql, params
+
+
+
+def build_describe_ticker_prices_sql() -> str:
+    return "DESCRIBE ticker_prices"

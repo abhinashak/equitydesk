@@ -1,4 +1,4 @@
-"""FASTA ALGO - weekly rotation back-test, rendered as a Streamlit page.
+G"""FASTA ALGO - weekly rotation back-test, rendered as a Streamlit page.
 
 Hook-up (app.py):
     elif page == "algo_fasta":
@@ -17,24 +17,40 @@ version. What changed is how it is driven and shown:
 """
 from __future__ import annotations
 
-import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 
-import duckdb
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+from .capital_allocation import (
+    _NO_TRADES, _track_record, _week_no, _normalize_market_cap, _apply_market_cap_ticker_caps, allocate_capital, allocate_picks,
+    recency_win_ratio, split_capital,
+)
+from .transaction_costs import apply_transaction_costs
+
+# Shared infrastructure: one process-wide DuckDB database and common JSON persistence.
+try:
+    from utils.db_utils import get_connection, reset_connection
+    from utils.file_utils import load_json_dict, save_json_atomic
+except ImportError:
+    try:
+        from db_utils import get_connection, reset_connection
+        from file_utils import load_json_dict, save_json_atomic
+    except ImportError:
+        # Package-relative fallback when FASTA is imported as a sibling module.
+        from .db_utils import get_connection, reset_connection
+        from .file_utils import load_json_dict, save_json_atomic
 
 from utils.yahoo_rss_news import show_news
 
 # ==========================================
 # STATIC CONFIGURATION (paths)
 # ==========================================
-DB_SQL_PATH = "sqls/all.sql"
 OUTPUT_FILE = "outputs/fasta/fasta.txt"
 CACHE_DIR = Path("outputs/fasta")
 SETTINGS_FILE = CACHE_DIR / "fasta_settings.json"  # remembered UI settings (not touched by "Clear cached data")
@@ -79,6 +95,7 @@ class Params:
     strategies: tuple = ("trend_shift_off", "trend_shift_on")
     allocation_decay: float = 0.97     # per-week decay applied to a strategy's past trades when scoring its win ratio
     win_ratio_prior: float = 5.0       # pseudo-trades at a 50% win ratio; keeps a strategy's first trades from swinging the split
+    market_cap_allocation_pct: dict = field(default_factory=dict)
 
     # Transaction cost model (Indian cash equity delivery) - verify against your broker/exchange
     weekly_capital: float = 1000000.0  # total capital pool per trading week, split across selected stocks
@@ -93,127 +110,32 @@ class Params:
     dp_charge_per_sell: float = 18.80
 
 
-def _fasta_sql():
+try:
+    from utils.fasta import fasta_sql as _FASTA_SQL
+except ImportError:
     try:
-        from algo.fasta import fasta_sql as mod
+        from algo.fasta import fasta_sql as _FASTA_SQL
     except ImportError:
-        import fasta_sql as mod
-    return mod
+        try:
+            from . import fasta_sql as _FASTA_SQL
+        except ImportError:
+            import fasta_sql as _FASTA_SQL
+
+
+def _fasta_sql():
+    return _FASTA_SQL
 
 
 # ==========================================
 # TRANSACTION COSTS
 # ==========================================
-def apply_transaction_costs(trades_df, p: Params):
-    """Apply delivery transaction costs. Uses each trade's `position_capital` (set by allocate_capital);
-    without it, each week's pool is split equally among that week's trades."""
-    if trades_df.empty:
-        return trades_df
-
-    df = trades_df.copy()
-    df['buy_date'] = pd.to_datetime(df['buy_date'])
-    df['week_period'] = df['buy_date'].dt.to_period('W')
-    if 'position_capital' not in df.columns:
-        weekly_trade_count = df.groupby('week_period')['ticker'].transform('count')
-        df['position_capital'] = p.weekly_capital / weekly_trade_count
-    buy_value = df['position_capital'].astype(float)
-    sell_value = buy_value * (1.0 + df['pnl_pct'].astype(float) / 100.0)
-    sell_value = sell_value.clip(lower=0.0)
-
-    brokerage_buy = buy_value * p.brokerage_rate
-    brokerage_sell = sell_value * p.brokerage_rate
-    if p.brokerage_cap > 0:
-        brokerage_buy = brokerage_buy.clip(upper=p.brokerage_cap)
-        brokerage_sell = brokerage_sell.clip(upper=p.brokerage_cap)
-
-    stt_buy = buy_value * p.stt_buy_rate
-    stt_sell = sell_value * p.stt_sell_rate
-    exchange_buy = buy_value * p.exchange_txn_rate
-    exchange_sell = sell_value * p.exchange_txn_rate
-    sebi_buy = buy_value * p.sebi_turnover_rate
-    sebi_sell = sell_value * p.sebi_turnover_rate
-    stamp_buy = buy_value * p.stamp_duty_buy_rate
-    stamp_sell = 0.0
-    gst_buy = (brokerage_buy + exchange_buy + sebi_buy) * p.gst_rate
-    gst_sell = (brokerage_sell + exchange_sell + sebi_sell) * p.gst_rate
-    dp_sell = p.dp_charge_per_sell
-
-    total_buy_cost = stt_buy + exchange_buy + sebi_buy + stamp_buy + gst_buy + brokerage_buy
-    total_sell_cost = stt_sell + exchange_sell + sebi_sell + stamp_sell + gst_sell + dp_sell + brokerage_sell
-    total_cost = total_buy_cost + total_sell_cost
-    gross_profit_rupees = sell_value - buy_value
-    net_profit_rupees = gross_profit_rupees - total_cost
-
-    df['gross_profit_rupees'] = gross_profit_rupees
-    df['buy_stt'] = stt_buy
-    df['sell_stt'] = stt_sell
-    df['buy_exchange_fee'] = exchange_buy
-    df['sell_exchange_fee'] = exchange_sell
-    df['buy_sebi_fee'] = sebi_buy
-    df['sell_sebi_fee'] = sebi_sell
-    df['buy_stamp_duty'] = stamp_buy
-    df['sell_stamp_duty'] = stamp_sell
-    df['buy_gst'] = gst_buy
-    df['sell_gst'] = gst_sell
-    df['sell_dp_charge'] = dp_sell
-    df['buy_brokerage'] = brokerage_buy
-    df['sell_brokerage'] = brokerage_sell
-    df['total_buy_cost'] = total_buy_cost
-    df['total_sell_cost'] = total_sell_cost
-    df['total_transaction_cost'] = total_cost
-    df['net_profit_rupees'] = net_profit_rupees
-    df['net_pnl_pct'] = (net_profit_rupees / buy_value) * 100.0
-    df['buy_date'] = df['buy_date'].dt.strftime('%Y-%m-%d')
-    df = df.drop(columns=['week_period'])
-    return df
 
 
 # ==========================================
 # DATA ACCESS
 # ==========================================
-def _run_sql_script(connection, path, _seen=None):
-    """Runs a .sql file, following `.read other.sql` includes."""
-    path = Path(path).expanduser().resolve()
-    _seen = _seen or set()
-    if path in _seen:
-        return
-    _seen = _seen | {path}
-    buf = []
-
-    def flush():
-        sql = "\n".join(buf).strip()
-        buf.clear()
-        if sql:
-            connection.execute(sql)
-
-    for line in path.read_text().splitlines():
-        stripped = line.strip()
-        at_boundary = not buf or "\n".join(buf).rstrip().endswith(";")
-        if stripped.startswith(".") and at_boundary:
-            flush()
-            parts = stripped.split(maxsplit=1)
-            if parts[0] == ".read" and len(parts) == 2:
-                target = Path(parts[1].strip().strip("'\"")).expanduser()
-                _run_sql_script(connection, target, _seen)
-        else:
-            buf.append(line)
-    flush()
-
-
-def initialize_database():
-    if not Path(DB_SQL_PATH).exists():
-        raise FileNotFoundError(
-            f"'{DB_SQL_PATH}' not found (looked relative to {Path.cwd()}). "
-            "Start the app from the project root or fix DB_SQL_PATH.")
-    con = duckdb.connect()
-    _run_sql_script(con, DB_SQL_PATH)
-    return con
-
-
-@st.cache_resource(show_spinner="Initialising database…")
-def get_connection():
-    return initialize_database()
-
+# Database initialization and connection lifecycle are owned by db_utils.
+# get_connection() returns a per-caller DuckDB cursor over the shared initialized DB.
 
 def _cache_paths(p: Params):
     tag = f"{p.start_date}_{p.cutoff_date}"
@@ -289,7 +211,7 @@ def load_daily_stop_data(con, p: Params, log):
         return None
     _, _, daily_cache = _cache_paths(p)
     try:
-        cols = {r[0].lower() for r in con.execute("DESCRIBE ticker_prices").fetchall()}
+        cols = {r[0].lower() for r in con.execute(_fasta_sql().build_describe_ticker_prices_sql()).fetchall()}
         if not {'ticker', 'date', 'open', 'low'}.issubset(cols):
             log("[Gap-aware stop] ticker_prices has no daily open/low columns - using exact stop fills.")
             return None
@@ -298,12 +220,12 @@ def load_daily_stop_data(con, p: Params, log):
             cutoff_day = pd.Timestamp(p.cutoff_date).normalize()
             max_avail = pd.to_datetime(
                 con.execute(
-                    "SELECT max(date) FROM ticker_prices WHERE CAST(date AS DATE) <= ?",
+                    _fasta_sql().build_daily_stop_max_date_sql(with_cutoff=True),
                     [cutoff_day.date()],
                 ).fetchone()[0]
             ).normalize()
         else:
-            max_avail = pd.to_datetime(con.execute("SELECT max(date) FROM ticker_prices").fetchone()[0]).normalize()
+            max_avail = pd.to_datetime(con.execute(_fasta_sql().build_daily_stop_max_date_sql(with_cutoff=False)).fetchone()[0]).normalize()
             cutoff_day = max_avail
 
         daily = None
@@ -316,13 +238,10 @@ def load_daily_stop_data(con, p: Params, log):
 
         if daily is None:
             log("[Cache Miss] Loading daily open/low for gap-aware stop fills…")
-            daily = con.execute("""
-                SELECT ticker, CAST(date AS DATE) AS date, open, low
-                FROM ticker_prices
-                WHERE open IS NOT NULL AND low IS NOT NULL
-                  AND CAST(date AS DATE) <= ?
-                ORDER BY ticker, date
-            """, [cutoff_day.date()]).fetchdf()
+            daily = con.execute(
+                _fasta_sql().build_daily_stop_data_sql(),
+                [cutoff_day.date()],
+            ).fetchdf()
             daily.columns = [c.lower() for c in daily.columns]
             daily_cache.parent.mkdir(parents=True, exist_ok=True)
             daily.to_parquet(daily_cache, index=False)
@@ -372,9 +291,9 @@ def stop_check(con, ticker, week_start, buy_price, stop_loss_pct):
     """Daily open/low of one ticker-week and what the stop logic does with it (was `explain_stop`)."""
     week_start = pd.Timestamp(week_start).normalize()
     daily = con.execute(
-        "SELECT CAST(date AS DATE) AS date, open, low, close FROM ticker_prices "
-        "WHERE ticker = ? AND CAST(date AS DATE) >= ? AND CAST(date AS DATE) < ? ORDER BY date",
-        [ticker, week_start.date(), (week_start + pd.Timedelta(days=7)).date()]).fetchdf()
+        _fasta_sql().build_stop_check_sql(),
+        [ticker, week_start.date(), (week_start + pd.Timedelta(days=7)).date()],
+    ).fetchdf()
     if daily.empty:
         return None
     daily.columns = [c.lower() for c in daily.columns]
@@ -797,76 +716,6 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None):
 # ==========================================
 # CAPITAL ALLOCATION ACROSS STRATEGIES
 # ==========================================
-_WEEK0 = pd.Timestamp("1970-01-05")
-_NO_TRADES = (np.array([], dtype=np.int64), np.array([], dtype=float))
-
-
-def _week_no(ts):
-    return (pd.Timestamp(ts).normalize() - _WEEK0).days // 7
-
-
-def _week_nos(dates):
-    return ((pd.to_datetime(dates).dt.normalize() - _WEEK0).dt.days // 7).astype(np.int64)
-
-
-def _track_record(trades_df):
-    if trades_df.empty:
-        return {}
-    weeks = _week_nos(trades_df['buy_date']).to_numpy()
-    wins = (trades_df['pnl_pct'].to_numpy(dtype=float) > 0.0).astype(float)
-    record = {}
-    for key in trades_df['strategy'].unique():
-        mask = (trades_df['strategy'] == key).to_numpy()
-        record[key] = (weeks[mask], wins[mask])
-    return record
-
-
-def recency_win_ratio(weeks, wins, as_of, p: Params):
-    past = weeks < as_of
-    w = p.allocation_decay ** (as_of - weeks[past])
-    denom = float(w.sum()) + p.win_ratio_prior
-    if denom <= 0:
-        return 0.5
-    return (float((w * wins[past]).sum()) + 0.5 * p.win_ratio_prior) / denom
-
-
-def split_capital(win_ratios, active):
-    total = sum(win_ratios[k] for k in active)
-    return {k: (win_ratios[k] / total if total > 0 else 1.0 / len(active)) for k in active}
-
-
-def allocate_capital(trades_df, p: Params):
-    if trades_df.empty:
-        return trades_df, pd.DataFrame()
-    df = trades_df.copy()
-    df['_wk'] = _week_nos(df['buy_date'])
-    record = _track_record(trades_df)
-    keys = sorted(record)
-
-    rows = []
-    for wk, g in df.groupby('_wk'):
-        ratios = {k: recency_win_ratio(*record[k], wk, p) for k in keys}
-        weights = split_capital(ratios, sorted(g['strategy'].unique()))
-        rows += [{'_wk': wk, 'strategy': k, 'win_ratio': ratios[k], 'weight': weights.get(k, 0.0)} for k in keys]
-    alloc = pd.DataFrame(rows)
-
-    df = df.merge(alloc.rename(columns={'win_ratio': 'strategy_win_ratio', 'weight': 'strategy_weight'}),
-                  on=['_wk', 'strategy'], how='left')
-    per_strategy_count = df.groupby(['_wk', 'strategy'])['ticker'].transform('count')
-    df['position_capital'] = p.weekly_capital * df['strategy_weight'] / per_strategy_count
-    alloc['week'] = _WEEK0 + pd.to_timedelta(alloc['_wk'] * 7, unit='D')
-    return df.drop(columns='_wk'), alloc.drop(columns='_wk')
-
-
-def allocate_picks(picks_df, win_ratios, p: Params):
-    df = picks_df.copy()
-    weights = split_capital(win_ratios, sorted(df['strategy'].unique()))
-    df['strategy_win_ratio'] = df['strategy'].map(win_ratios)
-    df['strategy_weight'] = df['strategy'].map(weights)
-    df['allocation'] = p.weekly_capital * df['strategy_weight'] / df.groupby('strategy')['ticker'].transform('count')
-    return df
-
-
 def pick_window(df):
     if df.empty:
         return pd.NaT, pd.NaT, False
@@ -899,23 +748,15 @@ def _parse_symbols(text):
 
 
 def _load_settings():
-    try:
-        data = json.loads(SETTINGS_FILE.read_text())
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
+    return load_json_dict(SETTINGS_FILE)
 
 
 def _save_settings(**updates):
     try:
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = SETTINGS_FILE.with_suffix(".tmp")
-        tmp.write_text(json.dumps({**_load_settings(), **updates}, indent=2))
-        tmp.replace(SETTINGS_FILE)
+        save_json_atomic({**_load_settings(), **updates}, SETTINGS_FILE)
         return True
     except OSError:
         return False
-
 
 def has_universe_filter(p: Params) -> bool:
     return bool(p.market_caps) or any(
@@ -925,33 +766,43 @@ def has_universe_filter(p: Params) -> bool:
 @st.cache_data(show_spinner=False, ttl=600)
 def load_market_cap_options():
     try:
-        rows = get_connection().cursor().execute(
-            "SELECT DISTINCT market_cap FROM tickers WHERE market_cap IS NOT NULL ORDER BY market_cap").fetchall()
+        rows = get_connection().execute(_fasta_sql().build_market_cap_options_sql()).fetchall()
         return [r[0] for r in rows]
     except Exception:
         return []
 
 
+def ticker_market_cap_map(con):
+    """Load ticker classifications from the canonical tickers table."""
+    rows = con.execute(
+        "SELECT upper(nse_symbol), market_cap FROM tickers "
+        "WHERE nse_symbol IS NOT NULL"
+    ).fetchall()
+    return {str(symbol).strip().upper(): market_cap for symbol, market_cap in rows}
+
+
+def attach_market_cap(df, market_cap_map):
+    if df.empty or "ticker" not in df:
+        return df
+    out = df.copy()
+    bare = out["ticker"].map(lambda ticker: _bare(str(ticker)).upper())
+    out["market_cap"] = bare.map(market_cap_map)
+    return out
+
+
 def universe_symbols(con, p: Params):
-    where, args = [], []
-    if p.market_caps:
-        where.append(f"market_cap IN ({', '.join('?' * len(p.market_caps))})")
-        args += list(p.market_caps)
-    for col, val in (("market_cap_amt", p.min_market_cap_amt),
-                     ("fii_hold_pct", p.min_fii_hold_pct),
-                     ("public_hold_pct", p.min_public_hold_pct)):
-        if val is not None:
-            where.append(f"{col} > ?")
-            args.append(float(val))
-    sql = "SELECT DISTINCT upper(nse_symbol) FROM tickers WHERE nse_symbol IS NOT NULL"
-    if where:
-        sql += " AND " + " AND ".join(where)
+    sql, args = _fasta_sql().build_universe_symbols_sql(
+        market_caps=p.market_caps,
+        min_market_cap_amt=p.min_market_cap_amt,
+        min_fii_hold_pct=p.min_fii_hold_pct,
+        min_public_hold_pct=p.min_public_hold_pct,
+    )
     return {r[0] for r in con.execute(sql, args).fetchall()}
 
 
 def universe_counts(p: Params):
     try:
-        con = get_connection().cursor()
+        con = get_connection()
         everyone = {x for x in universe_symbols(con, Params()) if not x.startswith("^")}
         passing = {x for x in universe_symbols(con, p) if not x.startswith("^")}
         return len(passing), len(everyone)
@@ -960,7 +811,7 @@ def universe_counts(p: Params):
 
 
 def analyze(p: Params, progress=None, log=lambda m: None):
-    con = get_connection().cursor()
+    con = get_connection()
     df = load_market_data(con, p, log)
     if df.empty:
         raise ValueError("The market-data query returned no rows for this date window.")
@@ -999,8 +850,13 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     daily_stops = load_daily_stop_data(con, p, log)
     nifty_weekly, nifty_q, nifty_y = load_nifty_benchmark(con, p, log)
 
+    # Carry point-in-time-unaware static segment metadata from the tickers dimension
+    # into trades and picks so the segment caps can be applied consistently.
+    market_cap_map = ticker_market_cap_map(con)
     strategies = resolve_strategies(p.strategies)
     raw_trades, picks_df = run_simulation(df, daily_stops, strategies, p, progress)
+    raw_trades = attach_market_cap(raw_trades, market_cap_map)
+    picks_df = attach_market_cap(picks_df, market_cap_map)
     training_through, wk_start, wk_end, is_next = resolve_picks_window(df, p)
     training_label = (
         f"training data available through {training_through:%a %Y-%m-%d}"
@@ -1077,6 +933,9 @@ def analyze(p: Params, progress=None, log=lambda m: None):
         res["quarterly"] = pd.DataFrame({
             'Quarter': q.index.astype(str), 'Portfolio PnL %': q.values,
             'Nifty 50 %': [nifty_q.get(k, 0.0) for k in q.index]})
+        quarter_net = weekly_net.groupby(weekly_net.index.asfreq('Q')).sum()
+        quarter_pct = weekly_pct.groupby(weekly_pct.index.asfreq('Q')).sum()
+        best_q, worst_q = quarter_pct.idxmax(), quarter_pct.idxmin()
         y = weekly_df.groupby('year_period')['portfolio_ret'].sum()
         res["yearly"] = pd.DataFrame({
             'Year': y.index.astype(str), 'Portfolio PnL %': y.values,
@@ -1128,6 +987,8 @@ def analyze(p: Params, progress=None, log=lambda m: None):
             "avg_net_pnl_pct": float(trades_df['net_pnl_pct'].mean()),
             "max_gain_week": (str(gw), float(weekly_pct.loc[gw]), float(weekly_net.loc[gw])),
             "max_loss_week": (str(lw), float(weekly_pct.loc[lw]), float(weekly_net.loc[lw])),
+            "best_quarter": (str(best_q), float(quarter_pct.loc[best_q]), float(quarter_net.loc[best_q])),
+            "worst_quarter": (str(worst_q), float(quarter_pct.loc[worst_q]), float(quarter_net.loc[worst_q])),
         }
 
     res["text_report"] = build_text_report(res, p)
@@ -1165,6 +1026,7 @@ def build_text_report(res, p: Params):
             L.append(f"Year {r.Year}    | Portfolio PnL: {r._2:+.2f}% | Nifty 50 Return: {r._3:+.2f}%")
 
         gw, lw = k["max_gain_week"], k["max_loss_week"]
+        bq, wq = k["best_quarter"], k["worst_quarter"]
         L.append(f"""
 =========================================================================
   OVERALL CUMULATIVE REALISED PnL ACROSS ALL WEEKS : {k['overall_pnl_pct']:+.2f}%
@@ -1179,6 +1041,8 @@ def build_text_report(res, p: Params):
   AVERAGE NET PnL PER TRADE                      : {k['avg_net_pnl_pct']:+.2f}%
   MAXIMUM GAIN WEEK                              : {gw[0]} | {gw[1]:+.2f}% | ₹{gw[2]:+,.2f}
   MAXIMUM LOSS WEEK                              : {lw[0]} | {lw[1]:+.2f}% | ₹{lw[2]:+,.2f}
+  BEST QUARTER                                   : {bq[0]} | {bq[1]:+.2f}% | ₹{bq[2]:+,.2f}
+  WORST QUARTER                                  : {wq[0]} | {wq[1]:+.2f}% | ₹{wq[2]:+,.2f}
 
 =========================================================================
 """)
@@ -1226,26 +1090,63 @@ def _portfolio_symbols():
 
 
 def _parameter_form():
+    saved = _load_settings()
     D = Params(cutoff_date=date.today().isoformat())
+    cap_opts = load_market_cap_options()
+
+    # A Revert click is handled at the start of the next rerun, before any
+    # widgets are instantiated. The dynamic form key recreates form widgets
+    # from the persisted values instead of retaining their unsaved state.
+    if st.session_state.pop("fasta_revert_pending", False):
+        saved = _load_settings()
+        st.session_state["fasta_market_caps"] = [x for x in saved.get("market_caps", []) if x in cap_opts]
+        st.session_state["fasta_amt_on"] = saved.get("min_market_cap_amt") is not None
+        st.session_state["fasta_amt_val"] = float(saved.get("min_market_cap_amt", 10000.0) or 10000.0)
+        st.session_state["fasta_fii_on"] = saved.get("min_fii_hold_pct") is not None
+        st.session_state["fasta_fii_val"] = float(saved.get("min_fii_hold_pct", 5.0) if saved.get("min_fii_hold_pct") is not None else 5.0)
+        st.session_state["fasta_pub_on"] = saved.get("min_public_hold_pct") is not None
+        st.session_state["fasta_pub_val"] = float(saved.get("min_public_hold_pct", 10.0) if saved.get("min_public_hold_pct") is not None else 10.0)
+        st.session_state["fasta_form_nonce"] = int(st.session_state.get("fasta_form_nonce", 0)) + 1
+        st.session_state["fasta_revert_notice"] = True
+
+    form_nonce = int(st.session_state.get("fasta_form_nonce", 0))
+
+    def setting(name, default):
+        return saved.get(name, default)
+
+    def saved_date(name, default):
+        value = setting(name, default.isoformat())
+        try:
+            return date.fromisoformat(str(value))
+        except (TypeError, ValueError):
+            return default
+
     open_it = RESULT_KEY not in st.session_state
     with st.expander("⚙️ Parameters", expanded=open_it):
         st.markdown("**Universe filters** (all conditions are AND-ed)")
-        cap_opts = load_market_cap_options()
         caps_sel = st.multiselect(
-            "Market cap", cap_opts, default=[], disabled=not cap_opts, key="fasta_market_caps",
+            "Market cap", cap_opts,
+            default=[x for x in setting("market_caps", []) if x in cap_opts],
+            disabled=not cap_opts, key="fasta_market_caps",
             placeholder="ALL (no filter)",
             help="Distinct market_cap values from the tickers table. Leave empty for ALL "
                  "(includes stocks with no market cap data). Selecting any excludes unclassified stocks.")
         f1, f2, f3 = st.columns(3)
-        amt_on = f1.checkbox("Market cap amount >", False, key="fasta_amt_on")
-        amt_val = f1.number_input("market_cap_amt", 0.0, 1e9, 10000.0, 500.0, disabled=not amt_on,
-                                  label_visibility="collapsed", key="fasta_amt_val")
-        fii_on = f2.checkbox("FII holding % >", False, key="fasta_fii_on")
-        fii_val = f2.number_input("fii_hold_pct", 0.0, 100.0, 5.0, 0.5, disabled=not fii_on,
-                                  label_visibility="collapsed", key="fasta_fii_val")
-        pub_on = f3.checkbox("Public holding % >", False, key="fasta_pub_on")
-        pub_val = f3.number_input("public_hold_pct", 0.0, 100.0, 10.0, 0.5, disabled=not pub_on,
-                                  label_visibility="collapsed", key="fasta_pub_val")
+        amt_saved = setting("min_market_cap_amt", None)
+        fii_saved = setting("min_fii_hold_pct", None)
+        pub_saved = setting("min_public_hold_pct", None)
+        amt_on = f1.checkbox("Market cap amount >", amt_saved is not None, key="fasta_amt_on")
+        amt_val = f1.number_input("market_cap_amt", 0.0, 1e9,
+                                  float(amt_saved if amt_saved is not None else 10000.0), 500.0,
+                                  disabled=not amt_on, label_visibility="collapsed", key="fasta_amt_val")
+        fii_on = f2.checkbox("FII holding % >", fii_saved is not None, key="fasta_fii_on")
+        fii_val = f2.number_input("fii_hold_pct", 0.0, 100.0,
+                                  float(fii_saved if fii_saved is not None else 5.0), 0.5,
+                                  disabled=not fii_on, label_visibility="collapsed", key="fasta_fii_val")
+        pub_on = f3.checkbox("Public holding % >", pub_saved is not None, key="fasta_pub_on")
+        pub_val = f3.number_input("public_hold_pct", 0.0, 100.0,
+                                  float(pub_saved if pub_saved is not None else 10.0), 0.5,
+                                  disabled=not pub_on, label_visibility="collapsed", key="fasta_pub_val")
         uf = Params(market_caps=tuple(caps_sel),
                     min_market_cap_amt=float(amt_val) if amt_on else None,
                     min_fii_hold_pct=float(fii_val) if fii_on else None,
@@ -1261,78 +1162,194 @@ def _parameter_form():
             st.success(f"{n_in:,} of {n_all:,} stocks are included.")
         st.caption("Tick a box to apply that filter. A stock with no data in a ticked field is excluded. "
                    "Counts come from the tickers table; stocks without enough price history are dropped at run time.")
-        with st.form("fasta_params"):
+
+        with st.form(f"fasta_params_{form_nonce}"):
             t_strat, t_data, t_cost = st.tabs(["Strategy", "Data window", "Transaction costs"])
             with t_strat:
                 c1, c2, c3 = st.columns(3)
-                conf = c1.number_input("Confidence cutoff (%)", 0.0, 100.0, D.confidence_cutoff, 1.0)
-                stop = c2.number_input("Stock stop-loss (%)", -50.0, 0.0, D.stop_loss_pct, 0.25)
-                halt = c3.number_input("Portfolio halt (%)", -50.0, 0.0, D.portfolio_halt_pct, 0.5)
-                min_hist = c1.number_input("Min history (weeks)", 5, 200, D.min_history, 1)
-                decay = c2.number_input("Recency decay factor", 0.5, 1.0, D.decay_factor, 0.01)
-                gap = c3.checkbox("Gap-aware stop fills", D.gap_aware_stop,
+                conf = c1.number_input("Confidence cutoff (%)", 0.0, 100.0,
+                                       float(setting("confidence_cutoff", D.confidence_cutoff)), 1.0)
+                stop = c2.number_input("Stock stop-loss (%)", -50.0, 0.0,
+                                       float(setting("stop_loss_pct", D.stop_loss_pct)), 0.25)
+                halt = c3.number_input("Portfolio halt (%)", -50.0, 0.0,
+                                       float(setting("portfolio_halt_pct", D.portfolio_halt_pct)), 0.5)
+                min_hist = c1.number_input("Min history (weeks)", 5, 200,
+                                           int(setting("min_history", D.min_history)), 1)
+                decay = c2.number_input("Recency decay factor", 0.5, 1.0,
+                                        float(setting("decay_factor", D.decay_factor)), 0.01)
+                gap = c3.checkbox("Gap-aware stop fills", bool(setting("gap_aware_stop", D.gap_aware_stop)),
                                   help="A stock that opens below the stop price exits at that open, not at the stop.")
                 eq_basket = st.checkbox(
                     "Equal-weight order basket across unique tickers",
-                    value=D.equal_weight_basket,
+                    value=bool(setting("equal_weight_basket", D.equal_weight_basket)),
                     help="When unchecked, the order basket sums each ticker's strategy-weighted allocation from the "
                          "picks table. When checked, capital is split equally across unique tickers.")
                 strategies = st.multiselect(
-                    "Strategies", list(STRATEGIES), default=list(D.strategies),
+                    "Strategies", list(STRATEGIES),
+                    default=[k for k in setting("strategies", list(D.strategies)) if k in STRATEGIES],
                     format_func=lambda k: STRATEGIES[k].label,
-                    help="\n".join(f"- **{s.label}**: {s.description}" for s in STRATEGIES.values()))
+                    help="\\n".join(f"- **{s.label}**: {s.description}" for s in STRATEGIES.values()))
                 c1, c2 = st.columns(2)
                 alloc_decay = c1.number_input(
-                    "Win-ratio recency decay (per week)", 0.5, 1.0, D.allocation_decay, 0.01,
+                    "Win-ratio recency decay (per week)", 0.5, 1.0,
+                    float(setting("allocation_decay", D.allocation_decay)), 0.01,
                     help="A strategy's trade n weeks old counts decay^n when scoring its win ratio. Lower = reacts faster.")
                 win_prior = c2.number_input(
-                    "Win-ratio prior (pseudo-trades)", 0.0, 100.0, D.win_ratio_prior, 1.0,
+                    "Win-ratio prior (pseudo-trades)", 0.0, 100.0,
+                    float(setting("win_ratio_prior", D.win_ratio_prior)), 1.0,
                     help="Pseudo-trades at a 50% win ratio. Keeps the split near even until a strategy has a record.")
+                st.caption("Maximum allocation per ticker for each market_cap value currently present in the tickers table. "
+                           "These controls are generated from the database values, so new or renamed values appear "
+                           "automatically. New/unconfigured categories default to 5%. Excess is redistributed to "
+                           "other eligible tickers; any amount that cannot be placed remains as cash. "
+                           "Set a value to 0% for no cap on that category.")
+                st.warning("Disclaimer: Point-in-time market segmentation will have look-ahead bias in historical results.")
+                saved_caps = setting("market_cap_allocation_pct", {})
+                market_cap_allocation_pct = {}
+                if cap_opts:
+                    cap_cols = st.columns(min(3, len(cap_opts)))
+                    for i, market_cap_value in enumerate(cap_opts):
+                        normalized_key = _normalize_market_cap(market_cap_value)
+                        default_pct = float(saved_caps.get(str(market_cap_value), 5.0))
+                        with cap_cols[i % len(cap_cols)]:
+                            market_cap_allocation_pct[str(market_cap_value)] = st.number_input(
+                                f"{market_cap_value} max allocation (%)", 0.0, 100.0,
+                                default_pct, 0.5, key=f"fasta_market_cap_alloc_{normalized_key}_{form_nonce}",
+                            )
+                else:
+                    st.info("No market_cap values found in the tickers table. No segment allocation caps are available.")
                 exclude_text = st.text_area(
-                    "Exclude stocks", value="\n".join(_load_settings().get("exclude_tickers", [])), height=110,
-                    key="fasta_exclude_text", placeholder="One symbol per line or comma-separated, e.g. WELCORP",
-                    help="Never traded or picked, in the back-test and in the picks. .NS / .BO is ignored. "
-                         "Saved when you press Run analysis and remembered across sessions.")
+                    "Exclude stocks", value="\\n".join(setting("exclude_tickers", [])), height=110,
+                    key=f"fasta_exclude_text_{form_nonce}", placeholder="One symbol per line or comma-separated, e.g. WELCORP",
+                    help="Never traded or picked, in the back-test and in the picks. .NS / .BO is ignored.")
+
             with t_data:
                 c1, c2, c3 = st.columns(3)
-                start = c1.date_input("Start date", date(2017, 4, 1))
-                cutoff = c2.date_input("Cutoff date", date.today())
+                start = c1.date_input("Start date", saved_date("start_date", date(2017, 4, 1)))
+                cutoff = c2.date_input("Cutoff date", saved_date("cutoff_date", date.today()))
                 use_custom_picks = c3.checkbox(
                     "Custom picks training cutoff",
-                    value=True,
+                    value=bool(setting("use_custom_picks_cutoff", bool(setting("picks_training_cutoff", "")))),
                     help="Anchor picks to the last completed Mon–Fri week on or before this date "
-                         "(e.g., Friday/Sunday weekend to include weekend shadow updates, or any day of the running week)."
-                )
+                         "(e.g., Friday/Sunday weekend to include weekend shadow updates, or any day of the running week).")
                 picks_cutoff = c3.date_input(
                     "Picks training cutoff",
-                    value=date.today(),
+                    value=saved_date("picks_training_cutoff", date.today()),
                     disabled=not use_custom_picks,
                     help="Friday or Saturday/Sunday includes that week's completed bars and shadow state; "
-                         "any mid-week date resolves to the prior Friday so live intra-week bars cannot leak."
-                )
+                         "any mid-week date resolves to the prior Friday so live intra-week bars cannot leak.")
                 held = _portfolio_symbols()
+                saved_restrict = bool(setting("restrict_to_portfolio", False))
                 restrict = st.checkbox(
-                    "Restrict to portfolio tickers", value=False, disabled=not held,
+                    "Restrict to portfolio tickers", value=saved_restrict, disabled=not held,
                     help="Run the back-test and picks only on stocks currently held (live holdings, excluding "
                          "excluded symbols). Note: the weekly capital pool is then split across fewer stocks.")
                 if held:
                     st.caption(f"{len(held)} tickers in your holdings.")
                 else:
                     st.caption("Holdings not loaded - go to Setup and click 'Fetch Holdings' to enable this option.")
+
             with t_cost:
                 st.caption("Indian cash-equity delivery. Rates are assumptions - verify against your broker/exchange.")
                 c1, c2, c3 = st.columns(3)
-                cap = c1.number_input("Weekly capital pool (₹)", 1000.0, 1e9, D.weekly_capital, 10_000.0)
-                brk = c2.number_input("Brokerage rate", 0.0, 0.05, D.brokerage_rate, 1e-4, format="%.6f")
-                brk_cap = c3.number_input("Brokerage cap per order (₹, 0 = none)", 0.0, 1e5, D.brokerage_cap, 10.0)
-                stt_b = c1.number_input("STT buy rate", 0.0, 0.01, D.stt_buy_rate, 1e-4, format="%.6f")
-                stt_s = c2.number_input("STT sell rate", 0.0, 0.01, D.stt_sell_rate, 1e-4, format="%.6f")
-                exch = c3.number_input("Exchange txn rate", 0.0, 0.01, D.exchange_txn_rate, 1e-6, format="%.7f")
-                sebi = c1.number_input("SEBI turnover rate", 0.0, 0.01, D.sebi_turnover_rate, 1e-6, format="%.7f")
-                stamp = c2.number_input("Stamp duty (buy) rate", 0.0, 0.01, D.stamp_duty_buy_rate, 1e-5, format="%.6f")
-                gst = c3.number_input("GST rate", 0.0, 1.0, D.gst_rate, 0.01)
-                dp = c1.number_input("DP charge per sell (₹)", 0.0, 500.0, D.dp_charge_per_sell, 0.1)
-            submitted = st.form_submit_button("▶ Run analysis", type="primary")
+                cap = c1.number_input("Weekly capital pool (₹)", 1000.0, 1e9,
+                                      float(setting("weekly_capital", D.weekly_capital)), 10_000.0)
+                brk = c2.number_input("Brokerage rate", 0.0, 0.05,
+                                      float(setting("brokerage_rate", D.brokerage_rate)), 1e-4, format="%.6f")
+                brk_cap = c3.number_input("Brokerage cap per order (₹, 0 = none)", 0.0, 1e5,
+                                          float(setting("brokerage_cap", D.brokerage_cap)), 10.0)
+                stt_b = c1.number_input("STT buy rate", 0.0, 0.01,
+                                        float(setting("stt_buy_rate", D.stt_buy_rate)), 1e-4, format="%.6f")
+                stt_s = c2.number_input("STT sell rate", 0.0, 0.01,
+                                        float(setting("stt_sell_rate", D.stt_sell_rate)), 1e-4, format="%.6f")
+                exch = c3.number_input("Exchange txn rate", 0.0, 0.01,
+                                       float(setting("exchange_txn_rate", D.exchange_txn_rate)), 1e-6, format="%.7f")
+                sebi = c1.number_input("SEBI turnover rate", 0.0, 0.01,
+                                       float(setting("sebi_turnover_rate", D.sebi_turnover_rate)), 1e-6, format="%.7f")
+                stamp = c2.number_input("Stamp duty (buy) rate", 0.0, 0.01,
+                                        float(setting("stamp_duty_buy_rate", D.stamp_duty_buy_rate)), 1e-5, format="%.6f")
+                gst = c3.number_input("GST rate", 0.0, 1.0,
+                                      float(setting("gst_rate", D.gst_rate)), 0.01)
+                dp = c1.number_input("DP charge per sell (₹)", 0.0, 500.0,
+                                     float(setting("dp_charge_per_sell", D.dp_charge_per_sell)), 0.1)
+
+            # Keep all four actions on one line. Run Analysis retains the app's
+            # primary red styling; the utility actions use Indigo and Emerald.
+            st.markdown(
+                """<style>
+/* 1. Primary Action: Run Analysis */
+div.st-key-fasta_run_analysis button {
+    background-color: #FF4B4B !important;
+    border-color: #FF4B4B !important;
+    color: #FFFFFF !important;
+}
+div.st-key-fasta_run_analysis button:hover {
+    background-color: #FF3333 !important;
+    border-color: #FF3333 !important;
+    color: #FFFFFF !important;
+}
+
+/* 2. Secondary Action: Save Settings */
+div.st-key-fasta_save_settings button {
+    background-color: #F0FDFA !important;
+    border-color: #99F6E4 !important;
+    color: #0F766E !important;
+}
+div.st-key-fasta_save_settings button:hover {
+    background-color: #CCFBF1 !important;
+    border-color: #5EEAD4 !important;
+    color: #115E59 !important;
+}
+
+/* 3. Tertiary Action: Revert Settings */
+div.st-key-fasta_revert_settings button {
+    background-color: #FFFFFF !important;
+    border-color: #E4E4E7 !important;
+    color: #52525B !important;
+}
+div.st-key-fasta_revert_settings button:hover {
+    background-color: #FAFAFA !important;
+    border-color: #D4D4D8 !important;
+    color: #27272A !important;
+}
+
+/* 4. Utility / Caution Action: Clear Cached Data */
+div.st-key-fasta_clear_cache button {
+    background-color: #F4F4F5 !important;
+    border-color: #D4D4D8 !important;
+    color: #3F3F46 !important;
+}
+div.st-key-fasta_clear_cache button:hover {
+    background-color: #E4E4E7 !important;
+    border-color: #A1A1AA !important;
+    color: #18181B !important;
+}
+                </style>""",
+                unsafe_allow_html=True,
+            )
+            save_col, revert_col, run_col, cache_col = st.columns(4)
+            with save_col:
+                save_clicked = st.form_submit_button(
+                    "💾 Save Settings", type="secondary", key="fasta_save_settings", **_W
+                )
+            with revert_col:
+                revert_clicked = st.form_submit_button(
+                    "↩ Revert Settings", type="secondary", key="fasta_revert_settings", **_W
+                )
+            with run_col:
+                submitted = st.form_submit_button(
+                    "▶ Run Analysis", type="primary", **_W
+                )
+            with cache_col:
+                clear_cache_clicked = st.form_submit_button(
+                    "🧹 Clear Cache", type="secondary", key="fasta_clear_cache", **_W
+                )
+
+    if st.session_state.pop("fasta_revert_notice", False):
+        st.success("Reverted to the last saved FASTA settings.")
+    if revert_clicked:
+        st.session_state["fasta_revert_pending"] = True
+        st.rerun()
 
     p = Params(
         start_date=start.isoformat(),
@@ -1342,6 +1359,7 @@ def _parameter_form():
         confidence_cutoff=conf, stop_loss_pct=stop, gap_aware_stop=gap,
         equal_weight_basket=eq_basket, strategies=tuple(strategies),
         allocation_decay=alloc_decay, win_ratio_prior=win_prior,
+        market_cap_allocation_pct=market_cap_allocation_pct,
         portfolio_halt_pct=halt, min_history=int(min_hist), decay_factor=decay,
         exclude_tickers=_parse_symbols(exclude_text),
         market_caps=tuple(caps_sel),
@@ -1351,13 +1369,20 @@ def _parameter_form():
         weekly_capital=cap, brokerage_rate=brk, brokerage_cap=brk_cap,
         stt_buy_rate=stt_b, stt_sell_rate=stt_s, exchange_txn_rate=exch,
         sebi_turnover_rate=sebi, stamp_duty_buy_rate=stamp, gst_rate=gst, dp_charge_per_sell=dp)
-    if submitted and not _save_settings(exclude_tickers=list(p.exclude_tickers)):
-        st.warning(f"Could not save the exclude list to {SETTINGS_FILE}; it will not be remembered next session.")
-    return p, submitted
+
+    if save_clicked:
+        settings_payload = asdict(p)
+        settings_payload["use_custom_picks_cutoff"] = bool(use_custom_picks)
+        settings_payload["restrict_to_portfolio"] = bool(restrict)
+        if _save_settings(**settings_payload):
+            st.success(f"Settings saved to {SETTINGS_FILE}. You can manually edit this JSON file to reverse or adjust values.")
+        else:
+            st.error(f"Could not save FASTA settings to {SETTINGS_FILE}.")
+    return p, submitted, clear_cache_clicked
 
 
 def _clear_caches():
-    st.cache_resource.clear()
+    reset_connection()
     st.session_state.pop(RESULT_KEY, None)
     removed = 0
     if CACHE_DIR.exists():
@@ -1377,7 +1402,7 @@ def _bare(ticker):
     return re.sub(r"\.(NS|BO)$", "", ticker, flags=re.IGNORECASE)
 
 
-def _basket(picks, capital, equal_weight=False):
+def _basket(picks, capital, equal_weight=False, market_cap_caps_pct=None):
     """Build order basket across unique tickers.
 
     When `equal_weight=True`, capital is split equally across unique tickers.
@@ -1388,10 +1413,14 @@ def _basket(picks, capital, equal_weight=False):
         df = picks.drop_duplicates(subset=['ticker'], keep='first').copy()
         df['allocation'] = capital / max(len(df), 1)
     else:
-        df = (
-            picks.groupby('ticker', as_index=False, sort=False)
-            .agg(price=('price', 'first'), allocation=('allocation', 'sum'))
-        )
+        aggregations = {'price': ('price', 'first'), 'allocation': ('allocation', 'sum')}
+        if 'market_cap' in picks.columns:
+            aggregations['market_cap'] = ('market_cap', 'first')
+        df = picks.groupby('ticker', as_index=False, sort=False).agg(**aggregations)
+    if equal_weight and 'market_cap' in picks.columns:
+        cap_lookup = picks.drop_duplicates('ticker').set_index('ticker')['market_cap']
+        df['market_cap'] = df['ticker'].map(cap_lookup)
+    df = _apply_market_cap_ticker_caps(df, 'allocation', capital, market_cap_caps_pct)
     ok = df['price'] > 0
     df['qty'] = np.where(ok, np.floor(df['allocation'] / df['price'].where(ok, 1.0)), 0).astype(int)
     out = df[['ticker', 'price', 'allocation', 'qty']].copy()
@@ -1423,7 +1452,10 @@ def _show_picks(res):
                                   help=("Equal weight across unique tickers. " if eq_weight else
                                         "Summed strategy allocations per unique ticker (scaled to Capital when changed). ")
                                        + "Quantity = whole shares at the latest close.")
-        basket = _basket(picks, capital, equal_weight=eq_weight)
+        basket = _basket(
+            picks, capital, equal_weight=eq_weight,
+            market_cap_caps_pct=res["params"].get("market_cap_allocation_pct", {}),
+        )
         mode = st.radio("List as", ["Quantity", "Amount ₹"], horizontal=True, key="fasta_pick_mode",
                         help="Quantity: whole shares at the last close. Amount: the rupee allocation per ticker.")
         if mode == "Quantity":
@@ -1462,9 +1494,13 @@ def _show_performance(res, p):
     gw, lw = k["max_gain_week"], k["max_loss_week"]
     c[2].metric("Best week", _signed(gw[1], pct=True), f"₹{gw[2]:+,.0f}", help=gw[0])
     c[3].metric("Worst week", _signed(lw[1], pct=True), f"₹{lw[2]:+,.0f}", help=lw[0])
+    bq, wq = k["best_quarter"], k["worst_quarter"]
+    cq = st.columns(2)
+    cq[0].metric("Best quarter", _signed(bq[1], pct=True), f"₹{bq[2]:+,.0f}", help=bq[0])
+    cq[1].metric("Worst quarter", _signed(wq[1], pct=True), f"₹{wq[2]:+,.0f}", help=wq[0])
     st.caption(f"Capital deployed across trades: ₹{k['capital_deployed']:,.2f} · "
                f"Gross PnL ₹{k['gross_abs']:+,.2f} · Avg net PnL/trade ₹{k['avg_net_abs_per_trade']:+,.2f} · "
-               f"Best week {gw[0]} · Worst week {lw[0]}")
+               f"Best week {gw[0]} · Worst week {lw[0]} · Best quarter {bq[0]} · Worst quarter {wq[0]}")
 
     st.subheader("Portfolio vs Nifty 50")
     st.line_chart(res["chart"])
@@ -1505,7 +1541,37 @@ def _show_performance(res, p):
 def _show_weekly(res):
     trades, weekly = res["trades"], res["weekly"].sort_values('week_period', ascending=False)
     weeks = [str(w) for w in weekly['week_period']]
-    chosen = st.selectbox("Week", weeks, index=0)
+    if not weeks:
+        st.info("No weekly performance data is available.")
+        return
+
+    # Keep the selected week in session state so the dropdown and navigation
+    # buttons remain synchronized across Streamlit reruns.
+    week_key = "fasta_weeklog_selected_week"
+    if st.session_state.get(week_key) not in weeks:
+        st.session_state[week_key] = weeks[0]
+
+    prev_col, week_col, next_col = st.columns([1.4, 3.2, 1.4], vertical_alignment="center")
+    with prev_col:
+        current_idx = weeks.index(st.session_state[week_key])
+        if st.button("← Previous Week", key="fasta_weeklog_previous",
+                     disabled=current_idx >= len(weeks) - 1, use_container_width=True):
+            # Previous means one week earlier in calendar time.
+            st.session_state[week_key] = weeks[current_idx + 1]
+            st.rerun()
+
+    with week_col:
+        chosen = st.selectbox( "Week:",label_visibility="collapsed",
+            options=weeks, key=week_key,
+        )
+
+    with next_col:
+        current_idx = weeks.index(chosen)
+        if st.button("Next Week →", key="fasta_weeklog_next",
+                     disabled=current_idx <= 0, use_container_width=True):
+            # Next means one week later in calendar time.
+            st.session_state[week_key] = weeks[current_idx - 1]
+            st.rerun()
     row = weekly[weekly['week_period'].astype(str) == chosen].iloc[0]
     c = st.columns(4)
     c[0].metric("Portfolio PnL", _signed(row.portfolio_ret, pct=True))
@@ -1553,7 +1619,7 @@ def _show_stop_checker(default_stop):
         st.warning("Enter a ticker.")
         return
     try:
-        out = stop_check(get_connection().cursor(), ticker.strip(), week, entry or None, stop)
+        out = stop_check(get_connection(), ticker.strip(), week, entry or None, stop)
     except Exception as exc:
         st.error(f"Could not run the check: {exc}")
         return
@@ -1586,7 +1652,12 @@ def render():
     tab_report, tab_stop = st.tabs(["📊 Back-test report", "🛑 Stop-loss checker"])
 
     with tab_report:
-        p, submitted = _parameter_form()
+        p, submitted, clear_cache_clicked = _parameter_form()
+
+        if clear_cache_clicked:
+            n = _clear_caches()
+            st.toast(f"Cleared {n} cache file(s). Run the analysis again.")
+            st.rerun()
 
         if submitted and not p.strategies:
             st.warning("Select at least one strategy.")
@@ -1606,10 +1677,6 @@ def render():
                 res["log"] = log_lines
                 st.session_state[RESULT_KEY] = res
 
-        if st.button("🔄 Clear cached data & reload database"):
-            n = _clear_caches()
-            st.toast(f"Cleared {n} cache file(s). Run the analysis again.")
-            st.rerun()
 
         res = st.session_state.get(RESULT_KEY)
         if res is None:
