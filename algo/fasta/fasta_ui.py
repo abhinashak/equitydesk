@@ -1,4 +1,4 @@
-G"""FASTA ALGO - weekly rotation back-test, rendered as a Streamlit page.
+"""FASTA ALGO - weekly rotation back-test, rendered as a Streamlit page.
 
 Hook-up (app.py):
     elif page == "algo_fasta":
@@ -1327,22 +1327,22 @@ div.st-key-fasta_clear_cache button:hover {
                 </style>""",
                 unsafe_allow_html=True,
             )
-            save_col, revert_col, run_col, cache_col = st.columns(4)
-            with save_col:
-                save_clicked = st.form_submit_button(
-                    "💾 Save Settings", type="secondary", key="fasta_save_settings", **_W
+            cache_col, revert_col, save_col, run_col = st.columns(4)
+            with cache_col:
+                clear_cache_clicked = st.form_submit_button(
+                    "🧹 Clear Cache", type="secondary", key="fasta_clear_cache", **_W
                 )
             with revert_col:
                 revert_clicked = st.form_submit_button(
                     "↩ Revert Settings", type="secondary", key="fasta_revert_settings", **_W
                 )
+            with save_col:
+                save_clicked = st.form_submit_button(
+                    "💾 Save Settings", type="secondary", key="fasta_save_settings", **_W
+                )
             with run_col:
                 submitted = st.form_submit_button(
-                    "▶ Run Analysis", type="primary", **_W
-                )
-            with cache_col:
-                clear_cache_clicked = st.form_submit_button(
-                    "🧹 Clear Cache", type="secondary", key="fasta_clear_cache", **_W
+                    "▶ Run Analysis", type="primary", key="fasta_run_analysis", **_W
                 )
 
     if st.session_state.pop("fasta_revert_notice", False):
@@ -1538,6 +1538,11 @@ def _show_performance(res, p):
         "net_rupees": st.column_config.NumberColumn("net ₹", format="%+,.2f")})
 
 
+def _set_weeklog_week(week_key, selected_week):
+    """Update the selected week in a Streamlit button callback."""
+    st.session_state[week_key] = selected_week
+
+
 def _show_weekly(res):
     trades, weekly = res["trades"], res["weekly"].sort_values('week_period', ascending=False)
     weeks = [str(w) for w in weekly['week_period']]
@@ -1554,24 +1559,29 @@ def _show_weekly(res):
     prev_col, week_col, next_col = st.columns([1.4, 3.2, 1.4], vertical_alignment="center")
     with prev_col:
         current_idx = weeks.index(st.session_state[week_key])
-        if st.button("← Previous Week", key="fasta_weeklog_previous",
-                     disabled=current_idx >= len(weeks) - 1, use_container_width=True):
-            # Previous means one week earlier in calendar time.
-            st.session_state[week_key] = weeks[current_idx + 1]
-            st.rerun()
+        st.button(
+            "← Previous Week",
+            key="fasta_weeklog_previous",
+            disabled=current_idx >= len(weeks) - 1,
+            use_container_width=True,
+            on_click=_set_weeklog_week,
+            args=(week_key, weeks[current_idx + 1]) if current_idx < len(weeks) - 1 else (),
+        )
 
     with week_col:
         chosen = st.selectbox( "Week:",label_visibility="collapsed",
-            options=weeks, key=week_key,
-        )
+                               options=weeks, key=week_key,)
 
     with next_col:
         current_idx = weeks.index(chosen)
-        if st.button("Next Week →", key="fasta_weeklog_next",
-                     disabled=current_idx <= 0, use_container_width=True):
-            # Next means one week later in calendar time.
-            st.session_state[week_key] = weeks[current_idx - 1]
-            st.rerun()
+        st.button(
+            "Next Week →",
+            key="fasta_weeklog_next",
+            disabled=current_idx <= 0,
+            use_container_width=True,
+            on_click=_set_weeklog_week,
+            args=(week_key, weeks[current_idx - 1]) if current_idx > 0 else (),
+        )
     row = weekly[weekly['week_period'].astype(str) == chosen].iloc[0]
     c = st.columns(4)
     c[0].metric("Portfolio PnL", _signed(row.portfolio_ret, pct=True))
