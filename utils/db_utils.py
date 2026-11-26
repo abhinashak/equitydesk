@@ -1,5 +1,5 @@
 """
-util/connection.py
+utils/db_utils.py
 ──────────────────
 Single place that builds the DuckDB connection and its views from `sqls/all.sql`.
 
@@ -16,10 +16,14 @@ Single place that builds the DuckDB connection and its views from `sqls/all.sql`
   (use after editing the .sql files).
 """
 
+import re
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 import duckdb
+
+from utils.file_utils import raise_fd_limit
 
 DB_SQL_PATH = "sqls/all.sql"
 
@@ -62,6 +66,7 @@ def initialize_database(sql_path: str = DB_SQL_PATH):
         raise FileNotFoundError(
             f"'{sql_path}' not found (looked relative to {Path.cwd()}). "
             "Start the app from the project root or fix DB_SQL_PATH.")
+    raise_fd_limit()               # multi-parquet pipelines can exceed macOS' 256 open files
     con = duckdb.connect()
     _run_sql_script(con, sql_path)
     return con
@@ -260,3 +265,162 @@ def load_csv_table(csv_path: str) -> pd.DataFrame:
     """
     path = str(Path(csv_path).expanduser().resolve())
     return _load_csv_table_cached(path).copy()
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Cursor helper, schema inspection and read-only execution  (SQL Lab, table_widget)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@contextmanager
+def db_cursor():
+    """Yield a private cursor on the shared database and close it on exit."""
+    cur = get_connection()
+    try:
+        yield cur
+    finally:
+        cur.close()
+
+
+def quote_ident(name: str) -> str:
+    """Quote an SQL identifier, escaping embedded double quotes."""
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+def list_tables() -> list[str]:
+    """Names of all tables and views in the main schema, sorted."""
+    with db_cursor() as cur:
+        rows = cur.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_catalog = current_database() AND table_schema = 'main' "
+            "ORDER BY table_name"
+        ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _require_table(cur, table: str) -> None:
+    """Raise ValueError unless `table` is an existing table/view (guards identifier use)."""
+    found = cur.execute(
+        "SELECT 1 FROM information_schema.tables "
+        "WHERE table_catalog = current_database() AND table_schema = 'main' "
+        "AND table_name = ?",
+        [table],
+    ).fetchone()
+    if found is None:
+        raise ValueError(f"Unknown table or view: {table!r}")
+
+
+def ddl_for_table(table: str) -> str:
+    """A `CREATE TABLE` sketch (column names + types) for a table or view."""
+    with db_cursor() as cur:
+        _require_table(cur, table)
+        cols = cur.execute(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_catalog = current_database() AND table_schema = 'main' "
+            "AND table_name = ? ORDER BY ordinal_position",
+            [table],
+        ).fetchall()
+    col_defs = ",\n    ".join(f"{quote_ident(c)} {t}" for c, t in cols)
+    return f"CREATE TABLE {quote_ident(table)} (\n    {col_defs}\n);"
+
+
+def sample_rows(table: str, n: int = 5) -> pd.DataFrame:
+    """First `n` rows (1-1000) of a table or view."""
+    n = max(1, min(int(n), 1000))
+    with db_cursor() as cur:
+        _require_table(cur, table)
+        return cur.execute(f"SELECT * FROM {quote_ident(table)} LIMIT {n}").df()
+
+
+class ReadOnlyQueryError(ValueError):
+    """Raised when a query is rejected by the read-only guard."""
+
+
+_READ_ONLY_KEYWORDS = frozenset(
+    {"select", "with", "from", "describe", "show", "summarize", "explain", "table"}
+)
+
+# Statement types that change state; checked via duckdb's `extract_statements` so that
+# `WITH ... DELETE` and multi-statement input are caught, not just the first keyword.
+_WRITE_STATEMENT_TYPES = frozenset({
+    "INSERT", "UPDATE", "DELETE", "CREATE", "CREATE_FUNC", "ALTER", "DROP", "COPY",
+    "COPY_DATABASE", "ATTACH", "DETACH", "SET", "VARIABLE_SET", "LOAD", "EXPORT",
+    "VACUUM", "TRANSACTION", "PREPARE", "EXECUTE", "CALL", "PRAGMA", "EXTENSION",
+    "ANALYZE", "MERGE_INTO",
+})
+
+
+def _strip_leading_comments(sql: str) -> str:
+    s = sql.lstrip()
+    while True:
+        if s.startswith("--"):
+            nl = s.find("\n")
+            s = "" if nl == -1 else s[nl + 1:].lstrip()
+        elif s.startswith("/*"):
+            end = s.find("*/")
+            s = "" if end == -1 else s[end + 2:].lstrip()
+        else:
+            return s
+
+
+def _assert_single_read_statement(cur, sql: str) -> None:
+    extract = getattr(cur, "extract_statements", None)
+    if extract is None:                         # older duckdb: conservative fallback
+        if ";" in sql.strip().rstrip(";"):
+            raise ReadOnlyQueryError("Run one statement at a time.")
+        return
+    statements = extract(sql)
+    if len(statements) != 1:
+        raise ReadOnlyQueryError("Run exactly one statement at a time.")
+    stype = getattr(statements[0], "type", None)
+    if stype is not None:
+        name = str(getattr(stype, "name", stype)).split(".")[-1].upper()
+        if name in _WRITE_STATEMENT_TYPES:
+            raise ReadOnlyQueryError(f"{name} statements are not allowed - read-only queries only.")
+
+
+def run_readonly_query(sql: str, params: list | tuple | None = None) -> pd.DataFrame:
+    """
+    Run one read-only statement on a private cursor and return a DataFrame.
+
+    Allowed: SELECT / WITH / FROM / TABLE / DESCRIBE / SHOW / SUMMARIZE / EXPLAIN.
+    Raises ReadOnlyQueryError for anything else; DuckDB errors for bad SQL propagate.
+    Guards the shared database against writes; it does not sandbox file access from
+    table functions such as read_csv('/path').
+    """
+    if not sql or not sql.strip():
+        raise ReadOnlyQueryError("Enter a query to run.")
+    match = re.match(r"[\s(]*([A-Za-z_]+)", _strip_leading_comments(sql))
+    first = match.group(1).lower() if match else ""
+    if first not in _READ_ONLY_KEYWORDS:
+        raise ReadOnlyQueryError(
+            "Only read-only queries are allowed (SELECT / WITH / DESCRIBE / SHOW ...) "
+            "- the database is shared.")
+    with db_cursor() as cur:
+        _assert_single_read_statement(cur, sql)
+        result = cur.execute(sql, list(params)) if params else cur.execute(sql)
+        return result.df()
+
+
+def run_sql(sql: str) -> tuple[pd.DataFrame | None, str | None]:
+    """UI-friendly wrapper: returns (dataframe, None) or (None, error_message)."""
+    try:
+        return run_readonly_query(sql), None
+    except Exception as exc:
+        return None, str(exc)
+
+
+def execute_sql(sql: str, params: list | tuple | None = None) -> None:
+    """Run a single write/DDL statement (e.g. UPDATE) on a private cursor; no result."""
+    with db_cursor() as cur:
+        cur.execute(sql, list(params)) if params else cur.execute(sql)
+
+
+def run_sql_file(path: str) -> None:
+    """
+    Re-run one .sql script (following `.read` includes) against the shared database,
+    e.g. to refresh a single view without rebuilding everything. Relative paths and
+    `.read` targets resolve from the working directory, like `sqls/all.sql`.
+    """
+    with db_cursor() as cur:
+        _run_sql_script(cur, path)
