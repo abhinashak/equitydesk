@@ -28,6 +28,7 @@ NAV: dict[str, dict[str, str]] = {
         "⚡ Momentum Rules":         "algo_momentum",
         "🧮 Rule Discovery":         "algo_rules",
         "🔮 FAST AI":                  "algo_fasta",
+        "🕐 EntryExit":                  "entry_exit",
     },
     "DATA": {
         "📈 Market Data":            "data_ticker",

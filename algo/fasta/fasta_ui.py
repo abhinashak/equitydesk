@@ -1569,6 +1569,20 @@ def _set_weeklog_week(week_key, selected_week):
     st.session_state[week_key] = selected_week
 
 
+def _download_all_trades_button(res, key, compact=False):
+    """Download every trade of the complete run (all weeks, no filters) as CSV."""
+    all_trades = res["trades"].drop(columns=_DROP_FOR_DISPLAY, errors="ignore")
+    label = ("⬇ All trades (CSV)" if compact
+             else f"⬇ Download ALL trades - all weeks, complete run (CSV) · {len(all_trades):,} trades")
+    st.download_button(
+        label,
+        all_trades.to_csv(index=False).encode(),
+        "fasta_all_trades_complete_run.csv", "text/csv",
+        key=key, disabled=all_trades.empty, use_container_width=compact,
+        help=f"All {len(all_trades):,} trades across all weeks, complete run",
+    )
+
+
 def _show_weekly(res):
     trades, weekly = res["trades"], res["weekly"].sort_values('week_period', ascending=False)
     weeks = [str(w) for w in weekly['week_period']]
@@ -1582,7 +1596,7 @@ def _show_weekly(res):
     if st.session_state.get(week_key) not in weeks:
         st.session_state[week_key] = weeks[0]
 
-    prev_col, week_col, next_col = st.columns([1.4, 3.2, 1.4], vertical_alignment="center")
+    prev_col, week_col, next_col, dl_col = st.columns([1.4, 3.0, 1.4, 1.8], vertical_alignment="center")
     with prev_col:
         current_idx = weeks.index(st.session_state[week_key])
         st.button(
@@ -1607,6 +1621,8 @@ def _show_weekly(res):
             on_click=_set_weeklog_week,
             args=(week_key, weeks[current_idx - 1]) if current_idx > 0 else (),
         )
+    with dl_col:
+        _download_all_trades_button(res, "fasta_dl_all_trades_weekly", compact=True)
     row = weekly[weekly['week_period'].astype(str) == chosen].iloc[0]
     c = st.columns(4)
     c[0].metric("Portfolio PnL", _signed(row.portfolio_ret, pct=True))
@@ -1635,8 +1651,12 @@ def _show_trades(res):
         trades = trades[trades['exit_reason'].isin(reasons)]
     st.caption(f"{len(trades):,} trades")
     _table(trades)
-    st.download_button("⬇ Download trades (CSV)", trades.to_csv(index=False).encode(),
-                       "fasta_trades.csv", "text/csv")
+    d1, d2 = st.columns(2)
+    with d1:
+        st.download_button("⬇ Download filtered view (CSV)", trades.to_csv(index=False).encode(),
+                           "fasta_trades_filtered.csv", "text/csv", key="fasta_dl_filtered_trades")
+    with d2:
+        _download_all_trades_button(res, "fasta_dl_all_trades_tab")
 
 
 def _show_stop_checker(default_stop):

@@ -32,6 +32,7 @@ for directory in [OUTPUTS_DIR, CONFIG_DIR, SQLS_DIR, SECRET_DIR]:
 EXCLUSIONS_FILE  = os.path.join(OUTPUTS_DIR, "excluded_symbols.json")
 LIVE_ORDERS_FILE = os.path.join(OUTPUTS_DIR, "live_orders.json")
 GTT_EXCLUSIONS_FILE = os.path.join(OUTPUTS_DIR, "gtt_excluded_symbols.json")   # persists across sessions
+GTT_PARK_FILE    = os.path.join(OUTPUTS_DIR, "gtt_parked.json")   # GTTs deleted before open, to be re-added later
 DB_PATH          = os.path.join(OUTPUTS_DIR, "market_data.db")
 WEIGHTS_FILE     = os.path.join(CONFIG_DIR, "target_weights.txt")
 TICKER_CONFIG    = os.path.join(CONFIG_DIR, "ticker.csv")
@@ -236,6 +237,210 @@ def place_gtt_market_sell(token: str, symbol: str, exchange: str, qty: int,
     if resp.get("status") != "success":
         raise ValueError(resp.get("message", "GTT placement failed"))
     return resp
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Park GTTs over the open: SAVE → DELETE (before 9:15) → RE-ADD (≈10:00)
+# ─────────────────────────────────────────────────────────────────────────────
+def delete_gtt(token: str, trigger_id) -> dict:
+    """DELETE /gtt/triggers/{id}"""
+    logger.info("REQUEST DELETE %s/gtt/triggers/%s", KITE_PROXY_URL, trigger_id)
+    r = requests.delete(f"{KITE_PROXY_URL}/gtt/triggers/{trigger_id}",
+                        headers=kite_headers(token), timeout=10)
+    if not r.ok:
+        try:
+            msg = r.json().get("message", r.text)
+        except Exception:
+            msg = r.text
+        raise requests.HTTPError(f"Kite GTT delete error: {msg}", response=r)
+    resp = r.json()
+    if resp.get("status") != "success":
+        raise ValueError(resp.get("message", "GTT delete failed"))
+    return resp
+
+def load_parked_gtts() -> list:
+    """Parked-GTT snapshot. Missing file → []. A corrupt file RAISES (never silently
+    treated as empty, because that would lose the only record of deleted GTTs)."""
+    if not os.path.exists(GTT_PARK_FILE):
+        return []
+    with open(GTT_PARK_FILE) as f:
+        data = json.load(f)
+    if not isinstance(data, list):
+        raise ValueError(f"{GTT_PARK_FILE} is not a list")
+    return data
+
+def save_parked_gtts(items: list) -> None:
+    tmp = GTT_PARK_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(items, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, GTT_PARK_FILE)
+
+def discard_parked_gtt(account: str, gtt_id) -> None:
+    """Forget one parked entry (e.g. you decided to exit that stock manually)."""
+    items = [p for p in load_parked_gtts()
+             if not (p.get("account") == account and str(p.get("gtt_id")) == str(gtt_id))]
+    save_parked_gtts(items)
+
+def _ist_stamp() -> str:
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+
+def _parkable_gtt(g: dict):
+    """Return the fields needed to re-create this GTT with place_gtt_market_sell(),
+    or None if it can't be re-created exactly (those are NEVER deleted)."""
+    if str(g.get("status", "")).lower() != "active" or str(g.get("type", "single")).lower() != "single":
+        return None
+    cond = g.get("condition") or {}
+    legs = g.get("orders") or []
+    vals = cond.get("trigger_values") or []
+    if len(legs) != 1 or len(vals) != 1:
+        return None
+    leg = legs[0]
+    if str(leg.get("transaction_type", "")).upper() != "SELL" or str(leg.get("order_type", "")).upper() != "MARKET":
+        return None
+    qty = int(leg.get("quantity") or 0)
+    if qty <= 0:
+        return None
+    return {"exchange": str(cond.get("exchange") or leg.get("exchange") or "NSE").upper(),
+            "symbol": str(cond.get("tradingsymbol") or leg.get("tradingsymbol") or "").upper(),
+            "qty": qty, "trigger": float(vals[0]),
+            "product": str(leg.get("product") or "CNC").upper(),
+            "last_price": float(cond.get("last_price") or 0)}
+
+def build_gtt_table(gtts: list, ltp_map: dict) -> pd.DataFrame:
+    """Kite-style GTT table: Created on · Instrument · Type · Trigger · vs LTP % · LTP · Qty · Status.
+    Only ACTIVE GTTs are listed. `Parkable` says whether Park/Re-add can handle it exactly."""
+    rows = []
+    for g in gtts:
+        if str(g.get("status", "")).lower() != "active":
+            continue
+        cond = g.get("condition") or {}
+        legs = g.get("orders") or []
+        vals = cond.get("trigger_values") or []
+        sym = str(cond.get("tradingsymbol", "")).upper()
+        trig = float(vals[0]) if vals else None
+        ltp = float(ltp_map.get(sym) or 0) or None
+        sides = "/".join(sorted({str(l.get("transaction_type", "")).upper() for l in legs})) or "—"
+        rows.append({
+            "Created on": str(g.get("created_at", ""))[:10],
+            "Instrument": f"{sym} {str(cond.get('exchange', 'NSE')).upper()}",
+            "Type": f"{str(g.get('type', 'single')).upper()} · {sides}",
+            "Trigger": trig,
+            "vs LTP %": round((trig - ltp) / ltp * 100, 2) if (trig and ltp) else None,
+            "LTP": ltp,
+            "Qty": sum(int(l.get("quantity") or 0) for l in legs),
+            "Status": "ACTIVE",
+            "Parkable": "Yes" if _parkable_gtt(g) else "No",
+            "ID": str(g.get("id")),
+        })
+    return pd.DataFrame(rows, columns=["Created on", "Instrument", "Type", "Trigger", "vs LTP %",
+                                       "LTP", "Qty", "Status", "Parkable", "ID"])
+
+def list_parkable_gtts(token: str) -> list:
+    """Active GTTs that park_active_gtts() can delete and later re-create exactly."""
+    out = []
+    for g in fetch_gtts(token):
+        info = _parkable_gtt(g)
+        if info:
+            out.append({"gtt_id": str(g.get("id")), **info})
+    return out
+
+def park_active_gtts(token: str, account: str, only_ids=None) -> dict:
+    """1) fetch active SELL MARKET GTTs (only `only_ids` if given)  2) SAVE them to GTT_PARK_FILE  3) DELETE them.
+    The snapshot is written to disk BEFORE the first delete, and after every delete."""
+    gtts = fetch_gtts(token)                       # raises on failure → nothing is deleted
+    parked = [p for p in load_parked_gtts() if not p.get("restored")]   # prune finished entries
+    known = {(p.get("account"), str(p.get("gtt_id"))) for p in parked}
+    skipped = []
+    for g in gtts:
+        if str(g.get("status", "")).lower() != "active":
+            continue
+        gid = str(g.get("id"))
+        if only_ids is not None and gid not in {str(i) for i in only_ids}:
+            continue
+        if (account, gid) in known:
+            continue
+        info = _parkable_gtt(g)
+        if info is None:
+            skipped.append(g)
+            continue
+        parked.append({"account": account, "gtt_id": gid, **info, "created_at": g.get("created_at"),
+                       "parked_at": _ist_stamp(), "deleted": False, "restored": False, "new_id": None})
+    save_parked_gtts(parked)                       # ← snapshot first
+    deleted, errors = 0, []
+    for e in parked:
+        if e.get("account") != account or e.get("restored") or e.get("deleted"):
+            continue
+        try:
+            delete_gtt(token, e["gtt_id"])
+            e["deleted"] = True
+            deleted += 1
+        except Exception as err:
+            errors.append((e["symbol"], str(err)))
+        save_parked_gtts(parked)
+    return {"deleted": deleted, "skipped": skipped, "errors": errors}
+
+def fetch_ltp_map(token: str) -> dict:
+    """{SYMBOL: live last_price} straight from Kite holdings + positions (no Quote API)."""
+    out = {}
+    try:
+        for h in fetch_holdings(token):
+            lp = float(h.get("last_price") or 0)
+            if lp > 0:
+                out[str(h.get("tradingsymbol", "")).upper()] = lp
+    except Exception:
+        logger.exception("fetch_ltp_map: holdings failed")
+    try:
+        pos = fetch_positions(token)
+        for row in (pos.get("day") or []) + (pos.get("net") or []):
+            lp = float(row.get("last_price") or 0)
+            if lp > 0:
+                out[str(row.get("tradingsymbol", "")).upper()] = lp
+    except Exception:
+        logger.exception("fetch_ltp_map: positions failed")
+    return out
+
+def restore_parked_gtts(token: str, account: str, ltp_map: dict) -> list:
+    """Re-add every deleted-but-not-restored GTT for `account` with its saved qty/trigger.
+    Skips (and leaves pending) when there is no live price, or LTP is already at/below the
+    trigger — Kite would reject or instantly fire it; that stock needs a manual decision.
+    Returns [(symbol, status, message)], status ∈ restored | exists | below_trigger | no_price | error."""
+    parked = load_parked_gtts()
+    live = fetch_gtts(token)                       # raises → nothing is placed (no duplicates)
+    results = []
+    for e in parked:
+        if e.get("account") != account or not e.get("deleted") or e.get("restored"):
+            continue
+        sym, qty, trig = e["symbol"], int(e["qty"]), float(e["trigger"])
+        dup = next((str(g.get("id")) for g in live
+                    if str(g.get("status", "")).lower() == "active"
+                    and (g.get("condition") or {}).get("tradingsymbol", "").upper() == sym
+                    and abs(float(((g.get("condition") or {}).get("trigger_values") or [0])[0]) - trig) < 0.005
+                    and any(str(l.get("transaction_type", "")).upper() == "SELL"
+                            and int(l.get("quantity") or 0) == qty for l in (g.get("orders") or []))), None)
+        if dup:
+            e["restored"], e["new_id"] = True, dup
+            save_parked_gtts(parked)
+            results.append((sym, "exists", f"already active (ID {dup})"))
+            continue
+        ltp = float(ltp_map.get(sym) or 0)
+        if ltp <= 0:
+            results.append((sym, "no_price", "no live price available — try again"))
+            continue
+        if ltp <= trig:
+            results.append((sym, "below_trigger",
+                            f"LTP ₹{ltp:,.2f} is at/below trigger ₹{trig:,.2f} — NOT re-added, decide manually"))
+            continue
+        try:
+            resp = place_gtt_market_sell(token, sym, e["exchange"], qty, trig, ltp, e.get("product", "CNC"))
+            e["restored"] = True
+            e["new_id"] = (resp.get("data") or {}).get("trigger_id")
+            save_parked_gtts(parked)
+            results.append((sym, "restored", f"SELL {qty} @ ₹{trig:,.2f} (new ID {e['new_id']})"))
+        except Exception as err:
+            results.append((sym, "error", str(err)))
+    return results
 
 def fetch_trades(token: str, mock: bool = False, live_orders: list = None) -> list:
     """Fetch executed trades via the proxy.  In mock mode returns live_orders list."""

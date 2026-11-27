@@ -31,6 +31,7 @@ from ui.pages.trade.trade_utils import (
     save_live_orders, load_live_orders, kite_headers,
     geo_buy_orders, geo_sell_orders,
     load_gtt_exclusions, save_gtt_exclusions,
+    park_active_gtts, list_parkable_gtts, build_gtt_table, restore_parked_gtts, load_parked_gtts, discard_parked_gtt, fetch_ltp_map,
 )
 
 
@@ -337,6 +338,140 @@ def _positions_df(rows: list) -> pd.DataFrame:
             "Day Sell":   int(p.get("day_sell_quantity", 0) or 0),
         })
     return pd.DataFrame(out)
+
+
+def _render_gtt_park_restore(active_tok: str, selected_acct: str) -> None:
+    """SAVE → DELETE all protective GTTs before the 9:15 open; RE-ADD them at ~10:00."""
+    from zoneinfo import ZoneInfo
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    st.markdown("### ⏸ Park GTTs over the open")
+    st.caption("Pick the GTTs to park: they are saved to disk and deleted (do this **before 9:15 AM IST**), "
+               "then re-added at the saved trigger/qty at ~10:00 AM. "
+               "Stocks are **unprotected** while parked.")
+    try:
+        parked = load_parked_gtts()
+    except Exception as e:
+        st.error(f"Cannot read parked-GTT file ({e}). Fix or restore it manually before parking again.")
+        return
+    pending = [p for p in parked if p.get("account") == selected_acct
+               and p.get("deleted") and not p.get("restored")]
+    undeleted = [p for p in parked if p.get("account") == selected_acct
+                 and not p.get("deleted") and not p.get("restored")]
+
+    # ── Step 1: SELECT + SAVE + DELETE ───────────────────────────────────
+    with st.container(border=True):
+        st.markdown("**Step 1 — Select, save & delete GTTs**")
+        if now_ist.hour * 60 + now_ist.minute >= 9 * 60 + 15 and now_ist.weekday() < 5:
+            st.warning(f"It is {now_ist:%H:%M} IST — the market is already open.")
+        try:
+            gdf = build_gtt_table(fetch_gtts(active_tok), fetch_ltp_map(active_tok))
+        except Exception as err:
+            gdf = None
+            st.error(f"Unable to fetch active GTTs: {err}")
+        if gdf is None or gdf.empty:
+            gdf = build_gtt_table([], {})
+            st.caption("No active GTTs.")
+        try:
+            from ui.components.table_widget import table_widget
+        except ImportError:          # fallback: plain dataframe, same return contract
+            def table_widget(df, *, key="table", height=420, column_config=None, **_):
+                st.dataframe(df, height=height, hide_index=True, column_config=column_config,
+                             use_container_width=True)
+                return df
+        shown = table_widget(
+            gdf, key="gtt_park_tbl", height=420, hide_index=True,
+            column_config={
+                "Trigger":  st.column_config.NumberColumn("Trigger", format="%.2f"),
+                "vs LTP %": st.column_config.NumberColumn("vs LTP %", format="%.2f%%"),
+                "LTP":      st.column_config.NumberColumn("LTP", format="%.2f"),
+                "Qty":      st.column_config.NumberColumn("Qty", format="%d"),
+            })
+        shown_ids = set(shown["ID"]) if shown is not None and len(shown) else set()
+        ok_rows = gdf[gdf["Parkable"] == "Yes"]
+        labels = {r["ID"]: f"{r['Instrument'].split()[0]} · {r['Qty']} @ ₹{r['Trigger']:,.2f} · ID {r['ID']}"
+                  for _, r in ok_rows.iterrows()}
+        opts = sorted(labels, key=lambda i: labels[i])
+        shown_opts = [i for i in opts if i in shown_ids]
+        if (gdf["Parkable"] == "No").any():
+            st.caption(f"{int((gdf['Parkable'] == 'No').sum())} GTT(s) marked Parkable = No "
+                       "(not single SELL MARKET) are never touched.")
+        # drop selections that no longer exist (already parked / deleted)
+        st.session_state["gtt_park_sel"] = [i for i in st.session_state.get("gtt_park_sel", []) if i in labels]
+        sc1, sc2, sc3 = st.columns([5, 1, 1])
+        sc2.button("Select shown", key="gtt_park_shown",
+                   on_click=lambda: st.session_state.__setitem__("gtt_park_sel", list(shown_opts)),
+                   help="Select the parkable GTTs matching the table's current filters.")
+        sc3.button("Select all", key="gtt_park_all",
+                   on_click=lambda: st.session_state.__setitem__("gtt_park_sel", list(opts)))
+        sc1.multiselect("GTTs to park", opts, format_func=lambda i: labels[i], key="gtt_park_sel",
+                        help="Only the selected GTTs are saved and deleted. All others stay active.")
+        sel = list(st.session_state.get("gtt_park_sel", []))
+        ok1 = st.checkbox("I understand the selected stocks have no stop until I re-add their GTTs",
+                          key="gtt_park_confirm")
+        if st.button(f"💾 Save & delete {len(sel)} selected GTT(s)", disabled=not (ok1 and sel),
+                     key="gtt_park_btn"):
+            try:
+                with st.spinner("Saving and deleting GTTs…"):
+                    res = park_active_gtts(active_tok, selected_acct, only_ids=set(sel))
+                st.session_state["gtt_park_msg"] = res
+            except Exception as err:
+                st.session_state["gtt_park_msg"] = {"fatal": str(err)}
+            st.session_state.pop("le_exchange_orders", None)
+            st.rerun()
+        msg = st.session_state.get("gtt_park_msg")
+        if msg:
+            if msg.get("fatal"):
+                st.error(f"Nothing deleted — {msg['fatal']}")
+            else:
+                st.success(f"Deleted {msg['deleted']} GTT(s); saved to outputs/gtt_parked.json.")
+                for g in msg.get("skipped", []):
+                    c = g.get("condition") or {}
+                    st.warning(f"Left untouched (not a single SELL MARKET GTT): "
+                               f"{c.get('tradingsymbol')} · ID {g.get('id')}")
+                for sym, e in msg.get("errors", []):
+                    st.error(f"Delete failed for {sym}: {e}")
+        if undeleted:
+            st.warning("Saved but NOT deleted yet: " + ", ".join(p["symbol"] for p in undeleted)
+                       + " — click Save & delete again.")
+
+    # ── Step 2: RE-ADD ───────────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown(f"**Step 2 — Re-add parked GTTs** ({len(pending)} pending)")
+        if pending:
+            st.dataframe(pd.DataFrame([{"Symbol": p["symbol"], "Qty": p["qty"],
+                                        "Trigger ₹": p["trigger"], "Product": p.get("product", "CNC"),
+                                        "Parked at": p.get("parked_at", "")} for p in pending]),
+                         use_container_width=True, hide_index=True)
+            if now_ist.hour < 10 and now_ist.weekday() < 5:
+                st.info(f"It is {now_ist:%H:%M} IST — planned re-add time is 10:00 AM.")
+            ok2 = st.checkbox("Re-add these GTTs now (stocks at/below their trigger are skipped)",
+                              key="gtt_restore_confirm")
+            if st.button("♻️ Re-add parked GTTs", type="primary", disabled=not ok2, key="gtt_restore_btn"):
+                try:
+                    with st.spinner("Fetching live prices and re-adding…"):
+                        ltp = fetch_ltp_map(active_tok)
+                        for p in pending:                      # fallback for symbols missing from Kite
+                            if not ltp.get(p["symbol"]):
+                                ltp[p["symbol"]] = _ltp(p["symbol"], p["exchange"])
+                        st.session_state["gtt_restore_msg"] = {
+                            "rows": restore_parked_gtts(active_tok, selected_acct, ltp)}
+                except Exception as err:
+                    st.session_state["gtt_restore_msg"] = {"fatal": str(err)}
+                st.session_state.pop("le_exchange_orders", None)
+                st.rerun()
+        else:
+            st.caption("Nothing parked for this account.")
+        rmsg = st.session_state.get("gtt_restore_msg")
+        if rmsg:
+            if rmsg.get("fatal"):
+                st.error(f"Nothing re-added — {rmsg['fatal']}")
+            for sym, status, text in rmsg.get("rows", []):
+                (st.success if status in ("restored", "exists") else st.error if status == "error"
+                else st.warning)(f"{sym}: {text}")
+        for p in pending:
+            if st.button(f"Discard {p['symbol']} (won't be re-added)", key=f"gtt_discard_{p['gtt_id']}"):
+                discard_parked_gtt(selected_acct, p["gtt_id"])
+                st.rerun()
 
 
 def _render_positions(token_map: dict, selected_acct: str = "") -> None:
@@ -847,6 +982,10 @@ def render() -> None:
         if _n_excl_hidden:
             st.caption(f"🚫 {_n_excl_hidden} COMPLETE BUY order(s) hidden — symbol is in the GTT exclusion list.")
         st.caption("Stop trigger is calculated from the completed BUY average price (−2%); no Kite Quote API call is needed. Active GTTs are checked before placement. API rejection is shown and does not mark the order protected.")
+
+    if active_tok:
+        st.divider()
+        _render_gtt_park_restore(active_tok, selected_acct)
 
     st.divider()
     _render_positions(token_map, selected_acct)

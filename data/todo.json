@@ -108,5 +108,15 @@
     "done": false,
     "created": "2026-11-24T13:22:53",
     "completed": null
+  },
+  {
+    "id": "962e7c02",
+    "text": "GTTs should be inactive till 10:30AM",
+    "priority": "Medium",
+    "due": null,
+    "note": "<p>We will do GTT after 10:30AM. </p><p>Or we will do daily entry and exit settings of  GTT. </p><p>LIke download all GTTs and set it next day.</p>",
+    "done": false,
+    "created": "2026-11-27T09:21:38",
+    "completed": null
   }
 ]
