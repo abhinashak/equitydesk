@@ -1451,6 +1451,9 @@ def _basket(picks, capital, equal_weight=False, market_cap_caps_pct=None):
     df['qty'] = np.where(ok, np.floor(df['allocation'] / df['price'].where(ok, 1.0)), 0).astype(int)
     out = df[['ticker', 'price', 'allocation', 'qty']].copy()
     out['invested'] = out['qty'] * out['price']
+    denom = capital if capital > 0 else 1.0
+    out['alloc_pct'] = out['allocation'] / denom * 100.0
+    out['invested_pct'] = out['invested'] / denom * 100.0
     return out
 
 
@@ -1482,8 +1485,13 @@ def _show_picks(res):
             picks, capital, equal_weight=eq_weight,
             market_cap_caps_pct=res["params"].get("market_cap_allocation_pct", {}),
         )
-        mode = st.radio("List as", ["Quantity", "Amount ₹"], horizontal=True, key="fasta_pick_mode",
-                        help="Quantity: whole shares at the last close. Amount: the rupee allocation per ticker.")
+        deployed = float(basket['invested'].sum())
+        deployed_pct = (deployed / capital * 100.0) if capital > 0 else 0.0
+        st.caption(f"Available: ₹{capital:,.0f}  \nDeployed: ₹{deployed:,.0f} ({deployed_pct:.1f}%)  \n"
+                   f"Unused: ₹{max(capital - deployed, 0.0):,.0f} ({max(100.0 - deployed_pct, 0.0):.1f}%)")
+        mode = st.radio("List as", ["Quantity", "Amount ₹", "Percentage %"], horizontal=True, key="fasta_pick_mode",
+                        help="Quantity: whole shares at the last close. Amount: the rupee allocation per ticker. "
+                             "Percentage: each ticker's allocation as a % of Capital.")
         if mode == "Quantity":
             st.caption("Ticker list (copy): TICKER⇥+qty")
             zero_mask = basket['qty'] == 0
@@ -1492,14 +1500,19 @@ def _show_picks(res):
             zero_qty = int(zero_mask.sum())
             if zero_qty:
                 st.caption(f"Included all {len(basket)} picks; {zero_qty} pick(s) have quantity 0 because the allocation buys less than one share (listed at the end).")
-        else:
+        elif mode == "Amount ₹":
             st.caption("Ticker list (copy): TICKER⇥+amount")
             st.code("\n".join(f"{_bare(t)}\t+{a:.0f}" for t, a in zip(basket['ticker'], basket['allocation'])), language=None)
+        else:
+            st.caption("Ticker list (copy): TICKER⇥+% of Capital")
+            st.code("\n".join(f"{_bare(t)}\t+{pc:.1f}" for t, pc in zip(basket['ticker'], basket['alloc_pct'])), language=None)
     with st.expander("Order basket detail"):
         _table(basket, column_config={
             "price": st.column_config.NumberColumn("last close", format="%.2f"),
             "allocation": st.column_config.NumberColumn("allocation ₹", format="%.0f"),
-            "invested": st.column_config.NumberColumn("invested ₹", format="%.0f")})
+            "alloc_pct": st.column_config.NumberColumn("allocation %", format="%.1f"),
+            "invested": st.column_config.NumberColumn("invested ₹", format="%.0f"),
+            "invested_pct": st.column_config.NumberColumn("invested %", format="%.1f")})
         st.caption(f"Invested ₹{basket['invested'].sum():,.0f} of ₹{capital:,.0f} "
                    f"(the rest is whole-share rounding).")
 

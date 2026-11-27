@@ -31,7 +31,7 @@ from ui.pages.trade.trade_utils import (
     save_live_orders, load_live_orders, kite_headers,
     geo_buy_orders, geo_sell_orders,
     load_gtt_exclusions, save_gtt_exclusions,
-    park_active_gtts, list_parkable_gtts, build_gtt_table, restore_parked_gtts, load_parked_gtts, discard_parked_gtt, fetch_ltp_map,
+    park_active_gtts, list_parkable_gtts, build_gtt_table, fetch_ltp_and_qty_maps, restore_parked_gtts, load_parked_gtts, discard_parked_gtt, fetch_ltp_map,
 )
 
 
@@ -364,12 +364,13 @@ def _render_gtt_park_restore(active_tok: str, selected_acct: str) -> None:
         if now_ist.hour * 60 + now_ist.minute >= 9 * 60 + 15 and now_ist.weekday() < 5:
             st.warning(f"It is {now_ist:%H:%M} IST — the market is already open.")
         try:
-            gdf = build_gtt_table(fetch_gtts(active_tok), fetch_ltp_map(active_tok))
+            _ltp_m, _qty_m = fetch_ltp_and_qty_maps(active_tok)
+            gdf = build_gtt_table(fetch_gtts(active_tok), _ltp_m, _qty_m)
         except Exception as err:
             gdf = None
             st.error(f"Unable to fetch active GTTs: {err}")
         if gdf is None or gdf.empty:
-            gdf = build_gtt_table([], {})
+            gdf = build_gtt_table([], {}, {})
             st.caption("No active GTTs.")
         try:
             from ui.components.table_widget import table_widget
@@ -384,14 +385,22 @@ def _render_gtt_park_restore(active_tok: str, selected_acct: str) -> None:
                 "Trigger":  st.column_config.NumberColumn("Trigger", format="%.2f"),
                 "vs LTP %": st.column_config.NumberColumn("vs LTP %", format="%.2f%%"),
                 "LTP":      st.column_config.NumberColumn("LTP", format="%.2f"),
+                "Holdings": st.column_config.NumberColumn("Holdings", format="%d",
+                                                          help="Shares held in Kite (settled + T1)."),
                 "Qty":      st.column_config.NumberColumn("Qty", format="%d"),
             })
         shown_ids = set(shown["ID"]) if shown is not None and len(shown) else set()
         ok_rows = gdf[gdf["Parkable"] == "Yes"]
         labels = {r["ID"]: f"{r['Instrument'].split()[0]} · {r['Qty']} @ ₹{r['Trigger']:,.2f} · ID {r['ID']}"
+                           + (" · ⚠️ short" if str(r["Holding check"]).startswith("⚠️") else "")
                   for _, r in ok_rows.iterrows()}
         opts = sorted(labels, key=lambda i: labels[i])
         shown_opts = [i for i in opts if i in shown_ids]
+        _mm = gdf[gdf["Holding check"].str.startswith("⚠️")]
+        if len(_mm):
+            st.error("⚠️ Not enough holdings to cover the GTT quantity: "
+                     + ", ".join(f"{r['Instrument'].split()[0]} ({r['Qty']} vs {int(r['Holdings'])})"
+                                 for _, r in _mm.iterrows()))
         if (gdf["Parkable"] == "No").any():
             st.caption(f"{int((gdf['Parkable'] == 'No').sum())} GTT(s) marked Parkable = No "
                        "(not single SELL MARKET) are never touched.")

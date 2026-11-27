@@ -308,8 +308,8 @@ def _parkable_gtt(g: dict):
             "product": str(leg.get("product") or "CNC").upper(),
             "last_price": float(cond.get("last_price") or 0)}
 
-def build_gtt_table(gtts: list, ltp_map: dict) -> pd.DataFrame:
-    """Kite-style GTT table: Created on · Instrument · Type · Trigger · vs LTP % · LTP · Qty · Status.
+def build_gtt_table(gtts: list, ltp_map: dict, qty_map=None) -> pd.DataFrame:
+    """Kite-style GTT table: Created on · Instrument · Holdings · Type · Trigger · vs LTP % · LTP · Qty · Holding check · Status.
     Only ACTIVE GTTs are listed. `Parkable` says whether Park/Re-add can handle it exactly."""
     rows = []
     for g in gtts:
@@ -325,17 +325,21 @@ def build_gtt_table(gtts: list, ltp_map: dict) -> pd.DataFrame:
         rows.append({
             "Created on": str(g.get("created_at", ""))[:10],
             "Instrument": f"{sym} {str(cond.get('exchange', 'NSE')).upper()}",
+            "Holdings": (int(qty_map.get(sym, 0)) if qty_map is not None else None),
             "Type": f"{str(g.get('type', 'single')).upper()} · {sides}",
             "Trigger": trig,
             "vs LTP %": round((trig - ltp) / ltp * 100, 2) if (trig and ltp) else None,
             "LTP": ltp,
-            "Qty": sum(int(l.get("quantity") or 0) for l in legs),
+            "Qty": (_q := sum(int(l.get("quantity") or 0) for l in legs)),
+            "Holding check": ("" if qty_map is None else
+                              f"⚠️ Short by {_q - int(qty_map.get(sym, 0))}" if _q > int(qty_map.get(sym, 0))
+                              else "✅ OK"),
             "Status": "ACTIVE",
             "Parkable": "Yes" if _parkable_gtt(g) else "No",
             "ID": str(g.get("id")),
         })
-    return pd.DataFrame(rows, columns=["Created on", "Instrument", "Type", "Trigger", "vs LTP %",
-                                       "LTP", "Qty", "Status", "Parkable", "ID"])
+    return pd.DataFrame(rows, columns=["Created on", "Instrument", "Holdings", "Type", "Trigger", "vs LTP %",
+                                       "LTP", "Qty", "Holding check", "Status", "Parkable", "ID"])
 
 def list_parkable_gtts(token: str) -> list:
     """Active GTTs that park_active_gtts() can delete and later re-create exactly."""
@@ -381,25 +385,46 @@ def park_active_gtts(token: str, account: str, only_ids=None) -> dict:
         save_parked_gtts(parked)
     return {"deleted": deleted, "skipped": skipped, "errors": errors}
 
-def fetch_ltp_map(token: str) -> dict:
-    """{SYMBOL: live last_price} straight from Kite holdings + positions (no Quote API)."""
-    out = {}
+def fetch_ltp_and_qty_maps(token: str):
+    """One pass over Kite holdings + positions.
+    Returns (ltp_map, qty_map): {SYMBOL: live last_price} and {SYMBOL: shares held}.
+    Held = holdings quantity + t1_quantity (bought, not yet settled). Positions only fill in
+    CNC symbols missing from holdings, so nothing is double-counted. qty_map is None when the
+    holdings call failed (so the UI shows blanks instead of a misleading 0)."""
+    ltp, qty = {}, {}
+    holdings_ok = True
     try:
         for h in fetch_holdings(token):
+            sym = str(h.get("tradingsymbol", "")).upper()
             lp = float(h.get("last_price") or 0)
-            if lp > 0:
-                out[str(h.get("tradingsymbol", "")).upper()] = lp
+            if sym and lp > 0:
+                ltp[sym] = lp
+            q = int(h.get("quantity") or 0) + int(h.get("t1_quantity") or 0)
+            if sym:
+                qty[sym] = qty.get(sym, 0) + q
     except Exception:
-        logger.exception("fetch_ltp_map: holdings failed")
+        holdings_ok = False
+        logger.exception("fetch_ltp_and_qty_maps: holdings failed")
     try:
         pos = fetch_positions(token)
         for row in (pos.get("day") or []) + (pos.get("net") or []):
+            sym = str(row.get("tradingsymbol", "")).upper()
             lp = float(row.get("last_price") or 0)
-            if lp > 0:
-                out[str(row.get("tradingsymbol", "")).upper()] = lp
+            if sym and lp > 0:
+                ltp[sym] = lp
+        if holdings_ok:
+            for row in (pos.get("net") or []):
+                sym = str(row.get("tradingsymbol", "")).upper()
+                nq = int(row.get("quantity") or 0)
+                if sym and sym not in qty and nq > 0 and str(row.get("product", "")).upper() == "CNC":
+                    qty[sym] = nq
     except Exception:
-        logger.exception("fetch_ltp_map: positions failed")
-    return out
+        logger.exception("fetch_ltp_and_qty_maps: positions failed")
+    return ltp, (qty if holdings_ok else None)
+
+def fetch_ltp_map(token: str) -> dict:
+    """{SYMBOL: live last_price} straight from Kite holdings + positions (no Quote API)."""
+    return fetch_ltp_and_qty_maps(token)[0]
 
 def restore_parked_gtts(token: str, account: str, ltp_map: dict) -> list:
     """Re-add every deleted-but-not-restored GTT for `account` with its saved qty/trigger.
