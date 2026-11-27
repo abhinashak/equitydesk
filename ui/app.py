@@ -55,12 +55,6 @@ elif page == "config_app":
     from ui.config.page_config_app import render; render()
 elif page == "signals":
     from ui.pages.data.page_signals import render; render()
-elif page == "trade_account":
-    from ui.pages.page_trade import render_account; render_account()
-elif page == "trade_positions":
-    from ui.pages.page_trade import render_positions; render_positions()
-elif page == "trade_plan":
-    from ui.pages.page_trade import render_plan; render_plan()
 elif page == "sql_lab":
     page_sql_lab.render()
 elif page == "portfolio_evaluator":
