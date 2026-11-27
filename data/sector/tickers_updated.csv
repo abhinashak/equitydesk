@@ -1,4 +1,4 @@
-Name,Yahoo Symbol,Sector,ticker,sector_group,macro_sector,market_cap_segment,market_cap_cr,fii_hold_pct,public_hold_pct
+Name,Yahoo Symbol,Sector,ticker,sector_group,macro_sector,market_cap,market_cap_cr,fii_hold_pct,public_hold_pct
 NSEI,^NSEI,,^NSEI,,,,,,
 Zydus Wellness,ZYDUSWELL.NS,Consumer Food,ZYDUSWELL,Food & Beverages,Fast Moving Consumer Goods (FMCG),smallcap250,14821.52,3.57,7.42
 Zydus Lifesciences Ltd,ZYDUSLIFE.NS,Pharmaceuticals,ZYDUSLIFE,Pharmaceuticals & CDMO,Healthcare,,,,
@@ -178,7 +178,6 @@ PFC,PFC.NS,Finance - Lending,PFC,Banking & Lending,Financial Services,,,,
 Petronet LNG,PETRONET.NS,Industrial Gases & Fuels,PETRONET,Chemicals,Chemicals & Agriculture,midcap150,48907.5,25.97,9.82
 Persistent Systems,PERSISTENT.NS,IT - Software,PERSISTENT,Software & IT,Information Technology & Software,midcap150,104185.2,21.3,15.09
 PCBL Chemical,PCBL.NS,Carbon Black,PCBL,Chemicals,Chemicals & Agriculture,smallcap250,10472.01,6.34,26.57
-PB Fintech,PBFINTECH.NS,,PBFINTECH,,,,,,
 One 97,PAYTM.NS,Fintech,PAYTM,Capital Markets & Wealth,Financial Services,midcap150,111169.85,43.52,26.96
 Patanjali Foods,PATANJALI.NS,Edible Oil,PATANJALI,Food & Beverages,Fast Moving Consumer Goods (FMCG),midcap150,44286.02,7.24,12.0
 Paradeep Phosph.,PARADEEP.NS,Fertilizers,PARADEEP,Agro & Fertilizers,Chemicals & Agriculture,smallcap250,14654.56,4.79,16.99
@@ -371,7 +370,6 @@ Havells India,HAVELLS.NS,Electric Equipment,HAVELLS,"Electrical, Electronics & E
 Hindustan Aeronautics Ltd (HAL),HAL.NS,Aerospace & Defense,HAL,Aerospace & Defense,Capital Goods & Industrials,,,,
 GE Vernova T&D,GVT&D.NS,Electric Equipment,GVT&D,"Electrical, Electronics & Energy Hardware",Capital Goods & Industrials,midcap150,107412.98,19.16,7.67
 Gulf Lubricants India Ltd,GULFOILLUB.NS,,GULFOILLUB,,,,,,
-Gujarat Gas,GUJGASLTD.NS,,GUJGASLTD,,,,,,
 Gujarat State Fertilizers & Chemicals,GSFC.NS,,GSFC,,,,,,
 Garware Hi-Tech Films,GRWRHITECH.NS,,GRWRHITECH,,,,,,
 Garden Reach Sh.,GRSE.NS,Aerospace & Defense,GRSE,Aerospace & Defense,Capital Goods & Industrials,smallcap250,23068.48,3.17,20.33

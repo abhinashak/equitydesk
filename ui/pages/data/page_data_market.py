@@ -1,5 +1,5 @@
 """
-ui/pages/page_data_ticker.py  –  Data › Ticker + Benchmark (+ Quality report)
+ui/pages/data/page_data_market.py  –  Data › Ticker + Benchmark (+ Quality report)
 """
 
 import time

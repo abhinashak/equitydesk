@@ -26,7 +26,7 @@ import requests
 import streamlit as st
 import yfinance as yf
 
-from ui.pages.page_us_economy import render_gift_nifty_banner
+from ui.pages.screens.page_us_economy import render_gift_nifty_banner
 
 
 # ═════════════════════════════════════════════════════════════════════════════

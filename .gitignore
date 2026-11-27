@@ -30,3 +30,4 @@ screener_annual_reports.xml
 utils/confcalls.py
 data/cache/
 data/sector/tickers_updated.csv
+**/__init__.py

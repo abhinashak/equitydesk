@@ -1,5 +1,5 @@
 """
-ui/pages/page_signals.py  –  Screens › Signals
+ui/pages/data/page_signals.py  –  Screens › Signals
 """
 
 import time

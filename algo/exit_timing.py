@@ -1,4 +1,4 @@
-Git a"""
+"""
 Exit-Timing Analysis from Past FASTA WEEKEND_EXIT Trades
 ========================================================
 Companion to entry_timing.py (same architecture, parameters, verbosity levels, Past/Recent split,

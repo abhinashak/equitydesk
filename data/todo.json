@@ -5,9 +5,9 @@
     "priority": "Medium",
     "due": null,
     "note": "It is Based on (Stock movement, Sector movement,  NIFTY Movement,  Skip for 1d  allowed)",
-    "done": false,
+    "done": true,
     "created": "2026-11-23T18:26:20",
-    "completed": null
+    "completed": "2026-11-27T12:44:58"
   },
   {
     "id": "0613c12f",
@@ -15,9 +15,9 @@
     "priority": "Medium",
     "due": null,
     "note": "Also manage a weight in FASTA for %ge allocation from these. We can do an ADAM training here.",
-    "done": false,
+    "done": true,
     "created": "2026-11-23T18:28:36",
-    "completed": null
+    "completed": "2026-11-27T12:45:25"
   },
   {
     "id": "fd92e20c",
@@ -25,9 +25,9 @@
     "priority": "Medium",
     "due": null,
     "note": "<p>Morning the volume might be small to give a true picture. How about starting after the market settles down.</p><p>Similarly the end time.</p>",
-    "done": false,
+    "done": true,
     "created": "2026-11-23T18:35:33",
-    "completed": null
+    "completed": "2026-11-27T12:45:30"
   },
   {
     "id": "c1253010",
@@ -35,9 +35,9 @@
     "priority": "Medium",
     "due": null,
     "note": "",
-    "done": false,
+    "done": true,
     "created": "2026-11-23T18:37:44",
-    "completed": null
+    "completed": "2026-11-27T12:45:38"
   },
   {
     "id": "b6aa3141",
@@ -55,9 +55,9 @@
     "priority": "Medium",
     "due": null,
     "note": "",
-    "done": false,
+    "done": true,
     "created": "2026-11-24T08:34:54",
-    "completed": null
+    "completed": "2026-11-27T12:45:52"
   },
   {
     "id": "33bdb608",
@@ -75,9 +75,9 @@
     "priority": "Medium",
     "due": null,
     "note": "",
-    "done": false,
+    "done": true,
     "created": "2026-11-24T13:04:31",
-    "completed": null
+    "completed": "2026-11-27T12:46:17"
   },
   {
     "id": "2ec5ba3c",
@@ -85,9 +85,9 @@
     "priority": "Medium",
     "due": null,
     "note": "",
-    "done": true,
+    "done": false,
     "created": "2026-11-24T13:18:06",
-    "completed": "2026-11-24T13:21:14"
+    "completed": null
   },
   {
     "id": "2741aa08",
@@ -95,9 +95,9 @@
     "priority": "Medium",
     "due": null,
     "note": "",
-    "done": true,
+    "done": false,
     "created": "2026-11-24T13:18:16",
-    "completed": "2026-11-24T13:21:11"
+    "completed": null
   },
   {
     "id": "c593ee95",
@@ -105,9 +105,9 @@
     "priority": "Medium",
     "due": null,
     "note": "<p>select * from NIFTY500.csv as a where Size &gt; 50 order by Size desc ;</p><p>order_size / market_cap &lt; 25%</p>",
-    "done": false,
+    "done": true,
     "created": "2026-11-24T13:22:53",
-    "completed": null
+    "completed": "2026-11-27T12:46:25"
   },
   {
     "id": "962e7c02",
@@ -115,8 +115,8 @@
     "priority": "Medium",
     "due": null,
     "note": "<p>We will do GTT after 10:30AM. </p><p>Or we will do daily entry and exit settings of  GTT. </p><p>LIke download all GTTs and set it next day.</p>",
-    "done": false,
+    "done": true,
     "created": "2026-11-27T09:21:38",
-    "completed": null
+    "completed": "2026-11-27T12:46:28"
   }
 ]

@@ -13,9 +13,8 @@ import streamlit as st
 from bll.config_service import ConfigService
 from ui.layout import inject_css, render_sidebar
 from ui.pages import page_sql_lab
-from ui.pages import page_portfolio_evaluator
-from ui.pages import page_algo_ga
-from ui.pages import page_algo_momentum
+from ui.pages.screens import page_portfolio_evaluator
+from ui.algos import page_algo_momentum, page_algo_ga
 from ui.pages import one_ticker_gates
 from ui.pages import one_ticker_charts
 
@@ -47,18 +46,16 @@ elif page == "trade_rebalance_planner":
     from  ui.pages.trade.rebalance_planner import render; render()
 elif page == "trade_live_execution":
     from  ui.pages.trade.live_execution import render; render()
-elif page == "data_ticker":
-    from ui.pages.page_data_ticker import render; render()
+elif page == "data_market":
+    from ui.pages.data.page_data_market import render; render()
 elif page == "data_fundamental":
-    from ui.pages.page_data_fundamental import render; render()
-elif page == "data_screener":
-    from ui.pages.page_data_screener import render; render()
+    from ui.pages.data.page_data_fundamental import render; render()
 elif page == "config_tickers":
-    from ui.pages.page_config_tickers import render; render()
+    from ui.config.page_config_tickers import render; render()
 elif page == "config_app":
-    from ui.pages.page_config_app import render; render()
+    from ui.config.page_config_app import render; render()
 elif page == "signals":
-    from ui.pages.page_signals import render; render()
+    from ui.pages.data.page_signals import render; render()
 elif page == "trade_account":
     from ui.pages.page_trade import render_account; render_account()
 elif page == "trade_positions":
@@ -70,7 +67,7 @@ elif page == "sql_lab":
 elif page == "portfolio_evaluator":
     page_portfolio_evaluator.render()
 elif page == "buy_candidates":
-    from ui.pages.page_buy_candidates import render; render()
+    from ui.pages.screens.page_buy_candidates import render; render()
 elif page == "algo_ga":
     page_algo_ga.render()
 elif page == "algo_momentum":
@@ -78,25 +75,25 @@ elif page == "algo_momentum":
 elif page == "algo_fasta":
     from algo.fasta.fasta_ui import render; render()
 elif page == "entry_exit":
-    from ui.pages.entry_exit_timing import render; render()
+    from ui.algos.entry_exit_timing import render; render()
 elif page == "quality_gates":
     one_ticker_gates.render()
-elif page == "fundamental_analysis":
+elif page == "ticker_deepdive":
     one_ticker_charts.render()
 elif page == "sql_analyst":
     from ui.pages.page_sql_analyst import render; render()
 
 # ── MACRO / NEWS SCREENS (new) ────────────────────────────────────────────────
 elif page == "us_economy_pipeline":
-    from ui.pages.page_us_economy import render; render()
+    from ui.pages.screens.page_us_economy import render; render()
 elif page == "news":
-    from ui.pages.page_news import render; render()
+    from ui.pages.screens.page_news import render; render()
 
 
 elif page == "dcf_analysis":
-    from ui.pages.dcf_analysis import render; render()
+    from ui.pages.screens.dcf_analysis import render; render()
 
 elif page == "todo":
-    from ui.pages.page_todo import render; render()
+    from ui.config.page_todo import render; render()
 
 
