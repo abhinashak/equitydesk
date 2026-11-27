@@ -318,68 +318,68 @@ FROM shifted;
 -- ============================================================================
 -- OUTPUT 1: Coverage (how many tickers each metric covers)
 -- ============================================================================
-SELECT
-    (SELECT COUNT(DISTINCT ticker) FROM fss_general_info) AS universe,
-    (SELECT COUNT(DISTINCT ticker) FROM fss_roe_momentum) AS roe_momentum,
-    (SELECT COUNT(DISTINCT ticker) FROM fss_accruals)     AS accruals,
-    (SELECT COUNT(DISTINCT ticker) FROM fss_rev_cv)       AS rev_cv,
-    (SELECT COUNT(DISTINCT ticker) FROM fss_de_trend)     AS de_trend,
-    (SELECT COUNT(*)               FROM fss_scored)       AS scored,
-    (SELECT COUNT(DISTINCT industry) FROM fss_scored)     AS industries;
+--SELECT
+--    (SELECT COUNT(DISTINCT ticker) FROM fss_general_info) AS universe,
+--    (SELECT COUNT(DISTINCT ticker) FROM fss_roe_momentum) AS roe_momentum,
+--    (SELECT COUNT(DISTINCT ticker) FROM fss_accruals)     AS accruals,
+--    (SELECT COUNT(DISTINCT ticker) FROM fss_rev_cv)       AS rev_cv,
+--    (SELECT COUNT(DISTINCT ticker) FROM fss_de_trend)     AS de_trend,
+--    (SELECT COUNT(*)               FROM fss_scored)       AS scored,
+--    (SELECT COUNT(DISTINCT industry) FROM fss_scored)     AS industries;
 
 
 -- ============================================================================
 -- OUTPUT 2: Scored universe (best composite first)
 -- ============================================================================
-SELECT s.ticker,
-       LEFT(g.company_name, 24)       AS company,
-       s.industry,
-       ROUND(s.composite, 3)          AS composite,
-       ROUND(s.z_roe, 2)              AS z_roe,
-       ROUND(s.z_accr, 2)             AS z_accr,
-       ROUND(s.z_rev, 2)              AS z_rev,
-       ROUND(s.z_de, 2)               AS z_de,
-       ROUND(s.roe_momentum, 3)       AS roe_mom,
-       ROUND(s.accruals, 3)           AS accruals,
-       ROUND(s.rev_cv, 3)             AS rev_cv,
-       ROUND(s.de_trend, 3)           AS de_trend,
-       g.market_cap, g.current_price, g.stock_p_e, g.roe, g.roce
-FROM fss_scored s
-LEFT JOIN fss_general_info g USING (ticker)
-ORDER BY s.composite DESC;
+--SELECT s.ticker,
+--       LEFT(g.company_name, 24)       AS company,
+--       s.industry,
+--       ROUND(s.composite, 3)          AS composite,
+--       ROUND(s.z_roe, 2)              AS z_roe,
+--       ROUND(s.z_accr, 2)             AS z_accr,
+--       ROUND(s.z_rev, 2)              AS z_rev,
+--       ROUND(s.z_de, 2)               AS z_de,
+--       ROUND(s.roe_momentum, 3)       AS roe_mom,
+--       ROUND(s.accruals, 3)           AS accruals,
+--       ROUND(s.rev_cv, 3)             AS rev_cv,
+--       ROUND(s.de_trend, 3)           AS de_trend,
+--       g.market_cap, g.current_price, g.stock_p_e, g.roe, g.roce
+--FROM fss_scored s
+--LEFT JOIN fss_general_info g USING (ticker)
+--ORDER BY s.composite DESC;
 
 
 -- ============================================================================
 -- OUTPUT 3: Long book
 -- ============================================================================
-SELECT b.ticker, LEFT(g.company_name, 24) AS company, b.industry,
-       ROUND(b.composite, 3) AS composite, ROUND(b.weight, 3) AS weight,
-       g.market_cap, g.current_price
-FROM fss_book b
-LEFT JOIN fss_general_info g USING (ticker)
-WHERE b.side = 'L'
-ORDER BY b.composite DESC;
+--SELECT b.ticker, LEFT(g.company_name, 24) AS company, b.industry,
+--       ROUND(b.composite, 3) AS composite, ROUND(b.weight, 3) AS weight,
+--       g.market_cap, g.current_price
+--FROM fss_book b
+--LEFT JOIN fss_general_info g USING (ticker)
+--WHERE b.side = 'L'
+--ORDER BY b.composite DESC;
 
 
 -- ============================================================================
 -- OUTPUT 4: Short book
 -- ============================================================================
-SELECT b.ticker, LEFT(g.company_name, 24) AS company, b.industry,
-       ROUND(b.composite, 3) AS composite, ROUND(b.weight, 3) AS weight,
-       g.market_cap, g.current_price
-FROM fss_book b
-LEFT JOIN fss_general_info g USING (ticker)
-WHERE b.side = 'S'
-ORDER BY b.composite ASC;
+--SELECT b.ticker, LEFT(g.company_name, 24) AS company, b.industry,
+--       ROUND(b.composite, 3) AS composite, ROUND(b.weight, 3) AS weight,
+--       g.market_cap, g.current_price
+--FROM fss_book b
+--LEFT JOIN fss_general_info g USING (ticker)
+--WHERE b.side = 'S'
+--ORDER BY b.composite ASC;
 
 
 -- ============================================================================
 -- OUTPUT 5: Industry exposure (sum of weights per side)
 -- ============================================================================
-SELECT industry,
-       ROUND(SUM(CASE WHEN side = 'L' THEN weight ELSE 0 END), 3) AS L,
-       ROUND(SUM(CASE WHEN side = 'S' THEN weight ELSE 0 END), 3) AS S,
-       ROUND(SUM(CASE WHEN side = 'L' THEN weight ELSE -weight END), 3) AS net
-FROM fss_book
-GROUP BY industry
-ORDER BY industry;
+--SELECT industry,
+--      ROUND(SUM(CASE WHEN side = 'L' THEN weight ELSE 0 END), 3) AS L,
+--       ROUND(SUM(CASE WHEN side = 'S' THEN weight ELSE 0 END), 3) AS S,
+--       ROUND(SUM(CASE WHEN side = 'L' THEN weight ELSE -weight END), 3) AS net
+--FROM fss_book
+--GROUP BY industry
+--ORDER BY industry;

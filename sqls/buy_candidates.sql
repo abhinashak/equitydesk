@@ -236,23 +236,23 @@ ORDER BY tier, conviction DESC, ticker;
 -- ============================================================================
 -- OUTPUT 1: how big is the shortlist
 -- ============================================================================
-SELECT
-    COUNT(*)                                        AS universe,
-    COUNT(*) FILTER (WHERE shortlisted)             AS shortlisted,
-    COUNT(*) FILTER (WHERE tier = 'A')              AS tier_A,
-    COUNT(*) FILTER (WHERE tier = 'B')              AS tier_B,
-    COUNT(*) FILTER (WHERE tier = 'C')              AS tier_C,
-    COUNT(*) FILTER (WHERE dcf_value IS NOT NULL)   AS with_dcf,
-    COUNT(*) FILTER (WHERE mom_date IS NOT NULL)    AS with_momentum,
-    COUNT(*) FILTER (WHERE algo_composite IS NOT NULL) AS with_algo
-FROM abinash_screen;
+--SELECT
+--    COUNT(*)                                        AS universe,
+--    COUNT(*) FILTER (WHERE shortlisted)             AS shortlisted,
+--    COUNT(*) FILTER (WHERE tier = 'A')              AS tier_A,
+--    COUNT(*) FILTER (WHERE tier = 'B')              AS tier_B,
+--    COUNT(*) FILTER (WHERE tier = 'C')              AS tier_C,
+--    COUNT(*) FILTER (WHERE dcf_value IS NOT NULL)   AS with_dcf,
+--    COUNT(*) FILTER (WHERE mom_date IS NOT NULL)    AS with_momentum,
+--    COUNT(*) FILTER (WHERE algo_composite IS NOT NULL) AS with_algo
+--FROM abinash_screen;
 
 
 -- ============================================================================
 -- OUTPUT 2: abinash_recommendations (best first)
 -- ============================================================================
-SELECT tier, ticker, LEFT(company_name, 22) AS company, sector,
-       conviction, lenses_passed AS passed, lenses_available AS avail,
-       why, cautions
-FROM abinash_recommendations
-ORDER BY tier, conviction DESC, ticker;
+--SELECT tier, ticker, LEFT(company_name, 22) AS company, sector,
+--       conviction, lenses_passed AS passed, lenses_available AS avail,
+--       why, cautions
+--FROM abinash_recommendations
+--ORDER BY tier, conviction DESC, ticker;

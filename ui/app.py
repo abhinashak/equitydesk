@@ -16,7 +16,6 @@ from ui.pages import page_sql_lab
 from ui.pages.screens import page_portfolio_evaluator
 from ui.algos import page_algo_momentum, page_algo_ga
 from ui.pages import one_ticker_gates
-from ui.pages import one_ticker_charts
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -79,7 +78,7 @@ elif page == "entry_exit":
 elif page == "quality_gates":
     one_ticker_gates.render()
 elif page == "ticker_deepdive":
-    one_ticker_charts.render()
+    from ui.pages.screens.page_ticker_deepdive import render; render()
 elif page == "sql_analyst":
     from ui.pages.page_sql_analyst import render; render()
 

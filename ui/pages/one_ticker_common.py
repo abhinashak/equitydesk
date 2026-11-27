@@ -1,7 +1,7 @@
 """
 one_ticker_common.py
 ────────────────────
-Shared bootstrap for one_ticker_gates.py and one_ticker_charts.py.
+Shared bootstrap for one_ticker_gates.py and page_ticker_deepdive.py.
 
 All database access goes through `utils.db_utils`, whose shared connection is built
 from `sqls/all.sql` (so the `gate_score` view and the rest are always available).

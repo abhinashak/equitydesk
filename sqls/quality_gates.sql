@@ -204,33 +204,33 @@ CREATE OR REPLACE MACRO gate_sym(p, n) AS
 -- ============================================================================
 -- OUTPUT 1: Gate matrix for every ticker (best quality first)
 -- ============================================================================
-SELECT
-    ticker,
-    LEFT(company_name, 22)                                  AS company,
-    quality_score                                           AS Q,
-    valuation_score                                         AS V,
-    timing_score                                            AS T,
-    technical_score                                         AS Tech,
-    recommendation                                          AS rec,
-    gate_sym(g1a_roce_pass,     g1a_roce_fail)              AS "1a ROCE",
-    gate_sym(g1b_fcf_pass,      g1b_fcf_fail)               AS "1b FCF",
-    gate_sym(g1c_cagr_pass,     g1c_cagr_fail)              AS "1c CAGR",
-    gate_sym(g1d_cfo_pass,      g1d_cfo_fail)               AS "1d CFO",
-    gate_sym(g1e_debt_pass,     g1e_debt_fail)              AS "1e Debt",
-    gate_sym(g2a_pe_pass,       g2a_pe_fail)                AS "2a PE",
-    gate_sym(g2b_peg_pass,      g2b_peg_fail)               AS "2b PEG",
-    gate_sym(g2c_pb_pass,       g2c_pb_fail)                AS "2c PB",
-    gate_sym(g3a_sales_pass,    g3a_sales_fail)             AS "3a Sales",
-    gate_sym(g3b_profit_pass,   g3b_profit_fail)            AS "3b Profit",
-    gate_sym(g3c_opm_pass,      g3c_opm_fail)               AS "3c OPM",
-    gate_sym(g3d_promoter_pass, g3d_promoter_fail)          AS "3d Promo",
-    gate_sym(g3e_inst_pass,     g3e_inst_fail)              AS "3e Inst",
-    gate_sym(g4a_bb_pass,       g4a_bb_fail)                AS "4a BB",
-    gate_sym(g4b_ma50_pass,     g4b_ma50_fail)              AS "4b MA50",
-    gate_sym(g4c_52w_pass,      g4c_52w_fail)               AS "4c 52W",
-    gate_sym(g4d_vol_pass,      g4d_vol_fail)               AS "4d Vol"
-FROM gate_results
-ORDER BY quality_score DESC, valuation_score DESC, ticker;
+--SELECT
+--    ticker,
+--    LEFT(company_name, 22)                                  AS company,
+--    quality_score                                           AS Q,
+--    valuation_score                                         AS V,
+--    timing_score                                            AS T,
+--    technical_score                                         AS Tech,
+--    recommendation                                          AS rec,
+--    gate_sym(g1a_roce_pass,     g1a_roce_fail)              AS "1a ROCE",
+--    gate_sym(g1b_fcf_pass,      g1b_fcf_fail)               AS "1b FCF",
+--    gate_sym(g1c_cagr_pass,     g1c_cagr_fail)              AS "1c CAGR",
+--    gate_sym(g1d_cfo_pass,      g1d_cfo_fail)               AS "1d CFO",
+--    gate_sym(g1e_debt_pass,     g1e_debt_fail)              AS "1e Debt",
+--    gate_sym(g2a_pe_pass,       g2a_pe_fail)                AS "2a PE",
+--    gate_sym(g2b_peg_pass,      g2b_peg_fail)               AS "2b PEG",
+--    gate_sym(g2c_pb_pass,       g2c_pb_fail)                AS "2c PB",
+--    gate_sym(g3a_sales_pass,    g3a_sales_fail)             AS "3a Sales",
+--    gate_sym(g3b_profit_pass,   g3b_profit_fail)            AS "3b Profit",
+--    gate_sym(g3c_opm_pass,      g3c_opm_fail)               AS "3c OPM",
+--    gate_sym(g3d_promoter_pass, g3d_promoter_fail)          AS "3d Promo",
+--    gate_sym(g3e_inst_pass,     g3e_inst_fail)              AS "3e Inst",
+--    gate_sym(g4a_bb_pass,       g4a_bb_fail)                AS "4a BB",
+--    gate_sym(g4b_ma50_pass,     g4b_ma50_fail)              AS "4b MA50",
+--    gate_sym(g4c_52w_pass,      g4c_52w_fail)               AS "4c 52W",
+--    gate_sym(g4d_vol_pass,      g4d_vol_fail)               AS "4d Vol"
+--FROM gate_results
+--ORDER BY quality_score DESC, valuation_score DESC, ticker;
 
 
 -- ============================================================================

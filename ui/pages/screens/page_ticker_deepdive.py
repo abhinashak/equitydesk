@@ -1,10 +1,10 @@
 """
-one_ticker_charts.py
+page_ticker_deepdive.py
 ────────────────────
 Chart renderer for the Single-Ticker Deep Dive.
 Standalone — runs its own data pipeline via one_ticker_common.py.
 
-Run: streamlit run one_ticker_charts.py
+Run: streamlit run page_ticker_deepdive.py
 """
 
 import json
