@@ -14,7 +14,8 @@ SELECT * FROM read_csv_auto('config/color_codes.csv', header = true)
 
 -- General company info (one row per ticker)
 CREATE OR REPLACE VIEW general_info_raw AS
-SELECT * FROM 'data/fundamental/*/general_info.parquet';
+SELECT *
+FROM read_parquet('data/fundamental/*/general_info.parquet', union_by_name = true);
 
 -- Pros & Cons (one row per bullet point per ticker)
 CREATE OR REPLACE VIEW pros_raw AS

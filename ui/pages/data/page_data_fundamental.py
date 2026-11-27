@@ -17,28 +17,9 @@ import pandas as pd
 import streamlit as st
 from bll.fundamental_service import FundamentalService
 from bll.config_service import ConfigService
+from utils.db_utils import run_sql_file, reset_connection
 
 
-
-def _run_sql_file(conn, path: str, stop_on_error: bool) -> tuple[int, list[str]]:
-    """Run each ';'-separated statement in *path* on *conn*. Returns (ok_count, errors)."""
-    ok, errors = 0, []
-    for stmt in (s.strip() for s in Path(path).read_text().split(";")):
-        # skip empty chunks and chunks that contain only comments
-        if not any(ln.strip() and not ln.strip().startswith("--") for ln in stmt.splitlines()):
-            continue
-        try:
-            conn.execute(stmt)
-            ok += 1
-        except Exception as exc:
-            code = " ".join(
-                ln.strip() for ln in stmt.splitlines() if not ln.strip().startswith("--")
-            )
-            errors.append(f"{code[:70]}… → {exc}")
-            if stop_on_error:
-                break
-    return ok, errors
- 
 
 # -- Cached data fetchers ------------------------------------------------------
 # Decoration is deferred to first call so that importing this module outside a
@@ -351,37 +332,23 @@ async function downloadTicker(ticker) {
         language="bash",
     )
     st.caption("Then reload the app so the DCF and other pages pick up the new tickers.")
- 
+
     st.caption("Or run the same two files from here (uses the app's working directory):")
     if st.button("Rebuild clean data now", key="run_clean_rebuild"):
-        import duckdb
-        from ui.pages.one_ticker_common import get_pipeline_data
- 
-        conn = duckdb.connect(":memory:")
+        steps = ["sqls/init_raw.sql", "sqls/compact_clean.sql"]
+        sql_file = steps[0]
         try:
-            with st.spinner("Running sqls/init_raw.sql …"):
-                n_raw, err_raw = _run_sql_file(conn, "sqls/init_raw.sql", stop_on_error=True)
-            if err_raw:
-                st.error("init_raw.sql failed — clean step skipped.")
-                st.code("\n".join(err_raw), language="text")
-            else:
-                with st.spinner("Running sqls/compact_clean.sql …"):
-                    n_clean, err_clean = _run_sql_file(
-                        conn, "sqls/compact_clean.sql", stop_on_error=False
-                    )
-                if err_clean:
-                    st.warning(
-                        f"compact_clean.sql: {n_clean} statement(s) OK, "
-                        f"{len(err_clean)} failed — those tables were NOT updated."
-                    )
-                    st.code("\n".join(err_clean), language="text")
-                else:
-                    st.success(f"fundamental_clean rebuilt ({n_clean} tables written).")
-                # make other pages re-read the refreshed data
-                get_pipeline_data.clear()
-                st.session_state.pop("df_matrix", None)
+            for sql_file in steps:
+                with st.spinner(f"Running {sql_file} …"):
+                    run_sql_file(sql_file)
+            st.success("fundamental_clean rebuilt.")
         except FileNotFoundError as exc:
             st.error(f"SQL file not found: {exc.filename}")
+        except Exception as exc:
+            st.error(f"{sql_file} failed — remaining steps skipped.")
+            st.code(str(exc), language="text")
         finally:
-            conn.close()
- 
+            # rebuild all.sql views against the refreshed files and drop cached frames
+            reset_connection()
+            st.cache_data.clear()
+            st.session_state.pop("df_matrix", None)
