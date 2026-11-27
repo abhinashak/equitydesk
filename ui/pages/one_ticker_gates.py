@@ -20,9 +20,8 @@ import pandas as pd
 import streamlit as st
 
 from ui.components.table_widget import table_widget
-from ui.pages.one_ticker_common import load_matrix
 from ui.pages.one_ticker_doc import GATE_LOGIC_MD
-from utils.db_utils import get_connection, run_readonly_query
+from utils.db_utils import get_connection, load_ticker_scores, run_readonly_query
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CONSTANTS
@@ -102,6 +101,13 @@ _DIAGNOSTICS = [
 # ──────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ──────────────────────────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _cached_ticker_scores() -> pd.DataFrame:
+    """Scored matrix, cached for 2 minutes (st.cache_data.clear() drops it)."""
+    df_matrix, _, _ = load_ticker_scores()
+    return df_matrix
+
 
 def _clean_symbol(raw) -> str:
     return str(raw).strip().upper().removesuffix(".NS")
@@ -324,7 +330,7 @@ def render():
     dip_mode = False
 
     # ── Load data ─────────────────────────────────────────────────────────────
-    df_matrix, _, _ = load_matrix()
+    df_matrix = _cached_ticker_scores()
 
     with info_col:
         st.caption("Data source: **sqls/all.sql (DuckDB)**")

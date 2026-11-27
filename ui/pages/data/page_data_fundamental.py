@@ -352,3 +352,4 @@ async function downloadTicker(ticker) {
             reset_connection()
             st.cache_data.clear()
             st.session_state.pop("df_matrix", None)
+            st.session_state.pop("conn", None)

@@ -118,5 +118,15 @@
     "done": true,
     "created": "2026-11-27T09:21:38",
     "completed": "2026-11-27T12:46:28"
+  },
+  {
+    "id": "4ff8bd4b",
+    "text": "Friday what should be the GTT?",
+    "priority": "Medium",
+    "due": null,
+    "note": "<p>Set the GTT on friday at  max(1% loss from  Friday open price,  2% loss from purchase price)</p>",
+    "done": false,
+    "created": "2026-11-27T17:44:39",
+    "completed": null
   }
 ]

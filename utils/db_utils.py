@@ -1,3 +1,4 @@
+
 """
 utils/db_utils.py
 ──────────────────
@@ -24,8 +25,18 @@ from pathlib import Path
 import duckdb
 
 from utils.file_utils import raise_fd_limit
+from utils.scoring import compute_scores
 
 DB_SQL_PATH = "sqls/all.sql"
+
+FUNDAMENTAL_VIEWS = [
+    ("quarterly_results",      "Quarterly"),
+    ("profit_loss",            "P&L"),
+    ("cash_flows",             "Cash Flow"),
+    ("ratios",                 "Ratios"),
+    ("shareholding_quarterly_metric", "Shareholding"),
+    ("balance_sheet",          "Balance Sheet"),
+]
 
 _lock = threading.Lock()
 _connection = None            # shared in-memory database, created on first use
@@ -424,3 +435,29 @@ def run_sql_file(path: str) -> None:
     """
     with db_cursor() as cur:
         _run_sql_script(cur, path)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Scored ticker matrix  (one_ticker_gates, ticker deep-dive)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def fetch_gate_scores() -> pd.DataFrame:
+    """Raw `gate_score` view, one row per ticker (uncached; callers cache if they want)."""
+    return run_readonly_query("SELECT * FROM gate_score ORDER BY ticker")
+
+
+def load_ticker_scores() -> tuple[pd.DataFrame, object, str]:
+    """
+    One-stop loader: `gate_score` view -> scored matrix (Quality / Valuation / Timing /
+    Technical, plus every gate flag).
+
+    Returns (df_matrix, conn, env_status).
+
+    `conn` is a cursor on the shared all.sql database and `env_status` is always
+    "REAL"; both are kept only so existing 3-tuple unpacking keeps working.
+    """
+    conn = get_connection()
+    df_raw = fetch_gate_scores()
+    if df_raw.empty:
+        return pd.DataFrame(), conn, "REAL"
+    return compute_scores(df_raw), conn, "REAL"

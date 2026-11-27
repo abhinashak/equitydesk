@@ -3,6 +3,12 @@ from html import escape
 import pandas as pd
 import streamlit as st
 
+# ==============================================================================
+# PALETTE
+# ==============================================================================
+COLORS      = ["#2563eb", "#dc2626", "#16a34a", "#d97706"]
+COLORS_PALE = ["#93c5fd", "#fca5a5", "#86efac", "#fde68a"]
+
 def render_trend_banner(ticker: str, last: float, sma50: float,
                         label: str = "Market Trend", panic: bool = False) -> None:
     """Compact SMA50 trend banner (sized to sit in one of three columns).

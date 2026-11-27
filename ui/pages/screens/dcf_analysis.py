@@ -18,15 +18,10 @@ import streamlit as st
 import streamlit.components.v1 as _st_components
 
 from ui.components.table_widget import table_widget
-from ui.pages.one_ticker_common import COLORS, load_matrix
+from utils.db_utils import load_ticker_scores
+from ui.pages.html_utils import COLORS, render_confidence_banner
 from utils import dcf_core
 from utils.dcf_core import normalize_earnings, run_dcf as _run_dcf
-
-try:                                    # eye-catching confidence banner (utils/html_utils.py)
-    from ui.pages.html_utils import render_confidence_banner
-except ImportError:
-    print ( "Could not load html_utils::render_confidence_banner")# fall back to the plain message if the helper isn't there
-    render_confidence_banner = None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1253,7 +1248,7 @@ def render():
 
     # ── Bootstrap ─────────────────────────────────────────────────────────────
     if "df_matrix" not in st.session_state:
-        df_matrix, _, _ = load_matrix()
+        df_matrix, _, _ = load_ticker_scores()
         st.session_state["df_matrix"] = df_matrix
     else:
         df_matrix = st.session_state["df_matrix"]

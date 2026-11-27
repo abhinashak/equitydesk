@@ -2,7 +2,7 @@
 page_ticker_deepdive.py
 ────────────────────
 Chart renderer for the Single-Ticker Deep Dive.
-Standalone — runs its own data pipeline via one_ticker_common.py.
+Standalone — runs its own data pipeline via utils.db_utils.load_ticker_scores().
 
 Run: streamlit run page_ticker_deepdive.py
 """
@@ -14,10 +14,8 @@ import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from ui.pages.one_ticker_common import (
-    COLORS, COLORS_PALE, FUNDAMENTAL_VIEWS,
-    load_matrix,
-)
+from utils.db_utils import FUNDAMENTAL_VIEWS, load_ticker_scores
+from ui.pages.html_utils import COLORS, COLORS_PALE
 
 # Extend the shared 4-colour palette so up to 10 lines stay distinguishable.
 COLORS      = list(COLORS)      + ["#7c3aed", "#0891b2", "#db2777", "#65a30d", "#ea580c", "#475569"]
@@ -68,7 +66,7 @@ def render():
     # BOOTSTRAP
     # ==============================================================================
     if "df_matrix" not in st.session_state or "conn" not in st.session_state:
-        df_matrix, conn, _ = load_matrix()
+        df_matrix, conn, _ = load_ticker_scores()
         st.session_state["df_matrix"] = df_matrix
         st.session_state["conn"]      = conn
     else:

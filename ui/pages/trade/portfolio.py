@@ -19,7 +19,7 @@ from utils.db_utils import (
     fetch_price_history,
     fetch_ticker_metadata,
 )
-from ui.pages.one_ticker_common import COLORS
+from ui.pages.html_utils import COLORS
 from utils.time_utils import PERIODS
 from utils.file_utils import load_json_dict, save_json_atomic
 from utils.debug_utils import init_sql_log, log_sql as _log_sql, render_sql_log as _render_sql_log
