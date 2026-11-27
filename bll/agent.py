@@ -14,9 +14,10 @@ from agno.tools.duckdb import DuckDbTools
 # ======================= config =======================
 BASE = Path(__file__).resolve().parent.parent                 # the equitydesk folder
 SQL_DIR = BASE / "sqls"
+DATA_DIR = BASE / "data"
 SCRIPTS = ["init_raw.sql", "init.sql", "compact_clean.sql" , "dcf.sql" ]    # order matters
-DB = BASE / "equity.duckdb"                            # must be a FILE
-CACHE = BASE / "column_values.json"
+DB = DATA_DIR / "equity.duckdb"                            # must be a FILE
+CACHE = DATA_DIR / "column_values.json"
 
 MODEL_ID = "gemma-offline:latest"
 OLLAMA_HOST = "http://localhost:11434"
