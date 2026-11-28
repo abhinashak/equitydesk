@@ -63,7 +63,7 @@ class Params:
     # Strategy rules & filters
     confidence_cutoff: float = 72.0
     entry_stoploss_gtt_multiplier: float = 0.98  # Entry stoploss GTT multiplier on buy_price (e.g. 0.98 = -2.00%)
-    friday_stop_loss: float = 0.99               # Friday stoploss GTT multiplier on day_open (Fri); 0.0 = disabled
+    exit_day_mult: float = 0.99                  # Exit-day stoploss multiplier on the exit day's open; 0.0 = disabled
     stop_loss_pct: float = -2.00                 # Derived/synced base stop-loss % from entry_stoploss_gtt_multiplier
     gap_aware_stop: bool = True       # a stock that OPENS below the stop exits at that open, not at the stop
     portfolio_halt_pct: float = -4.0
@@ -90,6 +90,7 @@ class Params:
     stamp_duty_buy_rate: float = 0.00015
     gst_rate: float = 0.18
     dp_charge_per_sell: float = 18.80
+    idle_interest_rate: float = 0.065  # annual rate earned daily (simple, /365) on capital not invested
 
 def _fasta_sql():
     return _FASTA_SQL
@@ -142,7 +143,7 @@ def _lookup_daily_stop(daily_stops, ticker):
 def gtt_daily_exit(
         daily_stops, ticker, entry_date, end_date, stop_price, gap_aware=True,
         debug_log=None, buy_price=None, entry_stoploss_gtt_multiplier=0.98,
-        friday_stop_loss=0.99,
+        exit_day_mult=0.99,
 ):
     """Return (fill_price, reason, fill_date) for the first daily GTT trigger.
 
@@ -150,8 +151,9 @@ def gtt_daily_exit(
     1. Entry stoploss GTT multiplier (`entry_stoploss_gtt_multiplier`, default 0.98):
        sets base stop `buy_price * entry_stoploss_gtt_multiplier` (falling back to
        `stop_price` if `buy_price` is not provided).
-    2. Friday stoploss GTT multiplier (`friday_stop_loss`, default 0.99, 0.0 = off):
-       on Friday (weekday 4), candidate is `max(base_stop, day_open * friday_stop_loss)`.
+    2. Exit-day stoploss multiplier (`exit_day_mult`, default 0.99, 0.0 = off):
+       on the exit day (hardcoded to Friday, weekday 4), candidate is
+       `max(base_stop, day_open * exit_day_mult)`.
     """
     rec = _lookup_daily_stop(daily_stops, ticker)
     if rec is None:
@@ -164,7 +166,7 @@ def gtt_daily_exit(
     entry_day = pd.Timestamp(entry_date).normalize()
     end_day = pd.Timestamp(end_date).normalize()
     entry_mult = float(entry_stoploss_gtt_multiplier) if entry_stoploss_gtt_multiplier is not None else 0.0
-    fri_stop_mult = float(friday_stop_loss) if friday_stop_loss is not None else 0.0
+    exit_day_mult = float(exit_day_mult) if exit_day_mult is not None else 0.0
 
     order = np.argsort(dates, kind="stable")
     dates, opens, lows = dates[order], opens[order], lows[order]
@@ -181,19 +183,19 @@ def gtt_daily_exit(
     for idx in range(start_idx, end_idx):
         trigger_date = pd.Timestamp(dates[idx]).normalize()
         day_open = opens[idx]
-        # 3. Friday stoploss GTT multiplier: Friday (weekday 4)
-        if np.isfinite(fri_stop_mult) and fri_stop_mult > 0.0 and trigger_date.weekday() == 4:
+        # 3. Exit-day stoploss multiplier: exit day is hardcoded to Friday (weekday 4)
+        if np.isfinite(exit_day_mult) and exit_day_mult > 0.0 and trigger_date.weekday() == 4:
             if np.isfinite(day_open) and day_open > 0:
-                fri_stop_candidate = max(base_stop, float(day_open) * fri_stop_mult)
+                exit_day_candidate = max(base_stop, float(day_open) * exit_day_mult)
                 prev_stop = active_stop
-                active_stop = max(active_stop, fri_stop_candidate)
+                active_stop = max(active_stop, exit_day_candidate)
                 if active_stop > prev_stop:
                     ratcheted_on = trigger_date
                 if debug_log is not None:
                     debug_log(
-                        f"[GTT-FRIDAY] {ticker} entry={entry_day.date()} fri={trigger_date.date()} "
-                        f"base_stop={base_stop:.2f} prev_stop={prev_stop:.2f} fri_open={float(day_open):.2f} "
-                        f"friday_stop_loss={fri_stop_mult:.5f} cand={fri_stop_candidate:.2f} -> active_stop={active_stop:.2f} low={float(lows[idx]):.2f}"
+                        f"[GTT-EXITDAY] {ticker} entry={entry_day.date()} exit_day={trigger_date.date()} "
+                        f"base_stop={base_stop:.2f} prev_stop={prev_stop:.2f} exit_day_open={float(day_open):.2f} "
+                        f"exit_day_mult={exit_day_mult:.5f} cand={exit_day_candidate:.2f} -> active_stop={active_stop:.2f} low={float(lows[idx]):.2f}"
                     )
 
         if not gtt_trigger(active_stop, lows[idx]):
@@ -206,21 +208,21 @@ def gtt_daily_exit(
             and opens[idx] <= active_stop
         )
         if is_gap:
-            reason = "STOCK_STOP_OPENGAP"
+            reason = "STOP_OPENGAP"
             fill_price = float(opens[idx])
         elif trigger_date == entry_day:
-            reason = "STOCK_STOP_LOSS_ENTRY"
+            reason = "STOPLOSS_ENTRYDAY"
             fill_price = float(active_stop)
         elif trigger_date == end_day:
-            reason = "STOCK_STOP_EXITDAY"
+            reason = "STOPLOSS_EXITDAY"
             fill_price = float(active_stop)
         else:
-            reason = "STOCK_STOP_MIDDAY"
+            reason = "STOPLOSS_MIDWEK"
             fill_price = float(active_stop)
         if debug_log is not None:
             debug_log(
                 f"[GTT-FIRE] {ticker} entry={entry_day.date()} fire={trigger_date.date()} "
-                f"fri_reset={ratcheted_on.date() if ratcheted_on else None} "
+                f"exit_day_reset={ratcheted_on.date() if ratcheted_on else None} "
                 f"orig_stop={original_stop:.2f} final_stop={active_stop:.2f} "
                 f"low={float(lows[idx]):.2f} fill={fill_price:.2f} reason={reason}"
             )
@@ -229,7 +231,7 @@ def gtt_daily_exit(
 
 
 def stop_check(con, ticker, week_start, buy_price, stop_loss_pct=-2.0,
-               entry_stoploss_gtt_multiplier=0.98, friday_stop_loss=0.99):
+               entry_stoploss_gtt_multiplier=0.98, exit_day_mult=0.99):
     """Daily open/low of one ticker-week and what the stop logic does with it (was `explain_stop`)."""
     week_start = pd.Timestamp(week_start).normalize()
     daily = _FASTA_SQL.load_stop_check_data(con, ticker, week_start)
@@ -238,7 +240,12 @@ def stop_check(con, ticker, week_start, buy_price, stop_loss_pct=-2.0,
     daily.columns = [c.lower() for c in daily.columns]
     daily['date'] = pd.to_datetime(daily['date']).dt.normalize()
     daily = daily.sort_values('date', kind='stable').reset_index(drop=True)
-    entry = float(buy_price) if buy_price else float(daily['open'].iloc[0])
+    if buy_price:
+        entry = float(buy_price)
+    else:
+        first = daily.iloc[0]
+        ohlc = [first[c] for c in ('open', 'high', 'low', 'close') if c in daily.columns]
+        entry = float(np.nanmean(ohlc))  # day average of the entry day
     eff_pct = entry_stop_pct_from_mult(entry_stoploss_gtt_multiplier, stop_loss_pct)
     stop_px = entry * (1.0 + eff_pct / 100.0)
     daily['low <= stop'] = daily['low'] <= stop_px
@@ -247,12 +254,12 @@ def stop_check(con, ticker, week_start, buy_price, stop_loss_pct=-2.0,
                     daily['open'].to_numpy(float), daily['low'].to_numpy(float))}
     fill = gtt_daily_exit(
         rec, ticker, pd.Timestamp(daily['date'].iloc[0]),
-        week_start + pd.Timedelta(days=6), stop_px,
+        pd.Timestamp(daily['date'].iloc[-1]), stop_px,
         gap_aware=True,
         buy_price=entry,
         entry_stoploss_gtt_multiplier=entry_stoploss_gtt_multiplier,
-        friday_stop_loss=friday_stop_loss,
-        )
+        exit_day_mult=exit_day_mult,
+    )
     return {"daily": daily, "entry": entry, "stop_px": stop_px, "fill": fill, "week_start": week_start}
 
 
@@ -382,6 +389,9 @@ def apply_weekly_capital_compounding(weekly_df, p: Params):
     - Week 1 starts at `p.weekly_capital`.
     - Each subsequent week's base capital is rebased to `max(0.0, prior_base_capital + prior_net_rupees)`
       so both profits and losses compound into the next investment base.
+    Idle capital earns `p.idle_interest_rate` p.a. accrued daily (rate / 365): the part of the week's base capital
+    that is not invested earns for the full 7 days, and cash freed by a sale earns from the sell date until the
+    next Monday. The interest is added to `net_rupees` (and reported in `interest_rupees`).
     When `p.compound_weekly_capital` is False:
     - Every week uses a fixed `p.weekly_capital` base.
     """
@@ -396,13 +406,25 @@ def apply_weekly_capital_compounding(weekly_df, p: Params):
     current_base = float(p.weekly_capital)
     compounding = bool(getattr(p, "compound_weekly_capital", False))
 
-    for net_pnl in out['net_rupees']:
+    daily_rate = float(getattr(p, "idle_interest_rate", 0.0) or 0.0) / 365.0
+    invested = out['invested'].to_numpy(dtype=float) if 'invested' in out else np.zeros(len(out))
+    freed = out['freed_cash_days'].to_numpy(dtype=float) if 'freed_cash_days' in out else np.zeros(len(out))
+    interest = []
+    totals = []
+
+    for k, net_pnl in enumerate(out['net_rupees']):
         base_cap = current_base
-        rebased_end = max(0.0, base_cap + float(net_pnl))
+        idle_interest = daily_rate * (max(base_cap - invested[k], 0.0) * 7.0 + freed[k])
+        total_net = float(net_pnl) + idle_interest
+        rebased_end = max(0.0, base_cap + total_net)
         base_caps.append(base_cap)
         next_caps.append(rebased_end)
+        interest.append(idle_interest)
+        totals.append(total_net)
         current_base = rebased_end if compounding else float(p.weekly_capital)
 
+    out['interest_rupees'] = interest
+    out['net_rupees'] = totals  # trade net PnL + idle-capital interest
     out['base_capital'] = base_caps
     out['rebased_next_capital'] = next_caps
     return out
@@ -419,6 +441,7 @@ class _StrategyRun:
     week_pnls: list = field(default_factory=list)
     shadow_pnls: list = field(default_factory=list)
     trades: list = field(default_factory=list)
+    open_pos: dict = field(default_factory=dict)  # ticker -> position still held at last Friday's exit (carry candidate)
 
 
 def resolve_picks_window(df, p: Params):
@@ -471,9 +494,9 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
     latest_week = pd.Timestamp(all_weeks[-1]).normalize()
     latest_rows = work.loc[work['w_date'] == latest_week]
     latest_data_date = latest_rows['last_date'].max()
-    try:
+    if getattr(p, "cutoff_date", ""):
         cutoff_day = pd.Timestamp(p.cutoff_date).normalize()
-    except Exception:
+    else:  # no cutoff: run through the latest available data
         cutoff_day = latest_data_date + pd.Timedelta(days=1)
     adv = int(getattr(p, "advance_days", 0) or 0)
     if adv > 0:
@@ -508,6 +531,9 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
             continue
         dates = pd.to_datetime(grp['w_date']).values.astype('datetime64[ns]')
         opens_arr = grp['open_price'].to_numpy(dtype=float) if 'open_price' in grp.columns else grp['close_price'].to_numpy(dtype=float)
+        # Buy price = day average of the entry day (falls back to the open if unavailable)
+        entries_arr = grp['entry_price'].to_numpy(dtype=float) if 'entry_price' in grp.columns else opens_arr
+        entries_arr = np.where(np.isfinite(entries_arr) & (entries_arr > 0), entries_arr, opens_arr)
         lows_arr = grp['low_price'].to_numpy(dtype=float) if 'low_price' in grp.columns else grp['close_price'].to_numpy(dtype=float)
         closes_arr = grp['close_price'].to_numpy(dtype=float)
         raw_volumes = grp['avg_volume'].to_numpy(dtype=float) if has_volume else np.full(len(grp), np.nan)
@@ -528,6 +554,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
             'first_dates': pd.to_datetime(grp['first_date']).values.astype('datetime64[ns]'),
             'last_dates': pd.to_datetime(grp['last_date']).values.astype('datetime64[ns]'),
             'opens': opens_arr,
+            'entries': entries_arr,
             'closes': closes_arr,
             'lows': lows_arr,
             'volumes': raw_volumes,
@@ -572,7 +599,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
             prior_volume = tdict['prior_volumes'][i]
             was_in_shadow = ticker in stock_in_shadow
 
-            buy_price = tdict['opens'][i]
+            buy_price = tdict['entries'][i]
             if not np.isfinite(buy_price) or buy_price <= 0:
                 continue
             buy_date = pd.Timestamp(tdict['first_dates'][i])
@@ -589,7 +616,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
                 debug_log=log,
                 buy_price=buy_price,
                 entry_stoploss_gtt_multiplier=effective_entry_mult,
-                friday_stop_loss=p.friday_stop_loss,
+                exit_day_mult=p.exit_day_mult,
             )
 
             if gtt_fill is not None:
@@ -613,7 +640,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
                     sell_price = tdict['closes'][i]
                     sell_date = week_last_day
                     pnl_pct = round(((sell_price - buy_price) / buy_price) * 100, 2)
-                    exit_reason = "WEEKEND_EXIT"
+                    exit_reason = "NORMAL_EXIT"
                     if pnl_pct <= p.stop_loss_pct:
                         exit_reason = "STOCK_STOP_LOSS"
                         stock_in_shadow.add(ticker)
@@ -621,7 +648,7 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
                 sell_price = tdict['closes'][i]
                 sell_date = week_last_day
                 pnl_pct = round(((sell_price - buy_price) / buy_price) * 100, 2)
-                exit_reason = "WEEKEND_EXIT"
+                exit_reason = "NORMAL_EXIT"
                 if pnl_pct <= p.stop_loss_pct:
                     exit_reason = "STOCK_STOP_LOSS"
                     stock_in_shadow.add(ticker)
@@ -638,12 +665,20 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
             for strat in strategies:
                 run = runs[strat.key]
                 if run.halted:
+                    run.open_pos.pop(ticker, None)
                     if has_complete_exit:
                         run.shadow_pnls.append(pnl_pct)
                     continue
                 sig = strat.visit(ctx, p)
                 if sig.buy and liquidity_ok and has_complete_exit:
-                    run.trades.append({
+                    # CARRY: held through last Friday's exit (not stopped) and signalled again. The weekly
+                    # trade is unchanged (Monday-open buy, own stop, profit shown this week); only the
+                    # charges differ: no sell charges for last week's row, no buy charges for this one.
+                    pos = run.open_pos.get(ticker)
+                    carried = bool(pos is not None and pos['last_week'] == week_dt - pd.Timedelta(days=7))
+                    if carried:
+                        pos['trade']['carry_out'] = True
+                    trade = {
                         'ticker': ticker,
                         'strategy': strat.key,
                         'buy_date': buy_date.strftime('%Y-%m-%d'),
@@ -652,9 +687,18 @@ def run_simulation(df, daily_stops, strategies, p: Params, progress=None, log=No
                         'sell_price': round(sell_price, 2),
                         'confidence': sig.confidence,
                         'exit_reason': exit_reason,
-                        'pnl_pct': pnl_pct
-                    })
+                        'pnl_pct': pnl_pct,
+                        'carry_in': carried,
+                        'carry_out': False,
+                    }
+                    run.trades.append(trade)
                     run.week_pnls.append(pnl_pct)
+                    if exit_reason == "NORMAL_EXIT":
+                        run.open_pos[ticker] = {'trade': trade, 'last_week': week_dt}
+                    else:
+                        run.open_pos.pop(ticker, None)
+                else:
+                    run.open_pos.pop(ticker, None)
 
         for run in runs.values():
             if run.halted:
@@ -863,18 +907,18 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     if not trades_df.empty:
         stop_reasons = (
             "STOCK_STOP_LOSS",
-            "STOCK_STOP_LOSS_ENTRY",
-            "STOCK_STOP_EXITDAY",
-            "STOCK_STOP_MIDDAY",
-            "STOCK_STOP_OPENGAP",
+            "STOPLOSS_ENTRYDAY",
+            "STOPLOSS_EXITDAY",
+            "STOPLOSS_MIDWEK",
+            "STOP_OPENGAP",
             "STOCK_STOP_LOSS_GAP",
             "STOCK_STOP_LOSS_NODATA",
         )
         n_stops = int(trades_df['exit_reason'].isin(stop_reasons).sum())
-        gaps = trades_df[trades_df['exit_reason'].isin(("STOCK_STOP_OPENGAP", "STOCK_STOP_LOSS_GAP"))]
+        gaps = trades_df[trades_df['exit_reason'].isin(("STOP_OPENGAP", "STOCK_STOP_LOSS_GAP"))]
         nodata = int((trades_df['exit_reason'] == 'STOCK_STOP_LOSS_NODATA').sum())
         at_stop = int((
-                              trades_df['exit_reason'].isin(("STOCK_STOP_LOSS", "STOCK_STOP_LOSS_ENTRY", "STOCK_STOP_EXITDAY", "STOCK_STOP_MIDDAY"))
+                              trades_df['exit_reason'].isin(("STOCK_STOP_LOSS", "STOPLOSS_ENTRYDAY", "STOPLOSS_EXITDAY", "STOPLOSS_MIDWEK"))
                               & (trades_df['pnl_pct'] == p.stop_loss_pct)
                       ).sum())
         res["stop_stats"] = {
@@ -903,10 +947,20 @@ def analyze(p: Params, progress=None, log=lambda m: None):
             calendar_weeks = pd.PeriodIndex([], freq='W')
         weekly_net = weekly_net.reindex(calendar_weeks, fill_value=0.0)
         weekly_cnt = weekly_cnt.reindex(calendar_weeks, fill_value=0).astype(int)
+        # Idle-capital interest inputs: capital invested each week, and cash freed by sales
+        # (proceeds x days until next Monday). A carried-out row is not sold, so frees nothing.
+        week_end = trades_df['week_period'].dt.start_time + pd.Timedelta(days=7)
+        idle_days = (week_end - pd.to_datetime(trades_df['sell_date'])).dt.days.clip(lower=0)
+        sold = ~trades_df['carry_out'].fillna(False).astype(bool) if 'carry_out' in trades_df else True
+        proceeds = trades_df['position_capital'] + trades_df['net_profit_rupees']
+        weekly_invested = trades_df.groupby('week_period')['position_capital'].sum().reindex(calendar_weeks, fill_value=0.0)
+        weekly_freed = (proceeds * idle_days * sold).groupby(trades_df['week_period']).sum().reindex(calendar_weeks, fill_value=0.0)
         weekly_df = pd.DataFrame({
             'week_period': calendar_weeks, 'trades': weekly_cnt.values,
-            'net_rupees': weekly_net.values})
+            'net_rupees': weekly_net.values,
+            'invested': weekly_invested.values, 'freed_cash_days': weekly_freed.values})
         weekly_df = apply_weekly_capital_compounding(weekly_df, p)
+        weekly_net = pd.Series(weekly_df['net_rupees'].values, index=calendar_weeks)  # now includes interest
         weekly_pct = (weekly_df['net_rupees'] / weekly_df['base_capital'].replace(0.0, np.nan)).fillna(0.0) * 100.0
         weekly_df['portfolio_ret'] = weekly_pct.values
         weekly_df['nifty_ret'] = weekly_df['week_period'].map(lambda w: nifty_weekly.get(w, 0.0))
@@ -969,6 +1023,7 @@ def analyze(p: Params, progress=None, log=lambda m: None):
             "gross_abs": float(trades_df['gross_profit_rupees'].sum()),
             "rebased_capital_end": rebased_capital_end,
             "net_abs": net_abs,
+            "interest_abs": float(weekly_df['interest_rupees'].sum()),
             "avg_net_abs_per_trade": float(trades_df['net_profit_rupees'].mean()),
             "capital_deployed": capital,
             "net_return_on_capital_pct": (net_abs / capital * 100.0) if capital else 0.0,
@@ -1086,6 +1141,9 @@ def _effective_today(raw_today: date | None = None, advance_days: int = 0) -> da
     return (pd.Timestamp(d) + pd.Timedelta(days=days)).date()
 
 
+NO_CUTOFF = date(1970, 1, 1)  # cutoff date value meaning "cleared / not used"
+
+
 def _parameter_form():
     saved = _load_settings()
     adv_saved = int(saved.get("advance_days", 0) or 0)
@@ -1113,8 +1171,10 @@ def _parameter_form():
     def setting(name, default):
         return saved.get(name, default)
 
-    def saved_date(name, default):
+    def saved_date(name, default, blank_as=None):
         value = setting(name, default.isoformat())
+        if blank_as is not None and (value is None or str(value).strip() == ""):
+            return blank_as
         try:
             return date.fromisoformat(str(value))
         except (TypeError, ValueError):
@@ -1176,15 +1236,15 @@ def _parameter_form():
                                         float(setting("decay_factor", D.decay_factor)), 0.01)
                 entry_mult_default = float(setting("entry_stoploss_gtt_multiplier", D.entry_stoploss_gtt_multiplier))
                 entry_mult = c2.number_input(
-                    "Entry stoploss GTT multiplier", 0.0, 1.10,
+                    "Entry stoploss multiplier", 0.0, 1.10,
                     entry_mult_default, 0.005,
                     format="%.5f",
                     help="Base stop multiplier applied to buy_price (e.g. 0.98 sets a 2% stop below entry).")
-                fri_stop_mult = c1.number_input(
-                    "Friday stoploss GTT multiplier (0 = off)", 0.0, 1.10,
-                    float(setting("friday_stop_loss", D.friday_stop_loss)), 0.005,
+                exit_day_mult = c3.number_input(
+                    "Exitday stoploss multiplier (0 = off)", 0.0, 1.10,
+                    float(setting("exit_day_mult", setting("friday_stop_loss", D.exit_day_mult))), 0.005,
                     format="%.5f",
-                    help="Friday stop candidate: max(entry_stop, day_open * friday_stop_loss). Set to 0.0 to disable.")
+                    help="Exit-day stop candidate: max(entry_stop, day_open * exit_day_mult). Set to 0.0 to disable.")
                 stop = entry_stop_pct_from_mult(entry_mult, float(setting("stop_loss_pct", D.stop_loss_pct)))
                 gap = c1.checkbox("Gap-aware stop fills", bool(setting("gap_aware_stop", D.gap_aware_stop)),
                                   help="A stock that opens below the stop price exits at that open, not at the stop.")
@@ -1235,7 +1295,10 @@ def _parameter_form():
             with t_data:
                 c1, c2, c3 = st.columns(3)
                 start = c1.date_input("Start date", saved_date("start_date", date(2017, 4, 1)))
-                cutoff = c2.date_input("Cutoff date", saved_date("cutoff_date", eff_today))
+                cutoff = c2.date_input(
+                    "Cutoff date", saved_date("cutoff_date", eff_today, blank_as=NO_CUTOFF),
+                    min_value=NO_CUTOFF,
+                    help="Set to 01/01/1970 to clear the cutoff: the run then uses all data up to the latest available date.")
                 advance_days_ui = c3.selectbox(
                     "Advance date by (days)",
                     options=[0, 1, 2, 3],
@@ -1276,6 +1339,12 @@ def _parameter_form():
                                       float(setting("gst_rate", D.gst_rate)), 0.01)
                 dp = c1.number_input("DP charge per sell (₹)", 0.0, 500.0,
                                      float(setting("dp_charge_per_sell", D.dp_charge_per_sell)), 0.1)
+                idle_rate_pct = c2.number_input(
+                    "Idle capital interest (% p.a.)", 0.0, 30.0,
+                    float(setting("idle_interest_rate", D.idle_interest_rate)) * 100.0, 0.1,
+                    help="Capital that is not invested earns this annual rate, accrued daily (rate / 365): "
+                         "undeployed weekly capital for the whole week, and sale proceeds from the sell date "
+                         "to the next Monday. Added to weekly PnL.")
                 compound_wk_cap = st.checkbox(
                     "Compound weekly capital (rebase on both profit and loss)",
                     value=bool(setting("compound_weekly_capital", D.compound_weekly_capital)),
@@ -1313,10 +1382,10 @@ def _parameter_form():
 
     p = Params(
         start_date=start.isoformat(),
-        cutoff_date=cutoff.isoformat(),
+        cutoff_date="" if cutoff <= NO_CUTOFF else cutoff.isoformat(),
         restrict_tickers=tuple(held) if (restrict and held) else (),
         confidence_cutoff=conf, entry_stoploss_gtt_multiplier=entry_mult,
-        friday_stop_loss=fri_stop_mult, stop_loss_pct=stop, gap_aware_stop=gap,
+        exit_day_mult=exit_day_mult, stop_loss_pct=stop, gap_aware_stop=gap,
         equal_weight_basket=eq_basket, strategies=tuple(strategies),
         allocation_decay=alloc_decay, win_ratio_prior=win_prior,
         market_cap_allocation_pct=market_cap_allocation_pct,
@@ -1328,7 +1397,7 @@ def _parameter_form():
         min_public_hold_pct=float(pub_val) if pub_on else None,
         weekly_capital=cap, brokerage_rate=brk, brokerage_cap=brk_cap,
         stt_buy_rate=stt_b, stt_sell_rate=stt_s, exchange_txn_rate=exch,
-        sebi_turnover_rate=sebi, stamp_duty_buy_rate=stamp, gst_rate=gst, dp_charge_per_sell=dp,
+        sebi_turnover_rate=sebi, stamp_duty_buy_rate=stamp, gst_rate=gst, dp_charge_per_sell=dp, idle_interest_rate=idle_rate_pct / 100.0,
         compound_weekly_capital=bool(compound_wk_cap),
         advance_days=int(advance_days_ui))
 
@@ -1401,6 +1470,18 @@ def _show_picks(res):
     split = picks.groupby('strategy').agg(n=('ticker', 'count'), weight=('strategy_weight', 'first'))
     st.caption("Weekly pool split: " + " · ".join(
         f"{STRATEGIES[k].label if k in STRATEGIES else k} {r.weight:.0%} ({r.n} picks)" for k, r in split.iterrows()))
+    # CARRY = a pick that is already held in the live portfolio: it can be kept through the
+    # Friday exit instead of being sold and re-bought on Monday.
+    held_now = set(_portfolio_symbols())
+    picks = picks.copy()
+    picks.insert(1, "carry", [_bare(str(t)).upper() in held_now for t in picks["ticker"]])
+    if held_now:
+        n_carry = int(picks["carry"].sum())
+        carry_names = ", ".join(_bare(str(t)) for t in picks.loc[picks["carry"], "ticker"].unique())
+        st.caption(f"Carry candidates (picked and already held): {n_carry} of {len(picks)} picks"
+                   + (f" - {carry_names}" if n_carry else "") + ".")
+    else:
+        st.caption("Carry check unavailable: holdings not loaded (Setup → Fetch Holdings).")
     c1, c2 = st.columns([5, 2])
     with c1:
         _table(picks, column_config={
@@ -1462,23 +1543,28 @@ def _show_picks(res):
 def _show_performance(res, p):
     k = res["kpis"]
     c = st.columns(4)
-    c[0].metric("Net PnL (₹)", _signed(k["net_abs"], money=True))
-    c[1].metric("Net return on capital traded", _signed(k["net_return_on_capital_pct"], pct=True))
-    c[2].metric("Completed trades", f"{k['total_trades']:,}")
-    c[3].metric("Avg net PnL / trade", _signed(k["avg_net_pnl_pct"], pct=True))
+    c[0].metric("Initial capital (₹)", f"{p.weekly_capital:,.0f}",
+                help="Capital the back-test starts with in week 1 (the weekly capital pool).")
+    c[1].metric("Invested capital (₹)", f"{k['capital_deployed']:,.0f}",
+                help="Total capital put into trades, summed over every week (each week's position capital).")
+    c[2].metric("Net PnL (₹)", _signed(k["net_abs"], money=True))
+    c[3].metric("Net return on capital traded", _signed(k["net_return_on_capital_pct"], pct=True))
+    c = st.columns(5)
+    c[0].metric("Completed trades", f"{k['total_trades']:,}")
+    c[1].metric("Avg net PnL / trade", _signed(k["avg_net_pnl_pct"], pct=True))
+    c[2].metric("Cumulative realised PnL", _signed(k["overall_pnl_pct"], pct=True),
+                help="Sum of weekly portfolio returns across all weeks (includes idle-capital interest).")
+    c[3].metric("Transaction costs (₹)", f"{k['total_costs']:,.2f}")
+    c[4].metric("Idle capital interest (₹)", _signed(k.get("interest_abs", 0.0), money=True),
+                help="Interest earned on capital that was not invested (annual rate accrued daily).")
     c = st.columns(4)
-    c[0].metric("Cumulative realised PnL", _signed(k["overall_pnl_pct"], pct=True),
-                help="Sum of weekly portfolio returns across all weeks.")
-    c[1].metric("Transaction costs (₹)", f"{k['total_costs']:,.2f}")
     gw, lw = k["max_gain_week"], k["max_loss_week"]
-    c[2].metric("Best week", _signed(gw[1], pct=True), f"₹{gw[2]:+,.0f}", help=gw[0])
-    c[3].metric("Worst week", _signed(lw[1], pct=True), f"₹{lw[2]:+,.0f}", help=lw[0])
     bq, wq = k["best_quarter"], k["worst_quarter"]
-    cq = st.columns(2)
-    cq[0].metric("Best quarter", _signed(bq[1], pct=True), f"₹{bq[2]:+,.0f}", help=bq[0])
-    cq[1].metric("Worst quarter", _signed(wq[1], pct=True), f"₹{wq[2]:+,.0f}", help=wq[0])
-    st.caption(f"Capital deployed across trades: ₹{k['capital_deployed']:,.2f} · "
-               f"Rebased capital: ₹{k.get('rebased_capital_end', p.weekly_capital):,.2f} · "
+    c[0].metric("Best week", _signed(gw[1], pct=True), f"₹{gw[2]:+,.0f}", help=gw[0])
+    c[1].metric("Worst week", _signed(lw[1], pct=True), f"₹{lw[2]:+,.0f}", help=lw[0])
+    c[2].metric("Best quarter", _signed(bq[1], pct=True), f"₹{bq[2]:+,.0f}", help=bq[0])
+    c[3].metric("Worst quarter", _signed(wq[1], pct=True), f"₹{wq[2]:+,.0f}", help=wq[0])
+    st.caption(f"Rebased capital: ₹{k.get('rebased_capital_end', p.weekly_capital):,.2f} · "
                f"Gross PnL ₹{k['gross_abs']:+,.2f} · Avg net PnL/trade ₹{k['avg_net_abs_per_trade']:+,.2f} · "
                f"Best week {gw[0]} · Worst week {lw[0]} · Best quarter {bq[0]} · Worst quarter {wq[0]}")
 
@@ -1581,7 +1667,8 @@ def _show_weekly(res):
     c = st.columns(4)
     c[0].metric("Portfolio PnL", _signed(row.portfolio_ret, pct=True))
     c[1].metric("Nifty 50", _signed(row.nifty_ret, pct=True))
-    c[2].metric("Net PnL (₹)", _signed(row.net_rupees, money=True))
+    c[2].metric("Net PnL incl. interest (₹)", _signed(row.net_rupees, money=True),
+                help=f"Includes idle-capital interest of ₹{row.interest_rupees:,.2f}.")
     c[3].metric("Trades", int(row.trades))
     if int(row.trades) == 0:
         st.info("No completed entry trades were recorded for this week. Trades whose exit window "
@@ -1589,8 +1676,9 @@ def _show_weekly(res):
     g = trades[trades['week_period'].astype(str) == chosen].drop(columns=_DROP_FOR_DISPLAY)
     _table(g)
     with st.expander("All weeks - summary"):
-        w = weekly[['week_period', 'trades', 'portfolio_ret', 'nifty_ret', 'net_rupees']].rename(columns={
-            'week_period': 'week', 'portfolio_ret': 'portfolio %', 'nifty_ret': 'nifty %', 'net_rupees': 'net ₹'})
+        w = weekly[['week_period', 'trades', 'portfolio_ret', 'nifty_ret', 'interest_rupees', 'net_rupees']].rename(columns={
+            'week_period': 'week', 'portfolio_ret': 'portfolio %', 'nifty_ret': 'nifty %',
+            'interest_rupees': 'interest ₹', 'net_rupees': 'net ₹ (incl. interest)'})
         _table(w)
 
 
@@ -1613,16 +1701,16 @@ def _show_trades(res):
         _download_all_trades_button(res, "fasta_dl_all_trades_tab")
 
 
-def _show_stop_checker(default_entry_mult=0.98, default_fri_stop=0.99, default_stop=-2.0):
+def _show_stop_checker(default_entry_mult=0.98, default_exit_day_mult=0.99, default_stop=-2.0):
     st.caption("Shows the daily open/low of one ticker-week and what the stop logic does with it.")
     with st.form("fasta_stopcheck"):
         c1, c2, c3 = st.columns(3)
         ticker = c1.text_input("Ticker", placeholder="MAXHEALTH.NS")
         week = c2.date_input("Week start (Monday)", date.today())
-        entry = c3.number_input("Entry price (0 = week's first open)", 0.0, 1e7, 0.0, 0.5)
+        entry = c3.number_input("Entry price (0 = entry-day average)", 0.0, 1e7, 0.0, 0.5)
         c4, c5, c6 = st.columns(3)
         entry_m = c4.number_input("Entry stoploss GTT multiplier", 0.0, 1.10, float(default_entry_mult), 0.005, format="%.5f")
-        fri_sl = c6.number_input("Friday stoploss GTT multiplier (0 = off)", 0.0, 1.10, float(default_fri_stop), 0.005, format="%.5f")
+        exit_day_m = c6.number_input("Exitday stoploss multiplier (0 = off)", 0.0, 1.10, float(default_exit_day_mult), 0.005, format="%.5f")
         go = st.form_submit_button("Check")
     if not go:
         return
@@ -1633,7 +1721,7 @@ def _show_stop_checker(default_entry_mult=0.98, default_fri_stop=0.99, default_s
     try:
         out = stop_check(
             get_connection(), ticker.strip(), week, entry or None, stop,
-            entry_stoploss_gtt_multiplier=entry_m, friday_stop_loss=fri_sl,
+            entry_stoploss_gtt_multiplier=entry_m, exit_day_mult=exit_day_m,
                                                     )
     except Exception as exc:
         st.error(f"Could not run the check: {exc}")
@@ -1648,7 +1736,7 @@ def _show_stop_checker(default_entry_mult=0.98, default_fri_stop=0.99, default_s
     fill = out["fill"]
     if fill is None:
         st.success("The stop is never reached this week: no stop exit.")
-    elif fill[1] in ("STOCK_STOP_OPENGAP", "STOCK_STOP_LOSS_GAP"):
+    elif fill[1] in ("STOP_OPENGAP", "STOCK_STOP_LOSS_GAP"):
         st.error(f"{fill[2].date()} ({fill[1]}): it opened at {fill[0]:,.2f}, below the stop, so the exit is at that open "
                  f"({(fill[0] / out['entry'] - 1) * 100:+.2f}%), not at {stop:+.2f}%.")
     else:
@@ -1699,11 +1787,11 @@ def render():
                     "market data is cached to parquet afterwards.")
         else:
             rp = Params(**res["params"])
-            st.caption(f"Window {rp.start_date} → {rp.cutoff_date} · data through {res['data_through']:%Y-%m-%d} "
+            st.caption(f"Window {rp.start_date} → {rp.cutoff_date or 'latest data'} · data through {res['data_through']:%Y-%m-%d} "
                        + f"· strategies: {', '.join(STRATEGIES[k].label if k in STRATEGIES else k for k in rp.strategies)} "
                          f"· confidence ≥ {rp.confidence_cutoff:g}% "
                          f"· entry mult {rp.entry_stoploss_gtt_multiplier:g} ({rp.stop_loss_pct:+.2f}%) "
-                       + (f"· friday_stop_loss {rp.friday_stop_loss:g} " if rp.friday_stop_loss > 0 else "· friday_stop_loss OFF ")
+                       + (f"· exit_day_mult {rp.exit_day_mult:g} " if rp.exit_day_mult > 0 else "· exit_day_mult OFF ")
                        + f"· ₹{rp.weekly_capital:,.0f}/week"
                        + (" · weekly capital compounded (profit & loss)"
                           if rp.compound_weekly_capital else "")
@@ -1742,5 +1830,5 @@ def render():
         res = st.session_state.get(RESULT_KEY)
         default_stop = res["params"]["stop_loss_pct"] if res else Params().stop_loss_pct
         default_entry_mult = res["params"].get("entry_stoploss_gtt_multiplier", Params().entry_stoploss_gtt_multiplier) if res else Params().entry_stoploss_gtt_multiplier
-        default_fri_stop = res["params"].get("friday_stop_loss", Params().friday_stop_loss) if res else Params().friday_stop_loss
-        _show_stop_checker(default_entry_mult, default_fri_stop, default_stop)
+        default_exit_day_mult = res["params"].get("exit_day_mult", Params().exit_day_mult) if res else Params().exit_day_mult
+        _show_stop_checker(default_entry_mult, default_exit_day_mult, default_stop)

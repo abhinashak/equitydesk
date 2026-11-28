@@ -23,23 +23,33 @@ def apply_transaction_costs(trades_df, p):
     sell_value = buy_value * (1.0 + df['pnl_pct'].astype(float) / 100.0)
     sell_value = sell_value.clip(lower=0.0)
 
+    # CARRY: a position held over the weekend is not sold (carry_out) and not re-bought (carry_in).
+    # The week it is carried forward from has no sell charges; the week it is carried into has no buy
+    # charges. Profit is still shown in every week.
+    carry_in = df['carry_in'].fillna(False).astype(bool) if 'carry_in' in df else pd.Series(False, index=df.index)
+    carry_out = df['carry_out'].fillna(False).astype(bool) if 'carry_out' in df else pd.Series(False, index=df.index)
+    buy_on = (~carry_in).astype(float)
+    sell_on = (~carry_out).astype(float)
+
     brokerage_buy = buy_value * p.brokerage_rate
     brokerage_sell = sell_value * p.brokerage_rate
     if p.brokerage_cap > 0:
         brokerage_buy = brokerage_buy.clip(upper=p.brokerage_cap)
         brokerage_sell = brokerage_sell.clip(upper=p.brokerage_cap)
+    brokerage_buy = brokerage_buy * buy_on
+    brokerage_sell = brokerage_sell * sell_on
 
-    stt_buy = buy_value * p.stt_buy_rate
-    stt_sell = sell_value * p.stt_sell_rate
-    exchange_buy = buy_value * p.exchange_txn_rate
-    exchange_sell = sell_value * p.exchange_txn_rate
-    sebi_buy = buy_value * p.sebi_turnover_rate
-    sebi_sell = sell_value * p.sebi_turnover_rate
-    stamp_buy = buy_value * p.stamp_duty_buy_rate
+    stt_buy = buy_value * p.stt_buy_rate * buy_on
+    stt_sell = sell_value * p.stt_sell_rate * sell_on
+    exchange_buy = buy_value * p.exchange_txn_rate * buy_on
+    exchange_sell = sell_value * p.exchange_txn_rate * sell_on
+    sebi_buy = buy_value * p.sebi_turnover_rate * buy_on
+    sebi_sell = sell_value * p.sebi_turnover_rate * sell_on
+    stamp_buy = buy_value * p.stamp_duty_buy_rate * buy_on
     stamp_sell = 0.0
     gst_buy = (brokerage_buy + exchange_buy + sebi_buy) * p.gst_rate
     gst_sell = (brokerage_sell + exchange_sell + sebi_sell) * p.gst_rate
-    dp_sell = p.dp_charge_per_sell
+    dp_sell = p.dp_charge_per_sell * sell_on
 
     total_buy_cost = stt_buy + exchange_buy + sebi_buy + stamp_buy + gst_buy + brokerage_buy
     total_sell_cost = stt_sell + exchange_sell + sebi_sell + stamp_sell + gst_sell + dp_sell + brokerage_sell
@@ -69,4 +79,3 @@ def apply_transaction_costs(trades_df, p):
     df['buy_date'] = df['buy_date'].dt.strftime('%Y-%m-%d')
     df = df.drop(columns=['week_period'])
     return df
-
