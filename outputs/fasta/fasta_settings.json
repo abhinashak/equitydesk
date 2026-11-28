@@ -7,9 +7,7 @@
     "nifty50": 10.0,
     "smallcap250": 6.0
   },
-  "start_date": "2017-01-01",
-  "cutoff_date": "2026-11-26",
-  "picks_training_cutoff": "2026-11-26",
+  "start_date": "2025-01-01",
   "restrict_tickers": [],
   "market_caps": [
     "midcap150",
@@ -47,7 +45,7 @@
   "entry_stoploss_gtt_multiplier": 0.98,
   "mid_week": 0.0,
   "friday_stop_loss": 0.9999,
-  "compound_weekly_capital": false,
+  "compound_weekly_capital": true,
   "advance_days": 0,
   "exit_day_mult": 0.9999,
   "idle_interest_rate": 0.065

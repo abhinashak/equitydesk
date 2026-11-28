@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date
 from pathlib import Path
 
@@ -90,7 +90,7 @@ class Params:
     stamp_duty_buy_rate: float = 0.00015
     gst_rate: float = 0.18
     dp_charge_per_sell: float = 18.80
-    idle_interest_rate: float = 0.065  # annual rate earned daily (simple, /365) on capital not invested
+    idle_interest_rate: float = 0.065  # annual rate, simple /365 daily: idle cash Mon-Fri, whole capital Sat-Sun
 
 def _fasta_sql():
     return _FASTA_SQL
@@ -382,16 +382,31 @@ class TrendShiftOn(_NGramStrategy):
 # ==========================================
 # WEEKLY CAPITAL COMPOUNDING / REBASING
 # ==========================================
-def apply_weekly_capital_compounding(weekly_df, p: Params):
-    """Rebase each week's base capital for investment on both profit and loss when enabled.
+def _scale_trades_for_week(week_raw_trades: pd.DataFrame, base_cap: float, p: Params) -> pd.DataFrame:
+    """Allocate and cost a single week's raw trades using `base_cap` as the weekly pool."""
+    if week_raw_trades.empty:
+        return pd.DataFrame()
+    week_params = replace(p, weekly_capital=float(base_cap))
+    alloc_week, _ = allocate_capital(week_raw_trades, week_params)
+    return apply_transaction_costs(alloc_week, week_params)
+
+
+def apply_weekly_capital_compounding(weekly_df, p: Params, raw_trades: pd.DataFrame | None = None):
+    """Rebase each week's capital and scale trade sizes on both profit and loss when enabled.
 
     When `p.compound_weekly_capital` is True:
     - Week 1 starts at `p.weekly_capital`.
-    - Each subsequent week's base capital is rebased to `max(0.0, prior_base_capital + prior_net_rupees)`
-      so both profits and losses compound into the next investment base.
-    Idle capital earns `p.idle_interest_rate` p.a. accrued daily (rate / 365): the part of the week's base capital
-    that is not invested earns for the full 7 days, and cash freed by a sale earns from the sell date until the
-    next Monday. The interest is added to `net_rupees` (and reported in `interest_rupees`).
+    - When `raw_trades` is provided, each week's trades are sized and costed against that
+      week's `base_cap` (via `weekly_capital = base_cap`) so profits and losses compound
+      into both trade sizes and next week's capital base.
+    Idle capital earns `p.idle_interest_rate` p.a. (simple interest, rate / 365 per day) in two stages:
+    1. Mon-Fri (5 days): only the part of the week's base capital that is not invested earns interest, plus cash
+       freed by a sale from the sell date until Friday.
+    2. Sat-Sun (2 days): the WHOLE week-end capital (base + trade net PnL + Mon-Fri interest) earns interest.
+    i.e. compounded = base + net_pnl + (1 + r*5/365)-style weekday interest on cash,
+         next_week_capital = compounded * (1 + r*2/365).
+    Total interest is added to `net_rupees` (and reported in `interest_rupees`); next week is invested from
+    `next_week_capital`.
     When `p.compound_weekly_capital` is False:
     - Every week uses a fixed `p.weekly_capital` base.
     """
@@ -399,35 +414,86 @@ def apply_weekly_capital_compounding(weekly_df, p: Params):
     if out.empty:
         out['base_capital'] = pd.Series(dtype=float)
         out['rebased_next_capital'] = pd.Series(dtype=float)
-        return out
+        out['interest_rupees'] = pd.Series(dtype=float)
+        out['trade_net_rupees'] = pd.Series(dtype=float)
+        return out, pd.DataFrame()
 
+    compounding = bool(getattr(p, "compound_weekly_capital", False))
+    daily_rate = float(getattr(p, "idle_interest_rate", 0.0) or 0.0) / 365.0
+
+    use_scaled_trades = compounding and raw_trades is not None and not raw_trades.empty
+    if use_scaled_trades:
+        wk_raw = raw_trades.copy()
+        wk_raw['_week_period'] = pd.to_datetime(wk_raw['buy_date']).dt.to_period('W')
+        grouped_raw = {k: g.drop(columns=['_week_period']) for k, g in wk_raw.groupby('_week_period')}
+    else:
+        grouped_raw = {}
+
+    current_base = float(p.weekly_capital)
     base_caps = []
     next_caps = []
-    current_base = float(p.weekly_capital)
-    compounding = bool(getattr(p, "compound_weekly_capital", False))
+    invested_list = []
+    freed_list = []
+    trade_net_list = []
+    interest_list = []
+    totals_list = []
+    scaled_trade_frames = []
 
-    daily_rate = float(getattr(p, "idle_interest_rate", 0.0) or 0.0) / 365.0
-    invested = out['invested'].to_numpy(dtype=float) if 'invested' in out else np.zeros(len(out))
-    freed = out['freed_cash_days'].to_numpy(dtype=float) if 'freed_cash_days' in out else np.zeros(len(out))
-    interest = []
-    totals = []
+    for _, row in out.iterrows():
+        wk = row['week_period']
+        base_cap = current_base if compounding else float(p.weekly_capital)
 
-    for k, net_pnl in enumerate(out['net_rupees']):
-        base_cap = current_base
-        idle_interest = daily_rate * (max(base_cap - invested[k], 0.0) * 7.0 + freed[k])
-        total_net = float(net_pnl) + idle_interest
-        rebased_end = max(0.0, base_cap + total_net)
+        if use_scaled_trades:
+            w_trades = _scale_trades_for_week(grouped_raw.get(wk, pd.DataFrame()), base_cap, p)
+            if not w_trades.empty:
+                scaled_trade_frames.append(w_trades)
+                inv_k = float(w_trades['position_capital'].sum())
+                net_pnl_k = float(w_trades['net_profit_rupees'].sum())
+                week_sat = wk.start_time + pd.Timedelta(days=5)
+                idle_days = (week_sat - pd.to_datetime(w_trades['sell_date'])).dt.days.clip(lower=0, upper=5)
+                sold = ~w_trades['carry_out'].fillna(False).astype(bool) if 'carry_out' in w_trades else True
+                proceeds = w_trades['position_capital'] + w_trades['net_profit_rupees']
+                freed_k = float((proceeds * idle_days * sold).sum())
+            else:
+                inv_k = 0.0
+                net_pnl_k = 0.0
+                freed_k = 0.0
+        else:
+            inv_k = float(row.get('invested', 0.0) or 0.0)
+            net_pnl_k = float(row.get('net_rupees', 0.0) or 0.0)
+            freed_k = float(row.get('freed_cash_days', 0.0) or 0.0)
+
+        # Mon-Fri: interest only on cash that was idle (never invested, or freed by a sale)
+        weekday_interest = daily_rate * (max(base_cap - inv_k, 0.0) * 5.0 + freed_k)
+        # Friday close: capital = base + trade net PnL + weekday interest
+        compounded_capital = max(0.0, base_cap + net_pnl_k + weekday_interest)
+        # Sat-Sun: the whole capital earns interest for 2 days
+        weekend_interest = daily_rate * 2.0 * compounded_capital
+        idle_interest = weekday_interest + weekend_interest
+        total_net = net_pnl_k + idle_interest
+        rebased_end = compounded_capital + weekend_interest
+
         base_caps.append(base_cap)
         next_caps.append(rebased_end)
-        interest.append(idle_interest)
-        totals.append(total_net)
-        current_base = rebased_end if compounding else float(p.weekly_capital)
+        invested_list.append(inv_k)
+        freed_list.append(freed_k)
+        trade_net_list.append(net_pnl_k)
+        interest_list.append(idle_interest)
+        totals_list.append(total_net)
 
-    out['interest_rupees'] = interest
-    out['net_rupees'] = totals  # trade net PnL + idle-capital interest
+        if compounding:
+            current_base = rebased_end
+
+    out['invested'] = invested_list
+    out['freed_cash_days'] = freed_list
+    out['trade_net_rupees'] = trade_net_list
+    out['interest_rupees'] = interest_list
+    out['net_rupees'] = totals_list  # trade net PnL + idle-capital interest
     out['base_capital'] = base_caps
     out['rebased_next_capital'] = next_caps
-    return out
+
+    scaled_trades_df = pd.concat(scaled_trade_frames, ignore_index=True) if scaled_trade_frames else pd.DataFrame()
+    return out, scaled_trades_df
 
 
 # ==========================================
@@ -905,6 +971,49 @@ def analyze(p: Params, progress=None, log=lambda m: None):
     }
 
     if not trades_df.empty:
+        trades_df['sort_date'] = pd.to_datetime(trades_df['sell_date'])
+        trades_df = trades_df.sort_values('sort_date', kind='stable').reset_index(drop=True)
+        trades_df['week_period'] = pd.to_datetime(trades_df['buy_date']).dt.to_period('W')
+        trades_df['quarter_period'] = trades_df['sort_date'].dt.to_period('Q')
+        trades_df['year_period'] = trades_df['sort_date'].dt.to_period('Y')
+
+        weekly_net = trades_df.groupby('week_period')['net_profit_rupees'].sum()
+        weekly_cnt = trades_df.groupby('week_period').size()
+        market_week_starts = pd.to_datetime(df['w_date']).dt.normalize()
+        first_market_week = market_week_starts.min().to_period('W')
+        last_closed_entry_week = (pd.Timestamp(wk_start).normalize() - pd.Timedelta(days=1)).to_period('W')
+        if first_market_week <= last_closed_entry_week:
+            calendar_weeks = pd.period_range(
+                start=first_market_week, end=last_closed_entry_week, freq='W'
+            )
+        else:
+            calendar_weeks = pd.PeriodIndex([], freq='W')
+        weekly_net = weekly_net.reindex(calendar_weeks, fill_value=0.0)
+        weekly_cnt = weekly_cnt.reindex(calendar_weeks, fill_value=0).astype(int)
+        # Idle-capital interest inputs: capital invested each week, and cash freed by sales
+        # (proceeds x weekday days until Friday). A carried-out row is not sold, so frees nothing.
+        # Weekday cash-days only (sell date up to Friday, max 5); the Sat-Sun interest is applied to the whole
+        # capital in apply_weekly_capital_compounding.
+        week_sat = trades_df['week_period'].dt.start_time + pd.Timedelta(days=5)
+        idle_days = (week_sat - pd.to_datetime(trades_df['sell_date'])).dt.days.clip(lower=0, upper=5)
+        sold = ~trades_df['carry_out'].fillna(False).astype(bool) if 'carry_out' in trades_df else True
+        proceeds = trades_df['position_capital'] + trades_df['net_profit_rupees']
+        weekly_invested = trades_df.groupby('week_period')['position_capital'].sum().reindex(calendar_weeks, fill_value=0.0)
+        weekly_freed = (proceeds * idle_days * sold).groupby(trades_df['week_period']).sum().reindex(calendar_weeks, fill_value=0.0)
+        weekly_df = pd.DataFrame({
+            'week_period': calendar_weeks, 'trades': weekly_cnt.values,
+            'net_rupees': weekly_net.values,
+            'invested': weekly_invested.values, 'freed_cash_days': weekly_freed.values})
+        weekly_df, scaled_trades_df = apply_weekly_capital_compounding(weekly_df, p, raw_trades=raw_trades)
+        if p.compound_weekly_capital and not scaled_trades_df.empty:
+            trades_df = scaled_trades_df.copy()
+            trades_df['sort_date'] = pd.to_datetime(trades_df['sell_date'])
+            trades_df = trades_df.sort_values('sort_date', kind='stable').reset_index(drop=True)
+            trades_df['week_period'] = pd.to_datetime(trades_df['buy_date']).dt.to_period('W')
+            trades_df['quarter_period'] = trades_df['sort_date'].dt.to_period('Q')
+            trades_df['year_period'] = trades_df['sort_date'].dt.to_period('Y')
+        res["trades"] = trades_df
+
         stop_reasons = (
             "STOCK_STOP_LOSS",
             "STOPLOSS_ENTRYDAY",
@@ -927,39 +1036,6 @@ def analyze(p: Params, progress=None, log=lambda m: None):
             "nodata": nodata, "below_stop_weekly_exit": max(0, n_stops - at_stop - len(gaps) - nodata),
         }
 
-        trades_df['sort_date'] = pd.to_datetime(trades_df['sell_date'])
-        trades_df = trades_df.sort_values('sort_date', kind='stable').reset_index(drop=True)
-        trades_df['week_period'] = pd.to_datetime(trades_df['buy_date']).dt.to_period('W')
-        trades_df['quarter_period'] = trades_df['sort_date'].dt.to_period('Q')
-        trades_df['year_period'] = trades_df['sort_date'].dt.to_period('Y')
-        res["trades"] = trades_df
-
-        weekly_net = trades_df.groupby('week_period')['net_profit_rupees'].sum()
-        weekly_cnt = trades_df.groupby('week_period').size()
-        market_week_starts = pd.to_datetime(df['w_date']).dt.normalize()
-        first_market_week = market_week_starts.min().to_period('W')
-        last_closed_entry_week = (pd.Timestamp(wk_start).normalize() - pd.Timedelta(days=1)).to_period('W')
-        if first_market_week <= last_closed_entry_week:
-            calendar_weeks = pd.period_range(
-                start=first_market_week, end=last_closed_entry_week, freq='W'
-            )
-        else:
-            calendar_weeks = pd.PeriodIndex([], freq='W')
-        weekly_net = weekly_net.reindex(calendar_weeks, fill_value=0.0)
-        weekly_cnt = weekly_cnt.reindex(calendar_weeks, fill_value=0).astype(int)
-        # Idle-capital interest inputs: capital invested each week, and cash freed by sales
-        # (proceeds x days until next Monday). A carried-out row is not sold, so frees nothing.
-        week_end = trades_df['week_period'].dt.start_time + pd.Timedelta(days=7)
-        idle_days = (week_end - pd.to_datetime(trades_df['sell_date'])).dt.days.clip(lower=0)
-        sold = ~trades_df['carry_out'].fillna(False).astype(bool) if 'carry_out' in trades_df else True
-        proceeds = trades_df['position_capital'] + trades_df['net_profit_rupees']
-        weekly_invested = trades_df.groupby('week_period')['position_capital'].sum().reindex(calendar_weeks, fill_value=0.0)
-        weekly_freed = (proceeds * idle_days * sold).groupby(trades_df['week_period']).sum().reindex(calendar_weeks, fill_value=0.0)
-        weekly_df = pd.DataFrame({
-            'week_period': calendar_weeks, 'trades': weekly_cnt.values,
-            'net_rupees': weekly_net.values,
-            'invested': weekly_invested.values, 'freed_cash_days': weekly_freed.values})
-        weekly_df = apply_weekly_capital_compounding(weekly_df, p)
         weekly_net = pd.Series(weekly_df['net_rupees'].values, index=calendar_weeks)  # now includes interest
         weekly_pct = (weekly_df['net_rupees'] / weekly_df['base_capital'].replace(0.0, np.nan)).fillna(0.0) * 100.0
         weekly_df['portfolio_ret'] = weekly_pct.values
@@ -1082,10 +1158,10 @@ def build_text_report(res, p: Params):
   TOTAL CAPITAL DEPLOYED ACROSS TRADES (₹)       : {k['capital_deployed']:,.2f}
   NET RETURN ON TOTAL CAPITAL TRADED             : {k['net_return_on_capital_pct']:+.2f}%
   AVERAGE NET PnL PER TRADE                      : {k['avg_net_pnl_pct']:+.2f}%
-  MAXIMUM GAIN WEEK                              : {gw[0]} | {gw[1]:+.2f}% | ₹{gw[2]:+,.2f}
-  MAXIMUM LOSS WEEK                              : {lw[0]} | {lw[1]:+.2f}% | ₹{lw[2]:+,.2f}
-  BEST QUARTER                                   : {bq[0]} | {bq[1]:+.2f}% | ₹{bq[2]:+,.2f}
-  WORST QUARTER                                  : {wq[0]} | {wq[1]:+.2f}% | ₹{wq[2]:+,.2f}
+  MAXIMUM GAIN WEEK                              : {gw[0]} | {gw[1]:+.2f}% | ₹{gw[2]:+,.0f}
+  MAXIMUM LOSS WEEK                              : {lw[0]} | {lw[1]:+.2f}% | ₹{lw[2]:+,.0f}
+  BEST QUARTER                                   : {bq[0]} | {bq[1]:+.2f}% | ₹{bq[2]:+,.0f}
+  WORST QUARTER                                  : {wq[0]} | {wq[1]:+.2f}% | ₹{wq[2]:+,.0f}
 
 =========================================================================
 """)
@@ -1342,9 +1418,9 @@ def _parameter_form():
                 idle_rate_pct = c2.number_input(
                     "Idle capital interest (% p.a.)", 0.0, 30.0,
                     float(setting("idle_interest_rate", D.idle_interest_rate)) * 100.0, 0.1,
-                    help="Capital that is not invested earns this annual rate, accrued daily (rate / 365): "
-                         "undeployed weekly capital for the whole week, and sale proceeds from the sell date "
-                         "to the next Monday. Added to weekly PnL.")
+                    help="Annual rate accrued daily (rate / 365). Mon-Fri: undeployed cash, and sale proceeds "
+                         "from the sell date to Friday. Sat-Sun: the whole week-end capital (incl. profit/loss). "
+                         "Added to weekly PnL and compounded into next week's capital.")
                 compound_wk_cap = st.checkbox(
                     "Compound weekly capital (rebase on both profit and loss)",
                     value=bool(setting("compound_weekly_capital", D.compound_weekly_capital)),
